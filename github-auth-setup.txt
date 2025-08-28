@@ -1,0 +1,42 @@
+GITHUB AUTHENTICATION SETUP
+==============================
+
+Since password authentication is not supported, you need to create a Personal Access Token:
+
+STEP 1: CREATE GITHUB PERSONAL ACCESS TOKEN
+--------------------------------------------
+1. Go to GitHub.com and login
+2. Click your profile picture (top right) → Settings
+3. Scroll down to "Developer settings" (left sidebar)
+4. Click "Personal access tokens" → "Tokens (classic)"
+5. Click "Generate new token" → "Generate new token (classic)"
+6. Give it a name like "AMIS Project Token"
+7. Set expiration (recommend 90 days or No expiration)
+8. Select these scopes:
+   ☑ repo (Full control of private repositories)
+   ☑ workflow (Update GitHub Action workflows)
+9. Click "Generate token"
+10. COPY THE TOKEN IMMEDIATELY (you won't see it again!)
+
+STEP 2: USE TOKEN TO PUSH
+-------------------------
+After you get your token, run:
+
+git push -u origin main
+
+When prompted:
+- Username: letsgetstartup
+- Password: [paste your token here]
+
+OR SET UP CREDENTIAL HELPER (easier for future):
+git config --global credential.helper store
+git push -u origin main
+[enter username and token once, it will be saved]
+
+ALTERNATIVE: USE GITHUB CLI
+---------------------------
+brew install gh
+gh auth login
+git push -u origin main
+
+Save your token somewhere safe - you'll need it for future pushes!
