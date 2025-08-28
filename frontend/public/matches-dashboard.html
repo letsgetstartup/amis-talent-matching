@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>התאמות + צ'אט (דשבורד)</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0f172a;color:#e2e8f0}
+    header{position:sticky;top:0;z-index:5;background:#0b1324;border-bottom:1px solid #1f2937;padding:12px 16px;display:flex;gap:10px;align-items:center}
+    .wrap{display:grid;grid-template-columns: 320px 1fr; gap:14px; padding:14px}
+    .panel{background:#0b1324;border:1px solid #1f2937;border-radius:14px}
+    .controls{padding:12px}
+    .controls h3{margin:0 0 8px}
+    .row{display:flex;gap:8px;align-items:center;margin:8px 0}
+    label{width:110px;font-size:13px;color:#93c5fd}
+    input,select{flex:1;background:#0a1020;color:#e2e8f0;border:1px solid #1f2937;border-radius:10px;padding:8px 10px}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{background:#0a1428;border:1px solid #334155;border-radius:999px;padding:2px 8px;font-size:12px}
+    .btn{background:#1f2937;border:1px solid #334155;color:#e2e8f0;border-radius:10px;padding:8px 12px;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#22d3ee,#38bdf8);color:#0b1324;border:none;font-weight:600}
+    .content{padding:10px}
+    .card{background:#0b1324;border:1px solid #1f2937;border-radius:14px;padding:12px;margin-bottom:12px}
+    .pct{font-size:12px;background:#052e2b;border:1px solid #064e3b;color:#34d399;padding:2px 6px;border-radius:999px}
+    .muted{color:#94a3b8}
+    .job{background:#0a1020;border:1px solid #1f2937;border-radius:12px;padding:8px 10px;margin:8px 0}
+    .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .tag{background:#0a1428;border:1px solid #334155;padding:2px 6px;border-radius:10px;font-size:11px}
+    .chat{display:flex;gap:8px;margin-top:8px}
+    .chat input{flex:1}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="font-weight:700">התאמות + צ'אט</div>
+    <a href="/agency-portal.html" style="margin-inline-start:auto;color:#93c5fd">חזרה לפורטל</a>
+  </header>
+  <div class="wrap">
+    <aside class="panel controls">
+      <h3>סינונים</h3>
+      <div class="row"><label>כותרת</label><input id="fTitle" placeholder="לדוגמה: מנהל" /></div>
+      <div class="row"><label>ציון ≥</label><input id="fScore" type="number" min="0" max="100" value="60"/></div>
+      <div class="row"><label>ערים</label><input id="fCity" placeholder="ת"א, ירושלים"/></div>
+      <div id="cityChips" class="chips" style="margin-top:6px"></div>
+      <div class="row"><label>Top-K</label><input id="fK" type="number" min="1" max="10" value="3"/></div>
+      <div class="row"><label>Page size</label><input id="fLimit" type="number" min="5" max="100" value="25"/></div>
+      <div class="row"><label>מיון</label>
+        <select id="fSort">
+          <option value="score,desc">ציון יורד</option>
+          <option value="score,asc">ציון עולה</option>
+          <option value="title,asc">כותרת א→ת</option>
+          <option value="title,desc">כותרת ת→א</option>
+        </select>
+      </div>
+      <div class="row"><label>City filter</label>
+        <select id="fCityFilter"><option value="true" selected>מופעל</option><option value="false">כבוי</option></select>
+      </div>
+      <div class="row"><label>Cache</label>
+        <select id="fCache"><option value="hybrid" selected>Hybrid</option><option value="on">On</option><option value="off">Off</option></select>
+      </div>
+      <div class="row" style="justify-content:flex-end"><button id="apply" class="btn primary">החל</button><button id="reset" class="btn" style="margin-inline-start:6px">איפוס</button></div>
+      <h3 style="margin-top:14px">צ'אט</h3>
+      <div id="answer" class="muted" style="min-height:18px"></div>
+      <div class="chat"><input id="q" placeholder="לדוגמה: הצג מועמדים מת"א או י-ם בציון מעל 70%" /><button id="send" class="btn">שלח</button></div>
+    </aside>
+    <main class="content">
+      <div id="host"></div>
+    </main>
+  </div>
+  <script>
+  (function(){
+    const el = id=>document.getElementById(id);
+    const S = { page:1, limit:25, k:3, city_filter:true, cache:'hybrid', filters:{ title:'', cities:[], scoreMin:0.6 }, sort:{by:'score', dir:'desc'} };
+    el('fScore').addEventListener('input',()=>{});
+    el('apply').onclick = ()=>{ S.filters.title = el('fTitle').value.trim(); S.k = clamp(+el('fK').value,1,10); S.limit = clamp(+el('fLimit').value,5,100); const [by,dir]=(el('fSort').value||'score,desc').split(','); S.sort={by,dir}; S.city_filter = el('fCityFilter').value==='true'; S.cache = el('fCache').value; const pct = +el('fScore').value||0; S.filters.scoreMin = clamp(pct/100,0,1); fetchAndRender(); };
+    el('reset').onclick = ()=>{ el('fTitle').value=''; el('fScore').value=60; el('fCity').value=''; S.filters.cities=[]; renderChips(); el('fK').value=3; el('fLimit').value=25; el('fSort').value='score,desc'; el('fCityFilter').value='true'; el('fCache').value='hybrid'; S.page=1; S.filters={title:'',cities:[],scoreMin:0.6}; S.sort={by:'score',dir:'desc'}; fetchAndRender(); };
+    el('fCity').addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===','){ e.preventDefault(); el('fCity').value.split(',').forEach(c=>addCity(c)); el('fCity').value=''; }});
+    function addCity(c){ c=(c||'').trim(); if(!c) return; if(!S.filters.cities.includes(c)){ S.filters.cities.push(c); renderChips(); } }
+    function removeCity(c){ S.filters.cities = S.filters.cities.filter(x=>x!==c); renderChips(); }
+    function renderChips(){ const host = el('cityChips'); host.innerHTML=''; S.filters.cities.forEach(c=>{ const span=document.createElement('span'); span.className='chip'; span.innerHTML=`${escapeHtml(c)} <a href="#" style="color:#94a3b8" data-x="${escapeHtml(c)}">×</a>`; host.appendChild(span); }); if(!host._x){ host.addEventListener('click', (ev)=>{ const a=ev.target.closest('a[data-x]'); if(!a) return; ev.preventDefault(); removeCity(a.getAttribute('data-x')); }); host._x=true; }}
+
+    el('send').onclick = runChat;
+    el('q').addEventListener('keydown',(e)=>{ if(e.key==='Enter') runChat(); });
+    async function runChat(){ const q=(el('q').value||'').trim(); if(!q) return; try{ const r = await fetch('/chat/query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q})}); const j = await r.json(); el('answer').textContent = j.answer||''; (j.actions||[]).forEach(applyAction); fetchAndRender(); }catch{ el('answer').textContent='שגיאת צ׳אט'; } }
+    function applyAction(a){ if(!a||!a.type) return; if(a.type==='setFilters'){ const p=a.payload||{}; if('titleContains' in p){ S.filters.title = String(p.titleContains||''); el('fTitle').value=S.filters.title; } if('scoreMin' in p){ const x=Number(p.scoreMin)||0; S.filters.scoreMin = clamp(x,0,1); el('fScore').value = Math.round(x*100); } if('city' in p && p.city){ addCity(p.city);} if(Array.isArray(p.cities)){ p.cities.forEach(addCity);} } if(a.type==='setSort'){ const by=(a.payload&&a.payload.by)||'score'; const dir=(a.payload&&a.payload.dir)||'desc'; S.sort={by,dir}; el('fSort').value=`${by},${dir}`; } if(a.type==='setPage'){ const page=(a.payload&&a.payload.page)||1; S.page=Math.max(1,parseInt(page)); } }
+
+    async function fetchAndRender(){ el('host').innerHTML='<div class="muted">טוען…</div>'; const body = { k:clamp(S.k,1,10), limit:clamp(S.limit,5,100), page:Math.max(1,S.page), city_filter:!!S.city_filter, cache_strategy:S.cache, title_contains: S.filters.title||undefined, city_in: S.filters.cities.length? S.filters.cities: undefined, score: { $gte: S.filters.scoreMin }, sort_by: S.sort.by, sort_dir: S.sort.dir }; try{ const r = await fetch('/match/report/query', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); if(!r.ok){ throw new Error(await r.text()); } const j = await r.json(); render(j); }catch(e){ el('host').innerHTML='<div class="muted">שגיאה בטעינה</div>'; }
+    }
+
+    function render(j){ const rows = Array.isArray(j.results)? j.results: []; if(!rows.length){ el('host').innerHTML='<div class="muted">אין התאמות להצגה</div>'; return; } el('host').innerHTML = rows.map(renderCandidate).join(''); }
+    function renderCandidate(r){ const title=safe(r.title)||`מועמד ${r.candidate_id}`; const city=safe(r.city)||'—'; const best=pct(r.best_score||0); const jobs=(r.matches||[]).map(renderJob).join(''); return `<section class="card"><div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><span class="pct">${best}</span><strong>${title}</strong><span class="muted">${city}</span><span class="muted">${(r.matches||[]).length} משרות</span></div>${jobs}</section>`; }
+    function renderJob(m){ const score=pct(m.score||0); const title=safe(m.title)||'—'; const city=safe(m.city)||'—'; const reason=safe(m.reason||''); const ol=(m.skill_overlap||[]).slice(0,10).map(s=>`<span class="tag">${safe(s)}</span>`).join(''); const miss=(m.job_only_skills||[]).slice(0,6).map(s=>`<span class="tag">${safe(s)}</span>`).join(''); const extra=(m.candidate_only_skills||[]).slice(0,6).map(s=>`<span class="tag">${safe(s)}</span>`).join(''); return `<div class="job"><div style="display:flex;gap:8px;align-items:center"><span class="pct">${score}</span><div>${title}</div><div class="muted">${city}</div></div>${reason? `<div class="muted" style="margin-top:4px">${reason}</div>`:''}<div class="tags">${ol}</div>${miss? `<div class="tags">נדרש: ${miss}</div>`:''}${extra? `<div class="tags">יתרון אצל מועמד: ${extra}</div>`:''}</div>`; }
+
+    function pct(x){ return `${Math.round((+x||0)*100)}%`; }
+    function clamp(x,a,b){ return Math.max(a, Math.min(b, Number(x)||0)); }
+    function safe(s){ return escapeHtml(String(s||'')); }
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[ch])); }
+
+    fetchAndRender();
+  })();
+  </script>
+</body>
+</html>

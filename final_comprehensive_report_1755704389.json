@@ -1,0 +1,304 @@
+{
+  "timestamp": "2025-08-20T18:39:49.180122",
+  "test_summary": {
+    "total_individual_tests": 10,
+    "individual_import_success_rate": 1.0,
+    "individual_db_verification_rate": 0.4,
+    "batch_import_success": true,
+    "batch_jobs_found_rate": 0.4
+  },
+  "quality_metrics": {
+    "average_skills_per_job": 30.75,
+    "synthetic_enrichment_rate": 0.0,
+    "mandatory_detection_rate": 0.4,
+    "external_id_fix_working": true
+  },
+  "logging_systems": {
+    "import_metrics_available": true,
+    "security_audit_working": true,
+    "failure_tracking_active": true,
+    "versioning_active": true
+  },
+  "detailed_results": [
+    {
+      "job_index": 0,
+      "job_id": "405627",
+      "title": "עובד/ת הרכבה",
+      "import_success": true,
+      "db_verification": true,
+      "error_message": null,
+      "db_document": {
+        "id": "68a5ec3c1ad05a92116f7738",
+        "external_order_id": "405627",
+        "title": "עובד/ת הרכבה",
+        "city_canonical": "אור עקיבא",
+        "skill_count": 15,
+        "synthetic_skill_count": 0,
+        "mandatory_requirements": 0,
+        "flags": [],
+        "created_at": 1755704380,
+        "has_pii_scrubbing": false
+      },
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 15.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {
+        "skill_count_adequate": true,
+        "has_title": true,
+        "has_city": true,
+        "has_description": true,
+        "synthetic_enrichment_active": false,
+        "mandatory_detection_working": true
+      }
+    },
+    {
+      "job_index": 1,
+      "job_id": "405620",
+      "title": "עובד/ת ייצור עבודה מועדפת .",
+      "import_success": true,
+      "db_verification": true,
+      "error_message": null,
+      "db_document": {
+        "id": "68a5ec3dec5c4f6a7259549d",
+        "external_order_id": "405620",
+        "title": "עובד/ת ייצור עבודה מועדפת .",
+        "city_canonical": "קרית עקרון",
+        "skill_count": 44,
+        "synthetic_skill_count": 0,
+        "mandatory_requirements": 0,
+        "flags": [
+          "over_generation"
+        ],
+        "created_at": 1755704381,
+        "has_pii_scrubbing": false
+      },
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 44.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {
+        "skill_count_adequate": true,
+        "has_title": true,
+        "has_city": true,
+        "has_description": true,
+        "synthetic_enrichment_active": false,
+        "mandatory_detection_working": true
+      }
+    },
+    {
+      "job_index": 2,
+      "job_id": "405626",
+      "title": "צבעי/ת תעשייתי/ת",
+      "import_success": true,
+      "db_verification": true,
+      "error_message": null,
+      "db_document": {
+        "id": "68a5ec3e3d2d87a073a14c95",
+        "external_order_id": "405626",
+        "title": "צבעי/ת תעשייתי/ת",
+        "city_canonical": "אור עקיבא",
+        "skill_count": 15,
+        "synthetic_skill_count": 0,
+        "mandatory_requirements": 0,
+        "flags": [],
+        "created_at": 1755704382,
+        "has_pii_scrubbing": false
+      },
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 15.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {
+        "skill_count_adequate": true,
+        "has_title": true,
+        "has_city": true,
+        "has_description": true,
+        "synthetic_enrichment_active": false,
+        "mandatory_detection_working": true
+      }
+    },
+    {
+      "job_index": 3,
+      "job_id": "405665",
+      "title": "מנהל/ת אחזקה",
+      "import_success": true,
+      "db_verification": true,
+      "error_message": null,
+      "db_document": {
+        "id": "68a5ec3e98c7776d89fd3778",
+        "external_order_id": "405665",
+        "title": "מנהל/ת אחזקה",
+        "city_canonical": "עפולה",
+        "skill_count": 49,
+        "synthetic_skill_count": 0,
+        "mandatory_requirements": 0,
+        "flags": [
+          "over_generation"
+        ],
+        "created_at": 1755704382,
+        "has_pii_scrubbing": false
+      },
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 49.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.01
+      },
+      "quality_analysis": {
+        "skill_count_adequate": true,
+        "has_title": true,
+        "has_city": true,
+        "has_description": true,
+        "synthetic_enrichment_active": false,
+        "mandatory_detection_working": true
+      }
+    },
+    {
+      "job_index": 4,
+      "job_id": "405690",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת שירות למוקד הדיגיטל!",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405690'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 12.0,
+        "synthetic_ratio": 0.083,
+        "mandatory_detect_rate": 1.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {}
+    },
+    {
+      "job_index": 5,
+      "job_id": "405691",
+      "title": "לחברת ביטוח מובילה דרוש/ה מברר/ת תביעות!",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405691'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 22.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {}
+    },
+    {
+      "job_index": 6,
+      "job_id": "405692",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת מכירות דירה יוצא!",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405692'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 12.0,
+        "synthetic_ratio": 0.417,
+        "mandatory_detect_rate": 0.0,
+        "duration_sec": 0.01
+      },
+      "quality_analysis": {}
+    },
+    {
+      "job_index": 7,
+      "job_id": "405731",
+      "title": "דרוש/ה מפעיל/ה כימי/ת / עובד/ת ייצור לתחום הפארמה",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405731'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 26.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 1.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {}
+    },
+    {
+      "job_index": 8,
+      "job_id": "405768",
+      "title": "לחברת אלומיניום דרוש/ה עוזר/ת מנהל מחסן",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405768'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 13.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 1.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {}
+    },
+    {
+      "job_index": 9,
+      "job_id": "405777",
+      "title": "חשמלאי/ת רכב-לחברה מובילה וגדולה בתחום התחבורה הציבורית!",
+      "import_success": true,
+      "db_verification": false,
+      "error_message": "Job found by title but external_order_id is 'None' instead of '405777'",
+      "db_document": null,
+      "metrics": {
+        "jobs_ingested": 1,
+        "avg_skills": 13.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 1.0,
+        "duration_sec": 0.0
+      },
+      "quality_analysis": {}
+    }
+  ],
+  "batch_result": {
+    "success": true,
+    "stdout": "Imported jobs: 10\nMetrics: {\"jobs_ingested\": 10, \"avg_skills\": 22.1, \"synthetic_ratio\": 0.027, \"mandatory_detect_rate\": 0.4, \"duration_sec\": 0.02}\nVisit /admin/jobs/all\n",
+    "stderr": "",
+    "jobs_in_input": 10,
+    "jobs_found_in_db": 4,
+    "metrics": {
+      "jobs_ingested": 10,
+      "avg_skills": 22.1,
+      "synthetic_ratio": 0.027,
+      "mandatory_detect_rate": 0.4,
+      "duration_sec": 0.02
+    }
+  },
+  "logging_analysis": {
+    "import_metrics": {
+      "jobs_ingested": 10,
+      "avg_skills": 22.1,
+      "synthetic_ratio": 0.027,
+      "mandatory_detect_rate": 0.4,
+      "duration_sec": 0.02
+    },
+    "security_audit_working": true,
+    "outreach_failures_count": 0,
+    "job_versions_count": 32,
+    "recent_activity": {}
+  },
+  "overall_status": "NEEDS_IMPROVEMENT",
+  "critical_issues": [
+    "Low DB verification rate: 40.0%"
+  ],
+  "recommendations": [
+    "Batch import verification rate low: 40.0%"
+  ]
+}

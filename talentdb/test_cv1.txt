@@ -1,0 +1,3 @@
+John Doe
+City: Tel Aviv
+Skills: Excel, SAP

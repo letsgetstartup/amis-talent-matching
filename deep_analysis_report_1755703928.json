@@ -1,0 +1,993 @@
+{
+  "summary": {
+    "timestamp": "2025-08-20T18:32:08.308273",
+    "overall_health": "ISSUES_FOUND",
+    "import_success_summary": {
+      "jobs_successfully_imported": 0,
+      "avg_skills_per_job": 0,
+      "synthetic_enrichment_active": false,
+      "mandatory_detection_working": false,
+      "pii_scrubbing_active": false
+    },
+    "logging_system_health": {
+      "security_audit_working": true,
+      "failure_tracking_working": true,
+      "metrics_tracking_working": true,
+      "versioning_working": true
+    },
+    "quality_assessment": {
+      "skill_extraction_quality": "NEEDS_IMPROVEMENT",
+      "data_consistency": "ISSUES_FOUND",
+      "synthetic_enrichment": "INACTIVE"
+    },
+    "critical_issues": [
+      "Duplicate external IDs: ['', None]",
+      "126 jobs missing required fields"
+    ],
+    "recommendations": [
+      "💡 Average skills below target - synthetic enrichment working correctly",
+      "🔧 No synthetic enrichment detected - check enrichment logic"
+    ]
+  },
+  "jobs_analysis": {
+    "total_found": 0,
+    "job_details": [],
+    "skill_analysis": {
+      "total_skills": 0,
+      "synthetic_skills": 0,
+      "mandatory_requirements": 0,
+      "avg_skills_per_job": 0,
+      "skill_distribution": {}
+    },
+    "quality_flags": {},
+    "pii_scrubbing_check": [],
+    "synthetic_enrichment_analysis": []
+  },
+  "logging_test": {
+    "security_audit": {
+      "success": true,
+      "error": null
+    },
+    "outreach_failures": {
+      "success": true,
+      "error": null,
+      "count": 0
+    },
+    "import_metrics": {
+      "success": true,
+      "error": null,
+      "data": {
+        "jobs_ingested": 1,
+        "avg_skills": 13.0,
+        "synthetic_ratio": 0.0,
+        "mandatory_detect_rate": 1.0,
+        "duration_sec": 0.0
+      }
+    },
+    "versions": {
+      "success": true,
+      "error": null,
+      "count": 32
+    }
+  },
+  "skill_analysis": {
+    "skill_quality_metrics": {},
+    "synthetic_enrichment_patterns": {},
+    "requirement_categorization": {},
+    "recommendations": [
+      "💡 Average skills below target - synthetic enrichment working correctly",
+      "🔧 No synthetic enrichment detected - check enrichment logic"
+    ]
+  },
+  "issues_analysis": {
+    "duplicate_external_ids": [
+      "",
+      null
+    ],
+    "missing_required_fields": [
+      {
+        "id": "68a550ee2e7f4f02c8ef54fa",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a550f72e7f4f02c8ef54fd",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551022e7f4f02c8ef5500",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5510f2e7f4f02c8ef5503",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5511b2e7f4f02c8ef5506",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551252e7f4f02c8ef5509",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551312e7f4f02c8ef550c",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551402e7f4f02c8ef550f",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551472e7f4f02c8ef5512",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551522e7f4f02c8ef5515",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5515d2e7f4f02c8ef5518",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551632e7f4f02c8ef551b",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551722e7f4f02c8ef551e",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5517e2e7f4f02c8ef5521",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551862e7f4f02c8ef5524",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5518e2e7f4f02c8ef5527",
+        "external_order_id": null,
+        "missing": [
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a551982e7f4f02c8ef552a",
+        "external_order_id": null,
+        "missing": [
+          "title",
+          "skill_set",
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61504e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61504f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615050",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615051",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615052",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615053",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615054",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615055",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615056",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615057",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615058",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615059",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505a",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505b",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505c",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505d",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61505f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615060",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615061",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615062",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615063",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615064",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615065",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615066",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615067",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615068",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615069",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506a",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506b",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506c",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506d",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61506f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615070",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615071",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615072",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615073",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615074",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615075",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615076",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615077",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615078",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615079",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507a",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507b",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507c",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507d",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61507f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615080",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615081",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615082",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615083",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615084",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615085",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615086",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615087",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615088",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615089",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508a",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508b",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508c",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508d",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61508f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615090",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615091",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615092",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615093",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615094",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615095",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615096",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615097",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615098",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec615099",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509a",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509b",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509c",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509d",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509e",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec61509f",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a0",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a1",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a2",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a3",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a4",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a5",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a6",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a7",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a8",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150a9",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150aa",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150ab",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150ac",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150ad",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150ae",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150af",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a56988f3dd9765ec6150b0",
+        "external_order_id": null,
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5b69fb972d4d5045c2f",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5b70ac1b6d704b98bda",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5b80fbcbdedcfe32bff",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5b86185e256210403ff",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5b90bdc3c0d9a9cdfcf",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5ba2f3fd1453f541b22",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5babdade341333e5c00",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5bb70fe6c31d65f2294",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5bc851f778d4c33a6a1",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      },
+      {
+        "id": "68a5e5bcb068b80fc9b449eb",
+        "external_order_id": "",
+        "missing": [
+          "external_order_id"
+        ]
+      }
+    ],
+    "encoding_problems": [],
+    "inconsistent_data": [],
+    "performance_concerns": []
+  }
+}

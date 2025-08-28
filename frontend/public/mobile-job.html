@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פרטי משרה - TalentDB</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 24px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 24px 20px;
+        }
+
+        .candidate-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-right: 4px solid #4CAF50;
+        }
+
+        .candidate-info h3 {
+            color: #4CAF50;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .candidate-info p {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .job-card {
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .job-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .job-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .job-company {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 12px;
+        }
+
+        .job-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .job-detail {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #555;
+            border: 1px solid #ddd;
+        }
+
+        .job-detail.salary {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border-color: #c8e6c9;
+        }
+
+        .job-detail.location {
+            background: #fff3e0;
+            color: #f57c00;
+            border-color: #ffcc02;
+        }
+
+        .job-body {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section h4 {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .section p, .section ul {
+            color: #555;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .section ul {
+            margin-right: 16px;
+        }
+
+        .section li {
+            margin-bottom: 6px;
+        }
+
+        .section h5 {
+            font-size: 14px;
+            color: #2c3e50;
+            margin: 12px 0 8px 0;
+            font-weight: 600;
+        }
+
+        .match-info {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid #90caf9;
+        }
+
+        .match-info h4 {
+            color: #1565c0;
+            margin-bottom: 8px;
+        }
+
+        .skills-match {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .skill-tag {
+            background: #2196f3;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+        }
+
+        .confirm-section {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding: 20px;
+            border-top: 1px solid #e1e5e9;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .confirm-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 18px 24px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .confirm-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .confirm-btn:active {
+            transform: translateY(0);
+        }
+
+        .confirm-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .sms-share-section {
+            padding: 20px;
+            background: #f0f8ff;
+            border-top: 1px solid #e1f4fd;
+        }
+
+        .url-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+            padding: 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .url-display span {
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+            color: #333;
+            word-break: break-all;
+            padding: 0 8px;
+        }
+
+        .copy-btn {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+
+        .copy-btn.copied {
+            background: #28a745;
+        }
+
+        .sms-help {
+            margin-top: 8px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px;
+            border: 1px solid #ef9a9a;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px;
+            border: 1px solid #c8e6c9;
+            text-align: center;
+        }
+
+        @media (max-width: 400px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                min-height: calc(100vh - 20px);
+            }
+            
+            .header {
+                padding: 20px 16px;
+            }
+            
+            .content {
+                padding: 20px 16px;
+            }
+            
+            .confirm-section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 משרה מתאימה עבורך</h1>
+            <p>לחץ "אשר מועמדות" לשליחת מייל למעסיק</p>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>טוען פרטי משרה...</p>
+        </div>
+
+        <div class="content" id="content" style="display: none;">
+            <!-- Candidate info will be populated here -->
+            <div class="candidate-info" id="candidateInfo" style="display: none;">
+                <h3>👋 שלום <span id="candidateName"></span></h3>
+                <p>על בסיס הפרופיל שלך, המשרה הזו מתאימה לך מאוד!</p>
+            </div>
+
+            <!-- Match info will be populated here -->
+            <div class="match-info" id="matchInfo" style="display: none;">
+                <h4>🎯 למה המשרה הזו מתאימה לך?</h4>
+                <p id="matchReason"></p>
+                <div class="skills-match" id="skillsMatch"></div>
+            </div>
+
+            <!-- Job details will be populated here -->
+            <div class="job-card" id="jobCard">
+                <div class="job-header">
+                    <div class="job-title" id="jobTitle">טוען...</div>
+                    <div class="job-company" id="jobCompany"></div>
+                    <div class="job-details" id="jobDetails"></div>
+                </div>
+                <div class="job-body">
+                    <div class="section">
+                        <h4>📋 תיאור התפקיד</h4>
+                        <div id="jobDescription"></div>
+                    </div>
+                    <div class="section">
+                        <h4>✅ דרישות התפקיד</h4>
+                        <div id="jobRequirements"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-section" id="confirmSection" style="display: none;">
+            <button class="confirm-btn" id="confirmBtn" onclick="confirmApplication()">
+                ✉️ אשר מועמדות ושלח מייל למעסיק
+            </button>
+        </div>
+
+        <!-- SMS Share Section -->
+        <div class="sms-share-section" id="smsShareSection">
+            <div class="section">
+                <h4>📱 שתף דרך SMS</h4>
+                <p>העתק את הקישור למשרה וישלח אותו בהודעת SMS:</p>
+                <div class="url-display" id="urlDisplay">
+                    <span id="currentUrl">...</span>
+                    <button class="copy-btn" onclick="copyUrlToClipboard()" id="copyUrlBtn">העתק</button>
+                </div>
+                <div class="sms-help">
+                    <small>💡 טיפ: שלח את הקישור למועמדים שיכולים להתאים למשרה הזו</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error/Success messages will be shown here -->
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Initialize variables and functions inside DOMContentLoaded
+        let jobId, shareId;
+
+        function getJobIdFromPath() {
+            // First try to get job_id from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            let jobId = urlParams.get('job_id');
+            
+            if (jobId) {
+                console.log('Got job_id from URL params:', jobId);
+                return jobId;
+            }
+            
+            // Fallback: extract job_id from URL path like /mobile/job/123
+            const pathParts = window.location.pathname.split('/');
+            const pathJobId = pathParts[pathParts.length - 1];
+            console.log('Got job_id from path:', pathJobId);
+            return pathJobId;
+        }
+
+        // Show error message
+        function showError(message) {
+            const messages = document.getElementById('messages');
+            messages.innerHTML = `<div class="error">${message}</div>`;
+            console.error('Showing error:', message);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const messages = document.getElementById('messages');
+            messages.innerHTML = `<div class="success">${message}</div>`;
+            
+            // Hide confirm button and content
+            document.getElementById('confirmSection').style.display = 'none';
+            document.getElementById('content').style.display = 'none';
+        }
+
+        // Load job data
+        async function loadJobData() {
+            try {
+                console.log('Loading job data for jobId:', jobId, 'shareId:', shareId);
+                
+                if (!jobId) {
+                    throw new Error('No job ID found in URL');
+                }
+                
+                let url = `/mobile/job/${jobId}`;
+                if (shareId) {
+                    url += `?share_id=${shareId}`;
+                }
+                
+                console.log('Fetching from URL:', url);
+                const response = await fetch(url);
+                
+                console.log('Response status:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Received data:', data);
+                
+                displayJobData(data);
+                
+                // Hide loading, show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('confirmSection').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading job data:', error);
+                document.getElementById('loading').style.display = 'none';
+                showError(`שגיאה בטעינת פרטי המשרה: ${error.message}`);
+            }
+        }
+
+        // Display job data
+        function displayJobData(data) {
+            try {
+                console.log('Displaying job data:', data);
+                
+                if (!data || !data.job) {
+                    throw new Error('Invalid job data received');
+                }
+                
+                const job = data.job;
+                const candidate = data.candidate;
+                const matchInfo = data.match_info;
+
+                // Job basic info
+                document.getElementById('jobTitle').textContent = job.title || 'ללא כותרת';
+                const company = job.company || 'חברה לא צוינה';
+                document.getElementById('jobCompany').textContent = company;
+
+                // Job details
+                const jobDetails = document.getElementById('jobDetails');
+                jobDetails.innerHTML = '';
+                
+                if (job.salary) {
+                    jobDetails.innerHTML += `<span class="job-detail salary">💰 ${job.salary}</span>`;
+                }
+                if (job.location || job.city) {
+                    const location = job.location || job.city;
+                    jobDetails.innerHTML += `<span class="job-detail location">📍 ${location}</span>`;
+                }
+                if (job.employment_type) {
+                    jobDetails.innerHTML += `<span class="job-detail">💼 ${job.employment_type}</span>`;
+                }
+
+                // Job description
+                const description = job.description || 'אין תיאור זמין';
+                if (description && description.trim()) {
+                    document.getElementById('jobDescription').innerHTML = formatText(description);
+                } else {
+                    document.getElementById('jobDescription').innerHTML = '<p>אין תיאור זמין</p>';
+                }
+
+                // Job requirements  
+                if (job.requirements && typeof job.requirements === 'object') {
+                    document.getElementById('jobRequirements').innerHTML = formatRequirements(job.requirements);
+                } else if (job.requirements && typeof job.requirements === 'string') {
+                    document.getElementById('jobRequirements').innerHTML = formatText(job.requirements);
+                } else {
+                    document.getElementById('jobRequirements').innerHTML = '<p>אין דרישות מפורטות</p>';
+                }
+
+                // Candidate info
+                if (candidate && candidate.full_name) {
+                    document.getElementById('candidateName').textContent = candidate.full_name;
+                    document.getElementById('candidateInfo').style.display = 'block';
+                }
+
+                // Match info
+                if (matchInfo) {
+                    document.getElementById('matchReason').textContent = matchInfo.reason || 'המשרה מתאימה לפרופיל שלך';
+                    
+                    // Skills match
+                    if (matchInfo.matching_skills && matchInfo.matching_skills.length > 0) {
+                        const skillsContainer = document.getElementById('skillsMatch');
+                        skillsContainer.innerHTML = '';
+                        matchInfo.matching_skills.forEach(skill => {
+                            skillsContainer.innerHTML += `<span class="skill-tag">${skill}</span>`;
+                        });
+                    }
+                    
+                    document.getElementById('matchInfo').style.display = 'block';
+                }
+
+                console.log('Job data displayed successfully');
+                
+            } catch (error) {
+                console.error('Error displaying job data:', error);
+                showError(`שגיאה בהצגת נתוני המשרה: ${error.message}`);
+            }
+        }
+
+        // Format text with bullet points
+        function formatText(text) {
+            if (!text || typeof text !== 'string') return '';
+            
+            // Convert line breaks to <br> and handle bullet points
+            return text
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map(line => {
+                    if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
+                        return `<li>${line.substring(1).trim()}</li>`;
+                    }
+                    return `<p>${line}</p>`;
+                })
+                .join('');
+        }
+
+        // Format requirements object into readable text
+        function formatRequirements(requirements) {
+            if (!requirements || typeof requirements !== 'object') return '';
+            
+            let html = '';
+            
+            if (requirements.must_have_skills && requirements.must_have_skills.length > 0) {
+                html += '<h5>דרישות חובה:</h5><ul>';
+                requirements.must_have_skills.forEach(skill => {
+                    const skillName = typeof skill === 'object' ? skill.name : skill;
+                    html += `<li>${skillName}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            if (requirements.nice_to_have_skills && requirements.nice_to_have_skills.length > 0) {
+                html += '<h5>יתרון:</h5><ul>';
+                requirements.nice_to_have_skills.forEach(skill => {
+                    const skillName = typeof skill === 'object' ? skill.name : skill;
+                    html += `<li>${skillName}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            return html || '<p>אין דרישות מפורטות</p>';
+        }
+
+        // Confirm application
+        async function confirmApplication() {
+            if (!shareId) {
+                showError('לא נמצא מזהה מועמד. אנא גש דרך הקישור מה-SMS.');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmBtn');
+            const originalText = confirmBtn.innerHTML;
+            
+            try {
+                // Show loading state
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '⏳ שולח מייל...';
+
+                const response = await fetch('/mobile/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        share_id: shareId,
+                        job_id: jobId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Redirect to mobile confirmation page
+                    const confirmUrl = `/mobile-confirm.html?mail_id=${result.mail_id || ''}&job_id=${jobId}&share_id=${shareId}`;
+                    window.location.href = confirmUrl;
+                } else {
+                    throw new Error(result.detail || 'שגיאה לא ידועה');
+                }
+
+            } catch (error) {
+                console.error('Error confirming application:', error);
+                showError(`שגיאה בשליחת המועמדות: ${error.message}`);
+                
+                // Restore button
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText;
+            }
+        }
+
+        // Initialize and load data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing page...');
+            
+            // Initialize URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            jobId = getJobIdFromPath();
+            shareId = urlParams.get('share_id');
+            
+            console.log('Initialized jobId:', jobId, 'shareId:', shareId);
+            
+            loadJobData();
+            displayCurrentUrl();
+        });
+
+        function displayCurrentUrl() {
+            const currentUrl = window.location.href;
+            // Create a shorter display version
+            const shortUrl = createShortDisplayUrl(currentUrl);
+            document.getElementById('currentUrl').textContent = shortUrl;
+            document.getElementById('currentUrl').setAttribute('data-full-url', currentUrl);
+        }
+
+        function createShortDisplayUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                const params = new URLSearchParams(urlObj.search);
+                const jobId = getJobIdFromPath();
+                const shareId = params.get('share_id');
+                
+                // Create shorter URL by using only essential parameters and shortening IDs
+                const shortJobId = jobId ? jobId.substring(0, 8) + '...' : '';
+                const shortShareId = shareId ? shareId.substring(0, 8) + '...' : '';
+                
+                let shortUrl = `${urlObj.hostname}/mobile-job.html?job=${shortJobId}`;
+                if (shareId) {
+                    shortUrl += `&user=${shortShareId}`;
+                }
+                return shortUrl;
+            } catch (e) {
+                return url;
+            }
+        }
+
+        function copyUrlToClipboard() {
+            const urlElement = document.getElementById('currentUrl');
+            const fullUrl = urlElement.getAttribute('data-full-url') || urlElement.textContent;
+            const copyBtn = document.getElementById('copyUrlBtn');
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                // Use modern clipboard API
+                navigator.clipboard.writeText(fullUrl).then(function() {
+                    showCopySuccess(copyBtn);
+                }).catch(function(err) {
+                    fallbackCopyTextToClipboard(fullUrl, copyBtn);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopyTextToClipboard(fullUrl, copyBtn);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text, button) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess(button);
+                } else {
+                    showError('לא הצלחתי להעתיק את הקישור');
+                }
+            } catch (err) {
+                showError('לא הצלחתי להעתיק את הקישור');
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess(button) {
+            const originalText = button.textContent;
+            button.textContent = 'הועתק!';
+            button.classList.add('copied');
+            
+            setTimeout(function() {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

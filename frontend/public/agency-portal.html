@@ -1,0 +1,2126 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency Portal</title>
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--accent:#22d3ee;--ok:#10b981;--err:#ef4444;--warn:#f59e0b}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0f172a 0%,#0b1220 100%);color:#e2e8f0}
+    header{position:sticky;top:0;z-index:10;display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #1f2937;background:rgba(17,24,39,.85);backdrop-filter:blur(6px)}
+    header .brand{font-weight:700;letter-spacing:.2px}
+    header .user{font-size:14px;color:#a5b4fc}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .tabs{display:flex;gap:10px;margin:10px 0 16px}
+    .tab{padding:10px 14px;border-radius:10px;background:#0b1324;border:1px solid #1f2937;color:#cbd5e1;cursor:pointer}
+    .tab.active{background:#0e1b33;border-color:#334155;color:#fff}
+    .panel{background:#0b1324;border:1px solid #1f2937;border-radius:14px;padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .col{flex:1 1 340px}
+    h2{margin:0 0 10px;font-size:18px;color:#fff}
+    h3{margin:0 0 8px;font-size:15px;color:#cbd5e1}
+    label{font-size:13px;color:#93c5fd}
+    input,select,textarea{width:100%;background:#0a1020;color:#e2e8f0;border:1px solid #1f2937;border-radius:10px;padding:10px 12px}
+    input::placeholder,textarea::placeholder{color:#64748b}
+    button{background:#1f2937;border:1px solid #334155;color:#e2e8f0;border-radius:10px;padding:10px 14px;cursor:pointer}
+    button.primary{background:linear-gradient(90deg,#22d3ee,#38bdf8);color:#0b1324;border:none;font-weight:600}
+    .muted{color:#94a3b8}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #334155;background:#0a1428}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid #1f2937;padding:8px;font-size:13px}
+    th{color:#a5b4fc;position:sticky;top:0;background:#0b1324}
+    .status.ok{color:var(--ok)}.status.err{color:var(--err)}.status.upd{color:#60a5fa}
+    .hint{font-size:12px;color:#94a3b8}
+    .drop{border:1px dashed #334155;border-radius:12px;padding:16px;text-align:center;background:#0a1428}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .badge{padding:2px 6px;border-radius:6px;font-size:11px;font-weight:600}
+    .badge.success{background:#10b981;color:#fff}
+    .badge.warning{background:#f59e0b;color:#fff}
+    .badge.neutral{background:#6b7280;color:#fff}
+    .btn-small{padding:4px 8px;font-size:11px;border-radius:6px}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000}
+    .modal-content{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b1324;border:1px solid #1f2937;border-radius:14px;padding:20px;max-width:600px;width:90%;max-height:80%;overflow-y:auto}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .modal-close{background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer}
+    .llm-section{margin-bottom:16px;padding:12px;background:#0a1020;border-radius:10px}
+    .llm-section h4{margin:0 0 8px;color:#93c5fd;font-size:14px}
+    .llm-skills{display:flex;flex-wrap:wrap;gap:6px}
+    .llm-skill{background:#1f2937;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:12px}
+    .muted{color:#94a3b8;font-style:italic}
+  /* Matches + Chat */
+  .chat-box{display:flex;flex-direction:column;gap:8px;border:1px solid #1f2937;border-radius:12px;padding:12px;background:#0a1428}
+  .chat-log{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .chat-msg{padding:8px 10px;border-radius:10px;font-size:13px;max-width:85%}
+  .chat-msg.user{align-self:flex-start;background:#20304d;border:1px solid #334155}
+  .chat-msg.bot{align-self:flex-end;background:#0a1020;border:1px solid #1f2937}
+  .chat-input{display:flex;gap:8px}
+  .chat-input input{flex:1}
+  .empty-state{padding:14px;border:1px dashed #334155;border-radius:12px;background:#0a1428;color:#94a3b8}
+  .loading{opacity:.7}
+    @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Agency Portal</div>
+    <div class="user" id="userSlot">לא מחובר</div>
+  </header>
+  <div class="wrap">
+  <div id="toast" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:#0b1324;border:1px solid #1f2937;color:#e2e8f0;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
+    <div class="tabs">
+      <div class="tab active" data-tab="dashboard">לוח</div>
+  <div class="tab" data-tab="jobs">משרות</div>
+  <div class="tab" data-tab="candidates">מועמדים</div>
+  <div class="tab" data-tab="matches">התאמות+צ'אט</div>
+      <div class="tab" data-tab="upload">העלאה</div>
+  <div class="tab" data-tab="imports">ייבוא CSV</div>
+      <div style="margin-inline-start:auto" class="muted"><button id="logoutBtn">התנתק</button></div>
+    </div>
+
+    <div id="dashboard" class="panel">
+      <h2>ברוך הבא</h2>
+      <p class="muted">אחרי התחברות תוכל להעלות משרות, להעלות קו״ח ולצפות בפריטים שלך.</p>
+      <div class="row">
+        <div class="col">
+          <div class="panel">
+            <h3>הרשמה</h3>
+            <div class="grid2">
+              <input id="regCompany" placeholder="שם חברה" />
+              <input id="regName" placeholder="שם מלא" />
+              <input id="regEmail" placeholder="אימייל" />
+              <input id="regPass" type="password" placeholder="סיסמה" />
+            </div>
+            <div style="margin-top:10px"><button class="primary" id="signupBtn">צור סוכנות</button></div>
+            <div class="hint" id="regHint"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="panel">
+            <h3>התחברות</h3>
+            <div class="grid2">
+              <input id="loginEmail" placeholder="אימייל" />
+              <input id="loginPass" type="password" placeholder="סיסמה" />
+            </div>
+            <div style="margin-top:10px"><button class="primary" id="loginBtn">התחבר</button></div>
+            <div class="hint" id="loginHint"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="jobs" class="panel" style="display:none">
+      <h2>משרות</h2>
+      <div class="row" style="margin-bottom:10px">
+        <div class="col"><input id="jobsQ" placeholder="חפש לפי כותרת/עיר/טקסט" /></div>
+        <div><button id="jobsRefresh">רענן</button></div>
+      </div>
+      <div style="overflow:auto;max-height:60vh">
+        <table>
+          <thead><tr><th>מזהה</th><th>External</th><th>כותרת</th><th>עיר</th><th>AI</th><th>עודכן</th><th>פעולות</th></tr></thead>
+          <tbody id="jobsT"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px" class="muted"><span id="jobsMeta"></span></div>
+    </div>
+
+    <div id="candidates" class="panel" style="display:none">
+      <h2>מועמדים</h2>
+      <div class="row" style="margin-bottom:10px">
+        <div class="col"><input id="candQ" placeholder="חפש לפי שם/תפקיד/עיר/כישור" /></div>
+        <div><button id="candRefresh">רענן</button></div>
+      </div>
+      <div style="overflow:auto;max-height:60vh">
+        <table>
+          <thead><tr><th>מזהה</th><th>Share</th><th>שם</th><th>כותרת</th><th>עיר</th><th>עודכן</th><th>התאמות</th><th>מכתב</th><th>פעולות</th></tr></thead>
+          <tbody id="candT"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px" class="muted"><span id="candMeta"></span></div>
+      <div class="panel" style="margin-top:14px">
+        <h3>כל השדות (תצוגה רחבה)</h3>
+        <div style="overflow:auto;max-height:50vh">
+          <table>
+            <thead><tr id="afHead"></tr></thead>
+            <tbody id="afBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="upload" class="panel" style="display:none">
+      <div class="row">
+        <div class="col">
+          <h2>העלאת משרות</h2>
+          <div class="panel">
+            <h3>ייבוא קובץ (CSV/XLSX/XLSM)</h3>
+            <input type="file" id="jobsFile" accept=".csv,.xlsx,.xlsm" />
+            <div style="margin-top:8px"><button id="jobsUpload" class="primary">ייבא קובץ</button></div>
+            <div class="hint">תומך בכותרות בעברית/אנגלית. מוסיף &format=agency_template</div>
+            <div id="uploadProgress" class="upload-progress" style="display:none">
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+              <span id="progressText">מעבד עם AI...</span>
+            </div>
+            <div id="jobsReport" class="muted" style="margin-top:8px"></div>
+          </div>
+          <div class="panel">
+            <h3>משרה בודדת</h3>
+            <div class="grid2">
+              <input id="jobExt" placeholder="External Job ID" />
+              <input id="jobTitle" placeholder="כותרת" />
+              <input id="jobCity" placeholder="עיר" />
+              <input id="jobEmail" placeholder="אימייל איש קשר" />
+            </div>
+            <textarea id="jobDesc" rows="4" placeholder="תיאור"></textarea>
+            <div class="grid2">
+              <input id="jobMust" placeholder="חובה: מופרד בפסיקים/שורות" />
+              <input id="jobNice" placeholder="יתרון: מופרד בפסיקים/שורות" />
+            </div>
+            <div style="margin-top:8px"><button id="jobCreate" class="primary">צור</button> <span id="jobCreateHint" class="hint"></span></div>
+          </div>
+        </div>
+        <div class="col">
+          <h2>העלאת מועמדים</h2>
+          <div class="panel">
+            <h3>קבצים מרובים (PDF/TXT/DOCX)</h3>
+            <div class="drop">
+              <input type="file" id="candFiles" multiple accept=".pdf,.txt,.docx,.csv" />
+              <div class="hint">תמיכה ב-PDF / DOCX / TXT וגם CSV בפורמט: מספר מועמד, מועמד, מספר הזמנה, השכלה, נסיון, טלפון, מייל, עיר</div>
+            </div>
+            <div style="margin-top:8px"><button id="candUpload" class="primary">העלה</button></div>
+            <div id="candReport" class="muted" style="margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="matches" class="panel" style="display:none">
+      <h2>התאמות מועמדים למשרות</h2>
+      <!-- New: Quick search by Candidate/Job ID -->
+      <div class="panel" style="margin:10px 0 16px 0">
+        <h3>חיפוש התאמות לפי מזהה</h3>
+        <div class="row" style="align-items:end;gap:12px">
+          <div class="col">
+            <label style="display:block;margin-bottom:6px">סוג חיפוש</label>
+            <div style="display:flex;gap:14px">
+              <label><input type="radio" name="searchType" value="candidate" id="searchTypeCandidate" checked> מועמד</label>
+              <label><input type="radio" name="searchType" value="job" id="searchTypeJob"> משרה</label>
+            </div>
+          </div>
+          <div class="col">
+            <label for="searchId" style="display:block;margin-bottom:6px">מזהה (24 ספרות הקסה)</label>
+            <input id="searchId" placeholder="לדוגמה: 68af2e02697377761f45e4a6" />
+            <div id="searchError" class="hint" style="color:#ef4444"></div>
+          </div>
+          <div style="width:150px">
+            <label for="searchK" style="display:block;margin-bottom:6px">Top K</label>
+            <input id="searchK" type="number" value="5" min="1" max="20" />
+          </div>
+          <div style="width:160px">
+            <label style="display:block;margin-bottom:6px">סינון לפי עיר</label>
+            <label><input id="searchCityFilter" type="checkbox" checked> קרבה גיאוגרפית</label>
+          </div>
+          <div>
+            <button id="searchMatches" class="primary" disabled>חפש התאמות</button>
+          </div>
+        </div>
+        <div id="searchResults" style="margin-top:12px;display:none" aria-live="polite"></div>
+      </div>
+      <!-- Phase 1: Matching controls -->
+      <div class="panel" style="margin:10px 0 16px 0">
+        <h3>בקרה על פרמטרי ההתאמה (ריענון בזמן אמת)</h3>
+        <div class="row" style="align-items:end;gap:12px">
+          <div style="width:120px">
+            <label for="mK" style="display:block;margin-bottom:6px">Top K</label>
+            <input id="mK" type="number" value="5" min="1" max="20" />
+          </div>
+          <div style="width:180px">
+            <label style="display:block;margin-bottom:6px">סינון לפי קרבה</label>
+            <label><input id="mCityFilter" type="checkbox" checked> קרבה גיאוגרפית</label>
+          </div>
+          <div style="width:180px">
+            <label for="mStrategy" style="display:block;margin-bottom:6px">Cache Strategy</label>
+            <select id="mStrategy">
+              <option value="hybrid" selected>hybrid</option>
+              <option value="on">on</option>
+              <option value="off">off</option>
+            </select>
+          </div>
+          <div style="width:180px">
+            <label for="mCacheAge" style="display:block;margin-bottom:6px">Max Age (שניות)</label>
+            <input id="mCacheAge" type="number" min="0" max="604800" placeholder="לדוגמה: 86400" />
+          </div>
+          <div style="width:220px">
+            <label for="mRpESCO" style="display:block;margin-bottom:6px">Required Profession ESCO</label>
+            <input id="mRpESCO" placeholder="לדוגמה: 3115" />
+          </div>
+          <div style="width:220px">
+            <label for="mFoESCO" style="display:block;margin-bottom:6px">Field of Occupation ESCO</label>
+            <input id="mFoESCO" placeholder="לדוגמה: 7223" />
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="col">
+          <input id="matchesLimit" type="number" value="50" min="1" max="500" />
+        </div>
+        <div style="display:flex;gap:8px;align-items:center"><button id="matchesRefresh">רענן</button><button id="matchesClear" class="secondary">נקה סינון</button><button id="matchesUndo" class="secondary" title="בטל פעולה">בטל</button><button id="matchesRedo" class="secondary" title="בצע שוב">בצע שוב</button></div>
+      </div>
+      <div id="matchesChips" class="chips" style="margin:-6px 0 10px 0"></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
+        <div class="panel" style="margin:0;max-height:60vh;overflow:auto">
+          <table>
+            <thead>
+              <tr><th>מועמד</th><th>תפקיד</th><th>כמות התאמות</th><th>טופ 3</th></tr>
+            </thead>
+            <tbody id="matchesT"></tbody>
+          </table>
+          <div class="muted" id="matchesMeta" style="margin-top:8px"></div>
+        </div>
+        <div class="panel" style="margin:0">
+          <h3>צ'אט התאמות</h3>
+          <div class="chat-box">
+            <div id="chatLog" class="chat-log"></div>
+            <div class="chat-input">
+              <input id="chatQ" placeholder="לדוגמה: כמה התאמות נמצאו היום?" />
+              <button id="chatSend">שלח</button>
+            </div>
+            <div class="hint">הצ'אט משתמש בנתונים ממונגו ו-API של OpenAI דרך FastAPI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // Use same-origin API base (works when the portal is served by the API server on 8085)
+  // This avoids hardcoding port 8080 which breaks signup/login when API runs on a different port.
+  const API = location.origin;
+  const state = { token:null, tenantId:null, apiKey:null, profile:null };
+  try{
+    const savedKey = localStorage.getItem('apiKey');
+    if(savedKey){ state.apiKey = savedKey; }
+    const savedTenant = localStorage.getItem('tenantId');
+    if(savedTenant){ state.tenantId = savedTenant; }
+    const savedToken = localStorage.getItem('token');
+    if(savedToken){ state.token = savedToken; }
+  }catch(e){}
+  const hasAuth = () => !!state.apiKey;
+  const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
+
+  // Central matches state controlled by chat/actions and UI
+  const matchesState = {
+    page: 1,
+    limit: 50,
+    k: 5,
+    cityFilter: true,
+    cacheStrategy: 'hybrid',
+    cacheMaxAge: 86400,
+    rp_esco: '',
+    fo_esco: '',
+    filters: { titleContains: '', candidateId: '', city: '', cities: [], scoreMin: null, scoreMax: null },
+    sort: { by: 'score', dir: 'desc' }
+  };
+
+  // Restore tuning from localStorage
+  try{
+    const saved = JSON.parse(localStorage.getItem('matchesTuning')||'null');
+    if(saved && typeof saved==='object'){
+      Object.assign(matchesState, {
+        k: Number.isFinite(Number(saved.k))? Math.max(1,Math.min(20,Number(saved.k))):5,
+        cityFilter: !!saved.cityFilter,
+        cacheStrategy: ['off','on','hybrid'].includes(saved.cacheStrategy)? saved.cacheStrategy : 'hybrid',
+        cacheMaxAge: Number.isFinite(Number(saved.cacheMaxAge))? Math.max(0, Math.min(604800, Number(saved.cacheMaxAge))) : 86400,
+        rp_esco: String(saved.rp_esco||''),
+        fo_esco: String(saved.fo_esco||'')
+      });
+    }
+  }catch{}
+
+  // Simple history for undo/redo of table state
+  const matchesHistory = { stack: [], idx: -1, max: 20 };
+  const cloneState = (s) => JSON.parse(JSON.stringify(s));
+  function pushHistory(){
+    const snap = cloneState(matchesState);
+    if(matchesHistory.idx < matchesHistory.stack.length-1){
+      matchesHistory.stack = matchesHistory.stack.slice(0, matchesHistory.idx+1);
+    }
+    matchesHistory.stack.push(snap);
+    if(matchesHistory.stack.length > matchesHistory.max){ matchesHistory.stack.shift(); }
+    else { matchesHistory.idx++; }
+    updateUndoRedoButtons();
+  }
+  function canUndo(){ return matchesHistory.idx > 0; }
+  function canRedo(){ return matchesHistory.idx >= 0 && matchesHistory.idx < matchesHistory.stack.length-1; }
+  function undo(){ if(!canUndo()) return; matchesHistory.idx--; restoreFromHistory(); }
+  function redo(){ if(!canRedo()) return; matchesHistory.idx++; restoreFromHistory(); }
+  function restoreFromHistory(){
+    const snap = matchesHistory.stack[matchesHistory.idx];
+    if(snap){
+      const restored = cloneState(snap);
+      matchesState.page = restored.page;
+      matchesState.limit = restored.limit;
+      matchesState.filters = restored.filters;
+      matchesState.sort = restored.sort;
+      updateUndoRedoButtons();
+  renderFilterChips();
+      refreshMatches();
+    }
+  }
+  function updateUndoRedoButtons(){
+    const u = document.getElementById('matchesUndo');
+    const r = document.getElementById('matchesRedo');
+    if(u) u.disabled = !canUndo();
+    if(r) r.disabled = !canRedo();
+  }
+
+  // Validate action payloads to avoid corrupt state
+  function validateAction(a){
+    if(!a || typeof a !== 'object') return false;
+    const t = a.type;
+    if(!['setFilters','setSort','setPage','refresh','setK','setCityFilter','setCache','setESCO'].includes(t)) return false;
+    const p = a.payload || {};
+    try{
+      if(t==='setFilters'){
+        if(p.scoreMin!=null){ let x=Number(p.scoreMin); if(!Number.isFinite(x)) return false; }
+        if(p.scoreMax!=null){ let x=Number(p.scoreMax); if(!Number.isFinite(x)) return false; }
+        if(p.city!=null && typeof p.city!=='string') return false;
+        if(p.titleContains!=null && typeof p.titleContains!=='string') return false;
+        if(p.candidateId!=null && typeof p.candidateId!=='string') return false;
+      } else if(t==='setK'){
+        if(p.k==null || !Number.isFinite(Number(p.k))) return false;
+      } else if(t==='setCityFilter'){
+        if(typeof p.enabled!=='boolean') return false;
+      } else if(t==='setCache'){
+        if(p.strategy!=null && !['off','on','hybrid'].includes(String(p.strategy))) return false;
+        if(p.maxAge!=null && !Number.isFinite(Number(p.maxAge))) return false;
+      } else if(t==='setESCO'){
+        if(p.rp!=null && typeof p.rp!=='string') return false;
+        if(p.fo!=null && typeof p.fo!=='string') return false;
+      } else if(t==='setSort'){
+        if(p.by && !['score','date','title'].includes(String(p.by))) return false;
+        if(p.dir && !['asc','desc'].includes(String(p.dir))) return false;
+      } else if(t==='setPage'){
+        if(p.page!=null && (!Number.isFinite(Number(p.page)) || Number(p.page) < 1)) return false;
+      }
+      return true;
+    }catch{ return false; }
+  }
+
+  // Debounced refresh for control changes
+  let matchesRefreshT;
+  function scheduleRefreshMatches(){
+    try{ clearTimeout(matchesRefreshT); }catch{}
+    try{ localStorage.setItem('matchesTuning', JSON.stringify({ k: matchesState.k, cityFilter: matchesState.cityFilter, cacheStrategy: matchesState.cacheStrategy, cacheMaxAge: matchesState.cacheMaxAge, rp_esco: matchesState.rp_esco, fo_esco: matchesState.fo_esco })); }catch{}
+    matchesRefreshT = setTimeout(()=>{ refreshMatches(); }, 250);
+  }
+
+  // Centralized fetch wrapper: force no-store and merge headers
+  async function apiFetch(input, init={}){
+    const baseHeaders = { 'Pragma': 'no-cache', 'Cache-Control': 'no-store', ...hdrs() };
+    const merged = { cache: 'no-store', ...init, headers: { ...baseHeaders, ...(init.headers||{}) } };
+    return fetch(input, merged);
+  }
+
+  function toast(msg, kind='info', ms=3500){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.borderColor = kind==='error' ? '#ef4444' : kind==='ok' ? '#10b981' : '#334155';
+    el.style.display = 'block';
+    clearTimeout(window.__toastT);
+    window.__toastT = setTimeout(()=>{ el.style.display='none'; }, ms);
+  }
+
+  function showUser(){
+    const el = document.getElementById('userSlot');
+    if(hasAuth()){
+      const name = state.profile?.user?.name || '';
+      const comp = state.profile?.tenant?.name || '';
+      el.textContent = `שלום ${name} (${comp})`;
+    } else {
+      el.textContent = 'לא מחובר';
+    }
+  }
+  function activate(tab){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  ['dashboard','jobs','candidates','matches','upload','imports'].forEach(id=>{
+      document.getElementById(id).style.display = (id===tab)?'block':'none';
+    });
+    if(tab==='matches'){
+      refreshMatches();
+    }
+    if(tab==='jobs') refreshJobs();
+    if(tab==='candidates') refreshCandidates();
+  }
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=> { try{ localStorage.setItem('activeTab', t.dataset.tab); }catch(e){} activate(t.dataset.tab); }));
+  document.getElementById('logoutBtn').onclick = ()=>{
+    // Clear auth + UI to avoid any stale cross-tenant view
+    state.token=null; state.apiKey=null; state.tenantId=null; state.profile=null;
+    try{ localStorage.removeItem('apiKey'); localStorage.removeItem('tenantId'); localStorage.removeItem('token'); }catch(e){}
+    try{
+  ['jobsT','candT','afBody','matchesT','chatLog'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=''; });
+  ['jobsMeta','candMeta','matchesMeta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+      ['jobModal','candidateModal','matchesModal','letterModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+    }catch(e){}
+    showUser();
+    activate('dashboard');
+  };
+
+  // Signup
+  document.getElementById('signupBtn').onclick = async () => {
+    const company = document.getElementById('regCompany').value.trim();
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value;
+    const hint = document.getElementById('regHint');
+    hint.textContent='';
+    try{
+      const r = await apiFetch(`${API}/auth/signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({company,name,email,password})});
+      if(!r.ok){ throw new Error(await r.text()); }
+      const j = await r.json();
+  state.token = j.token; state.tenantId = j.tenant_id;
+      const k = await apiFetch(`${API}/auth/apikey`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tenant_id: state.tenantId, name: 'portal'})});
+      const kj = await k.json();
+  state.apiKey = kj.key;
+  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); }catch(e){}
+      try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
+      showUser(); activate('upload');
+      hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
+    }catch(e){ hint.textContent = 'שגיאה בהרשמה'; }
+  };
+
+  // Login
+  document.getElementById('loginBtn').onclick = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPass').value;
+    const hint = document.getElementById('loginHint');
+    hint.textContent='';
+    try{
+      const r = await apiFetch(`${API}/auth/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
+      if(!r.ok){ throw new Error(await r.text()); }
+      const j = await r.json();
+  state.token = j.token; state.tenantId = j.tenant_id;
+      const k = await apiFetch(`${API}/auth/apikey`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tenant_id: state.tenantId, name: 'portal'})});
+      const kj = await k.json();
+  state.apiKey = kj.key;
+  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); }catch(e){}
+      try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
+      showUser(); activate('jobs');
+      await refreshJobs(); await refreshCandidates();
+    }catch(e){ hint.textContent = 'שגיאה בהתחברות'; }
+  };
+
+  // Jobs list
+  async function refreshJobs(){
+    if(!hasAuth()) return;
+    const q = document.getElementById('jobsQ').value.trim();
+    const url = new URL(`${API}/tenant/jobs`);
+    if(q) url.searchParams.set('q', q);
+    const r = await apiFetch(url, {headers: hdrs()});
+    if(!r.ok){ document.getElementById('jobsMeta').textContent='שגיאה'; return; }
+    const j = await r.json();
+    const tb = document.getElementById('jobsT'); tb.innerHTML='';
+    j.results.forEach(row=>{
+      const llmBadge = row.llm_success ? 
+        '<span class="badge success">✓ AI</span>' : 
+        row.llm_used ? 
+        '<span class="badge warning">⚠️ AI</span>' :
+        '<span class="badge neutral">○ בסיסי</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td style="direction:ltr">${row.job_id}</td><td>${row.external_job_id||''}</td><td>${row.title||''}</td><td>${row.city||''}</td><td>${llmBadge}</td><td>${row.updated_at||''}</td><td><button onclick="showJobDetails('${row.job_id}')" class="btn-small">פרטים</button></td>`;
+      tb.appendChild(tr);
+    });
+    document.getElementById('jobsMeta').textContent = `סה"כ ${j.total} רשומות`;
+  }
+  document.getElementById('jobsRefresh').onclick = refreshJobs;
+
+  // Candidates list
+  async function refreshCandidates(){
+    if(!hasAuth()) return;
+    const q = document.getElementById('candQ').value.trim();
+    const url = new URL(`${API}/tenant/candidates`);
+    if(q) url.searchParams.set('q', q);
+    const r = await apiFetch(url, {headers: hdrs()});
+    if(!r.ok){ document.getElementById('candMeta').textContent='שגיאה'; return; }
+    const j = await r.json();
+    const tb = document.getElementById('candT'); tb.innerHTML='';
+    
+    // First, render basic candidate info immediately
+    j.results.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="direction:ltr">${row.candidate_id}</td>
+        <td>${row.share_id||''}</td>
+        <td>${row.full_name||''}</td>
+        <td>${row.title||''}</td>
+        <td>${row.city||''}</td>
+        <td>${row.updated_at||''}</td>
+        <td><span class="muted">טוען...</span></td>
+        <td><span class="muted">טוען...</span></td>
+        <td>
+          <button class="btn-small" onclick="showCandidateDetails('${row.candidate_id}')">פרטים</button>
+          <button class="btn-small" onclick="showJobMatches('${row.candidate_id}')">התאמות</button>
+          ${row.share_id ? `<button class=\"btn-small\" onclick=\"showPersonalLetter('${row.share_id}')\">מכתב</button>` : ''}
+          ${row.share_id ? `<button class=\"btn-small\" onclick=\"generatePersonalLetter('${row.share_id}')\">יצירת מכתב</button>` : ''}
+        </td>
+      `;
+      tb.appendChild(tr);
+    });
+    
+    document.getElementById('candMeta').textContent = `סה"כ ${j.total} רשומות`;
+    
+    // Then, asynchronously load status for each candidate
+    j.results.forEach(async (row, index) => {
+      const tr = tb.children[index];
+      const matchesCell = tr.children[6];
+      const letterCell = tr.children[7];
+      
+      try {
+        // Check for job matches
+        const matchesR = await apiFetch(`${API}/match/candidate/${row.candidate_id}?k=5`, {headers: hdrs()});
+        if(matchesR.ok) {
+          const matchesData = await matchesR.json();
+          const matchCount = matchesData.matches?.length || 0;
+          if(matchCount > 0) {
+            matchesCell.innerHTML = `<span class=\"badge success\">${matchCount} התאמות</span>`;
+          } else {
+            matchesCell.innerHTML = '<span class=\"badge neutral\">אין התאמות</span>';
+          }
+        } else {
+          matchesCell.innerHTML = '<span class=\"badge warning\">שגיאה</span>';
+        }
+        
+        // Check for personal letter
+        if(row.share_id) {
+          // Use lightweight availability endpoint to avoid triggering generation or rate limits
+          const letterAvail = await apiFetch(`${API}/personal-letter/availability/${row.share_id}`, {headers: hdrs()});
+          if(letterAvail.ok) {
+            const jAvail = await letterAvail.json();
+            if (jAvail.available) {
+              letterCell.innerHTML = '<span class=\"badge success\">✓ מכתב</span>';
+            } else {
+              const missing = (jAvail.missing || []).join(', ');
+              letterCell.innerHTML = `<span class=\"badge neutral\" title=\"חסרים: ${missing}\">○ אין מכתב</span>`;
+            }
+          } else if (letterAvail.status === 429) {
+            letterCell.innerHTML = '<span class=\"badge warning\" title=\"מוגבלות קצב\">429</span>';
+          } else {
+            letterCell.innerHTML = '<span class=\"badge warning\">שגיאה</span>';
+          }
+        } else {
+          letterCell.innerHTML = '<span class=\"muted\">אין Share ID</span>';
+        }
+      } catch(e) {
+        console.warn('Error loading candidate status:', e);
+        matchesCell.innerHTML = '<span class=\"badge warning\">שגיאה</span>';
+        letterCell.innerHTML = '<span class=\"badge warning\">שגיאה</span>';
+      }
+    });
+
+    // all_fields (first page)
+    const r2 = await apiFetch(`${API}/tenant/candidates/all_fields?skip=0&limit=20`, {headers: hdrs()});
+    if(r2.ok){
+      const jj = await r2.json();
+      const head = document.getElementById('afHead'); head.innerHTML='';
+      jj.columns.forEach(c=>{ const th=document.createElement('th'); th.textContent=c; head.appendChild(th); });
+      const body = document.getElementById('afBody'); body.innerHTML='';
+      jj.rows.forEach(rw=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = jj.columns.map(c=>`<td style="font-size:11px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis">${(rw[c]??'')}</td>`).join('');
+        body.appendChild(tr);
+      });
+    }
+  }
+  document.getElementById('candRefresh').onclick = refreshCandidates;
+
+  // Matches report (CV ↔ Jobs)
+  let matchesAbort; // AbortController for in-flight refreshes
+  async function refreshMatches(){
+    if(!hasAuth()) return;
+    // sync limit from input
+    const limitInp = Number(document.getElementById('matchesLimit').value||matchesState.limit||50);
+    matchesState.limit = Math.min(Math.max(limitInp,1),500);
+    const f = matchesState.filters || {};
+    // Render chips for current filters
+    renderFilterChips();
+    // Decide endpoint based on multi-city presence
+    const usePost = Array.isArray(f.cities) && f.cities.length > 0;
+    const url = usePost ? `${API}/match/report/query` : new URL(`${API}/match/report`);
+    const payload = usePost ? {
+      k: Math.max(1, Math.min(20, Number(matchesState.k||5))),
+      limit: matchesState.limit,
+      page: matchesState.page,
+      city_filter: !!matchesState.cityFilter,
+      cache_strategy: matchesState.cacheStrategy || 'hybrid',
+      cache_max_age: Number.isFinite(Number(matchesState.cacheMaxAge)) ? Number(matchesState.cacheMaxAge) : undefined,
+      rp_esco: matchesState.rp_esco || undefined,
+      fo_esco: matchesState.fo_esco || undefined,
+      title_contains: f.titleContains || undefined,
+      candidate_id: f.candidateId || undefined,
+      city_in: (f.cities && f.cities.length) ? f.cities : (f.city ? [f.city] : undefined),
+      score: (f.scoreMin!=null || f.scoreMax!=null) ? { ...(f.scoreMin!=null ? {"$gte": f.scoreMin} : {}), ...(f.scoreMax!=null ? {"$lte": f.scoreMax} : {}) } : undefined,
+      sort_by: matchesState.sort?.by || 'score',
+      sort_dir: matchesState.sort?.dir || 'desc',
+    } : null;
+    if(!usePost){
+      const u = url; // URL object
+      u.searchParams.set('k', String(Math.max(1, Math.min(20, Number(matchesState.k||5)))));
+      u.searchParams.set('limit', String(matchesState.limit));
+      u.searchParams.set('skip', String(Math.max((matchesState.page-1),0) * matchesState.limit));
+      u.searchParams.set('city_filter', String(!!matchesState.cityFilter));
+      if(matchesState.cacheStrategy) u.searchParams.set('cache_strategy', matchesState.cacheStrategy);
+      if(Number.isFinite(Number(matchesState.cacheMaxAge))) u.searchParams.set('cache_max_age', String(matchesState.cacheMaxAge));
+      if(matchesState.rp_esco) u.searchParams.set('rp_esco', matchesState.rp_esco);
+      if(matchesState.fo_esco) u.searchParams.set('fo_esco', matchesState.fo_esco);
+      if(f.titleContains) u.searchParams.set('title_contains', f.titleContains);
+      if(f.candidateId) u.searchParams.set('candidate_id', f.candidateId);
+      if(f.city) u.searchParams.set('city', f.city);
+      if(f.scoreMin!=null) u.searchParams.set('score_min', String(f.scoreMin));
+      if(f.scoreMax!=null) u.searchParams.set('score_max', String(f.scoreMax));
+      if(matchesState.sort?.by) u.searchParams.set('sort_by', matchesState.sort.by);
+      if(matchesState.sort?.dir) u.searchParams.set('sort_dir', matchesState.sort.dir);
+    }
+    const meta = document.getElementById('matchesMeta');
+    meta.textContent = 'טוען...';
+    try{
+      if(matchesAbort) matchesAbort.abort();
+    }catch{}
+    matchesAbort = new AbortController();
+    let r;
+    try{
+      if(usePost){
+        r = await apiFetch(url, { method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: matchesAbort.signal });
+      } else {
+        r = await apiFetch(url, { headers: hdrs(), signal: matchesAbort.signal });
+      }
+    }catch(e){
+      if(e.name==='AbortError') return; // superseded
+      const tb = document.getElementById('matchesT'); tb.innerHTML='';
+      meta.textContent = 'שגיאת רשת';
+      return;
+    }
+    const tb = document.getElementById('matchesT');
+    tb.innerHTML = '';
+    if(!r.ok){
+      const msg = r.status===401? 'לא מורשה' : r.status===404? 'לא נמצא' : r.status===429? 'מוגבלות קצב' : 'שגיאה';
+      meta.textContent = '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4"><div class="empty-state">טעינת התאמות נכשלה (${msg}). <button id="matchesRetry">נסה שוב</button> <button id="matchesDemo">טען דמו</button></div></td>`;
+      tb.appendChild(tr);
+      const retry = document.getElementById('matchesRetry');
+      const demo = document.getElementById('matchesDemo');
+      if(retry) retry.onclick = refreshMatches;
+      if(demo) demo.onclick = async ()=>{ try{ await apiFetch(`${API}/bootstrap`, {method:'POST', headers: hdrs()}); }catch(e){} refreshMatches(); };
+      return;
+    }
+    const j = await r.json();
+    const rows = j.results||[];
+    if(rows.length===0){
+      meta.textContent = '';
+      const tr = document.createElement('tr');
+      const hintBits = [];
+      if(f.scoreMin!=null) hintBits.push(`ציון מינימלי ${(Number(f.scoreMin)*100).toFixed(0)}%`);
+      if(f.city) hintBits.push(`עיר ${f.city}`);
+      if(Array.isArray(f.cities) && f.cities.length) hintBits.push(`ערים: ${f.cities.join(', ')}`);
+      const hint = hintBits.length? ` (סינון: ${hintBits.join(' • ')})` : '';
+      tr.innerHTML = `<td colspan="4"><div class="empty-state">אין נתונים להצגה${hint}. נסה להרחיב את הסינון, לאפס עם "נקה סינון", או <button id="matchesDemo">טען דמו</button></div></td>`;
+      tb.appendChild(tr);
+      const demo = document.getElementById('matchesDemo');
+      if(demo) demo.onclick = async ()=>{ try{ await apiFetch(`${API}/bootstrap`, {method:'POST', headers: hdrs()}); }catch(e){} refreshMatches(); };
+      return;
+    }
+    rows.forEach(row=>{
+      const matches = Array.isArray(row.matches) ? row.matches : [];
+      const top = matches.slice(0,3).map(m=>`${escapeHtml(m.title||'משרה')} (${Math.round((m.score||0)*100)}%)`).join(' • ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="direction:ltr">${row.candidate_id}</td>
+        <td>${escapeHtml(row.title||'')}</td>
+        <td>${matches.length}</td>
+        <td>
+          ${top}
+          ${matches.length ? ` <button class="btn-small" data-cand-expander="${row.candidate_id}">פירוט</button>` : ''}
+        </td>`;
+      const exp = document.createElement('tr');
+      exp.id = `cand-exp-${row.candidate_id}`;
+      exp.style.display = 'none';
+      const rowsHtml = matches.slice(0,5).map(m=>{
+        const score = Math.round(((m.score||0)*100));
+        const badge = `<span class="badge ${score>=70?'success':score>=40?'warning':'neutral'}">${score}%</span>`;
+        return `<tr>
+          <td style="direction:ltr">${m.job_id||''}</td>
+          <td>${escapeHtml(m.title||'')}</td>
+          <td>${badge}</td>
+          <td>
+            <button class="btn-small" data-bd="1" data-cand="${row.candidate_id}" data-job="${m.job_id||''}">פירוט התאמה</button>
+          </td>
+        </tr>
+        <tr class="bd-row" id="bd-${row.candidate_id}-${m.job_id||''}" style="display:none"><td colspan="4"><div class="empty-state">טוען...</div></td></tr>`;
+      }).join('');
+      exp.innerHTML = `<td colspan="4">
+        <div class="panel" style="margin:8px 0 0 0">
+          <div class="muted" style="margin-bottom:6px">חמש המשרות הראשונות עבור מועמד זה</div>
+          <div style="overflow:auto;max-height:34vh">
+            <table>
+              <thead><tr><th>משרה</th><th>כותרת</th><th>ציון</th><th>פעולות</th></tr></thead>
+              <tbody>${rowsHtml || '<tr><td colspan="4" class="muted">אין פריטים</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>
+      </td>`;
+      tb.appendChild(tr);
+      tb.appendChild(exp);
+    });
+    // Delegate clicks for expanders and breakdown toggles (bind once)
+    if(!tb._bdBound){
+      tb.addEventListener('click', async (ev)=>{
+        const expBtn = ev.target.closest('button[data-cand-expander]');
+        if(expBtn){
+          const cid = expBtn.getAttribute('data-cand-expander');
+          const expRow = document.getElementById(`cand-exp-${cid}`);
+          if(expRow){ expRow.style.display = (expRow.style.display==='none' || !expRow.style.display) ? 'table-row' : 'none'; }
+          return;
+        }
+        const bdBtn = ev.target.closest('button[data-bd]');
+        if(bdBtn){
+          const cand = bdBtn.getAttribute('data-cand');
+          const job = bdBtn.getAttribute('data-job');
+          const row = document.getElementById(`bd-${cand}-${job}`);
+          if(!row) return;
+          const shown = row.style.display !== 'none';
+          if(shown){ row.style.display='none'; return; }
+          row.style.display='table-row';
+          const slot = row.querySelector('td'); if(!slot) return;
+          slot.innerHTML = '<div class="empty-state">טוען...</div>';
+          try{ const d = await fetchBreakdown(cand, job); slot.innerHTML = renderBreakdownHtml(d); }
+          catch(e){ slot.innerHTML = '<div class="empty-state">שגיאה בטעינת הפירוט</div>'; }
+        }
+      });
+      tb._bdBound = true;
+    }
+    const parts = [];
+    if(f.titleContains) parts.push(`כותרת מכילה "${f.titleContains}"`);
+    if(f.city) parts.push(`עיר: ${f.city}`);
+  if(Array.isArray(f.cities) && f.cities.length) parts.push(`ערים: ${f.cities.join(', ')}`);
+    if(f.scoreMin!=null) parts.push(`ציון ≥ ${(Number(f.scoreMin)*100).toFixed(0)}%`);
+    if(f.scoreMax!=null) parts.push(`ציון ≤ ${(Number(f.scoreMax)*100).toFixed(0)}%`);
+    const sortLabel = matchesState.sort?.by==='score' ? (matchesState.sort?.dir==='asc'?'ציון (עולה)':'ציון (יורד)') : matchesState.sort?.by;
+    const pageInfo = `עמוד ${matchesState.page} · ${rows.length} רשומות`;
+    const tuneBits = [
+      `K=${matchesState.k}`,
+      matchesState.cityFilter? 'קרבה: פעיל' : 'קרבה: כבוי',
+      `Cache: ${matchesState.cacheStrategy}${Number.isFinite(Number(matchesState.cacheMaxAge))? ' @'+matchesState.cacheMaxAge+'s':''}`,
+      matchesState.rp_esco? `RP ESCO: ${matchesState.rp_esco}`:'',
+      matchesState.fo_esco? `FO ESCO: ${matchesState.fo_esco}`:''
+    ].filter(Boolean).join(' • ');
+    meta.textContent = `${pageInfo}${parts.length? ' • ' + parts.join(' • ') : ''} • מיון: ${sortLabel} • ${tuneBits}`;
+  }
+  const matchesRefreshBtn = document.getElementById('matchesRefresh');
+  if(matchesRefreshBtn) matchesRefreshBtn.onclick = refreshMatches;
+  const matchesUndoBtn = document.getElementById('matchesUndo');
+  if(matchesUndoBtn) matchesUndoBtn.onclick = undo;
+  const matchesRedoBtn = document.getElementById('matchesRedo');
+  if(matchesRedoBtn) matchesRedoBtn.onclick = redo;
+
+  // Render filter chips with remove actions
+  function renderFilterChips(){
+    const el = document.getElementById('matchesChips');
+    if(!el) return;
+    const f = matchesState.filters || {};
+    const chips = [];
+    if(f.titleContains) chips.push({type:'titleContains', label:`כותרת: "${f.titleContains}"`});
+    if(f.candidateId) chips.push({type:'candidateId', label:`מועמד: ${f.candidateId}`});
+    if(f.city) chips.push({type:'city', label:`עיר: ${f.city}`});
+    if(Array.isArray(f.cities)) f.cities.forEach((c, idx)=> chips.push({type:'cities', idx, label:`עיר: ${c}`}));
+    if(f.scoreMin!=null) chips.push({type:'scoreMin', label:`ציון ≥ ${(Number(f.scoreMin)*100).toFixed(0)}%`});
+    if(f.scoreMax!=null) chips.push({type:'scoreMax', label:`ציון ≤ ${(Number(f.scoreMax)*100).toFixed(0)}%`});
+    el.innerHTML = chips.map((c,i)=>`<span class="chip" data-type="${c.type}" data-idx="${c.idx??''}">${c.label} <a href="#" data-remove="${i}" style="color:#94a3b8;text-decoration:none;margin-inline-start:6px">×</a></span>`).join(' ');
+    if(!el._bound){
+      el.addEventListener('click', (ev)=>{
+        const a = ev.target.closest('a[data-remove]'); if(!a) return;
+        ev.preventDefault();
+        const span = a.closest('.chip'); if(!span) return;
+        const type = span.getAttribute('data-type');
+        const idxStr = span.getAttribute('data-idx');
+        pushHistory();
+        const f = matchesState.filters;
+        if(type==='titleContains') f.titleContains='';
+        else if(type==='candidateId') f.candidateId='';
+        else if(type==='city') f.city='';
+        else if(type==='cities'){
+          const idx = Number(idxStr);
+          if(Array.isArray(f.cities) && Number.isInteger(idx)) f.cities.splice(idx,1);
+        }
+        else if(type==='scoreMin') f.scoreMin=null;
+        else if(type==='scoreMax') f.scoreMax=null;
+        matchesState.page=1;
+        renderFilterChips();
+        refreshMatches();
+      });
+      el._bound = true;
+    }
+  }
+
+  // Clear filters button wiring
+  const matchesClearBtn = document.getElementById('matchesClear');
+  if(matchesClearBtn){
+    matchesClearBtn.onclick = ()=>{
+      pushHistory();
+      matchesState.page=1;
+      matchesState.filters = { titleContains:'', candidateId:'', city:'', cities:[], scoreMin:null, scoreMax:null };
+      matchesState.sort = { by:'score', dir:'desc' };
+  // Keep tuning but refresh
+      const inp=document.getElementById('matchesLimit'); if(inp) inp.value=String(matchesState.limit||50);
+      renderFilterChips();
+      refreshMatches();
+    };
+  }
+
+  // Simple chat client for matches analytics
+  function pushChat(role, text){
+    const log = document.getElementById('chatLog');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function canonicalCity(s){ if(!s) return ''; return String(s).trim().toLowerCase().replace(/\s+/g,'_'); }
+  function normScore(v){ if(v===null||v===undefined||v==='') return null; let x=Number(v); if(!Number.isFinite(x)) return null; if(x>1) x=x/100; if(x<0) x=0; if(x>1) x=1; return Number(x.toFixed(4)); }
+
+  // ===== Matches by ID (Candidate or Job) =====
+  const breakdownCache = Object.create(null);
+  function cacheKey(candId, jobId){ return `${candId}__${jobId}`; }
+  function checkMark(ok){ return ok ? '✅' : '✖️'; }
+  function pct(a,b){ if(!b) return '0%'; return `${Math.round((a/b)*100)}%`; }
+  function renderBreakdownHtml(d){
+    if(!d || !d.requirements) return '<div class="empty-state">אין פירוט זמין</div>';
+    const must = Array.isArray(d.requirements.must)? d.requirements.must : [];
+    const needed = Array.isArray(d.requirements.needed)? d.requirements.needed : [];
+    const fitMust = must.filter(x=>x.has).length;
+    const fitNeeded = needed.filter(x=>x.has).length;
+    function tip(i){
+      const reason = (i && i.match_reason) ? String(i.match_reason) : (i && i.has ? 'direct' : 'missing');
+      const matched = (i && (i.matched_label || i.matched_candidate_skill)) ? String(i.matched_label || i.matched_candidate_skill) : '';
+      if(i && i.has){
+        return `נמצא (${reason}${matched?`: ${escapeHtml(matched)}`:''})`;
+      }
+      return 'חסר';
+    }
+    const rows = [
+      `<div class="muted" style="margin-bottom:6px">חובה: ${fitMust}/${must.length} (${pct(fitMust, must.length)}) • יתרון: ${fitNeeded}/${needed.length} (${pct(fitNeeded, needed.length)}) • עודפים אצל מועמד: ${(d.candidate_extra_skills||[]).length}</div>`,
+      must.length ? `<div style="margin:6px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">חובה</div><div class="chips">${must.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : '',
+      needed.length ? `<div style="margin:6px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">יתרון</div><div class="chips">${needed.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : '',
+    ].join('');
+    return `<div>${rows}</div>`;
+  }
+  async function fetchBreakdown(candId, jobId){
+    const key = cacheKey(candId, jobId);
+    if(breakdownCache[key]) return breakdownCache[key];
+    const url = `${API}/match/breakdown/${encodeURIComponent(candId)}/${encodeURIComponent(jobId)}`;
+    const r = await apiFetch(url, { headers: hdrs() });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json(); breakdownCache[key] = j; return j;
+  }
+  function isObjectId(s){ return /^[0-9a-f]{24}$/i.test(String(s||'').trim()); }
+  let searchAbort;
+  function setSearchBusy(b){
+    const btn = document.getElementById('searchMatches'); if(btn) btn.disabled = b || !isObjectId(document.getElementById('searchId')?.value);
+    const id = document.getElementById('searchId'); if(id) id.disabled = !!b;
+    const k = document.getElementById('searchK'); if(k) k.disabled = !!b;
+    const cf = document.getElementById('searchCityFilter'); if(cf) cf.disabled = !!b;
+    document.querySelectorAll('input[name="searchType"]').forEach(el=> el.disabled = !!b);
+  }
+  function updateSearchValidity(){
+    const idv = document.getElementById('searchId')?.value || '';
+    const err = document.getElementById('searchError');
+    const btn = document.getElementById('searchMatches');
+    if(!idv.trim()){
+      if(err) err.textContent = '';
+      if(btn) btn.disabled = true;
+      return;
+    }
+    if(!isObjectId(idv)){
+      if(err) err.textContent = 'המזהה אינו בפורמט תקין (נדרש 24 תווים הקסדצימליים)';
+      if(btn) btn.disabled = true;
+    } else {
+      if(err) err.textContent = '';
+      if(btn) btn.disabled = false;
+    }
+  }
+  async function searchMatchesById(){
+    const type = document.getElementById('searchTypeJob')?.checked ? 'job' : 'candidate';
+    const id = (document.getElementById('searchId')?.value||'').trim();
+    let k = Number(document.getElementById('searchK')?.value||5); if(!Number.isFinite(k)) k=5; k = Math.max(1, Math.min(20, Math.floor(k)));
+    const cityFilter = !!document.getElementById('searchCityFilter')?.checked;
+    const out = document.getElementById('searchResults'); if(out){ out.style.display='block'; out.innerHTML = '<div class="empty-state loading">טוען התאמות...</div>'; }
+    if(searchAbort){ try{ searchAbort.abort(); }catch{} }
+    searchAbort = new AbortController();
+    setSearchBusy(true);
+    try{
+      let url;
+      const cacheStrategy = 'hybrid';
+      const cacheMaxAge = '86400'; // 24h
+      if(type==='candidate'){
+        url = new URL(`${API}/match/candidate/${encodeURIComponent(id)}`);
+        url.searchParams.set('k', String(k));
+        url.searchParams.set('city_filter', String(cityFilter));
+        url.searchParams.set('strategy', cacheStrategy);
+        url.searchParams.set('max_age', cacheMaxAge);
+      } else {
+        url = new URL(`${API}/match/job/${encodeURIComponent(id)}`);
+        url.searchParams.set('k', String(k));
+        url.searchParams.set('city_filter', String(cityFilter));
+        url.searchParams.set('strategy', cacheStrategy);
+        url.searchParams.set('max_age', cacheMaxAge);
+      }
+      const r = await apiFetch(url, { headers: hdrs(), signal: searchAbort.signal });
+      if(!r.ok){
+        const msg = r.status===401? 'לא מורשה' : r.status===404? 'לא נמצא' : r.status===429? 'מוגבלות קצב' : 'שגיאה';
+        if(out) out.innerHTML = `<div class="empty-state">טעינת התאמות נכשלה (${msg}).</div>`;
+        return;
+      }
+  const j = await r.json();
+  const list = Array.isArray(j.matches) ? j.matches : [];
+  renderSearchResults(type, id, list, j.cached===true);
+    }catch(e){ if(e?.name==='AbortError') return; const out = document.getElementById('searchResults'); if(out) out.innerHTML = '<div class="empty-state">שגיאת רשת</div>'; }
+    finally{ setSearchBusy(false); }
+  }
+  function renderSearchResults(type, id, list, cached){
+    const out = document.getElementById('searchResults'); if(!out) return;
+    if(!list.length){ out.innerHTML = '<div class="empty-state">לא נמצאו התאמות</div>'; return; }
+    if(type==='candidate'){
+      const rows = list.map(m=>{
+        const score = Math.round(((m.score||0)*100));
+        const badge = `<span class="badge ${score>=70?'success':score>=40?'warning':'neutral'}">${score}%</span>`;
+        const city = (m.city||'');
+        const main = `<tr>
+          <td style="direction:ltr">${m.job_id||''}</td>
+          <td>${m.title||''}</td>
+          <td>${city}</td>
+          <td>${badge}</td>
+          <td>
+            <button class="btn-small" onclick="showJobDetails('${m.job_id||''}')">פרטים</button>
+            <button class="btn-small" data-bd="1" data-cand="${id}" data-job="${m.job_id||''}">פירוט התאמה</button>
+          </td>
+        </tr>`;
+        const exp = `<tr class="bd-row" id="bd-${id}-${m.job_id||''}" style="display:none"><td colspan="5"><div class="empty-state">טוען...</div></td></tr>`;
+        return main + exp;
+      }).join('');
+      out.innerHTML = `
+        <div class="muted" style="margin-bottom:8px">תוצאות עבור מועמד ${id} (${list.length} התאמות) ${cached?'<span class="badge neutral">ממטמון</span>':''}</div>
+        <div style="overflow:auto;max-height:50vh">
+          <table>
+            <thead><tr><th>משרה</th><th>כותרת</th><th>עיר</th><th>ציון</th><th>פעולות</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      // Delegate clicks for breakdown toggles
+      if(!out._bdBound){
+        out.addEventListener('click', async (ev)=>{
+          const btn = ev.target.closest('button[data-bd]'); if(!btn) return;
+          const cand = btn.getAttribute('data-cand');
+          const job = btn.getAttribute('data-job');
+          const row = document.getElementById(`bd-${cand}-${job}`);
+          if(!row) return;
+          const shown = row.style.display !== 'none';
+          if(shown){ row.style.display='none'; return; }
+          row.style.display='table-row';
+          const slot = row.querySelector('td'); if(!slot) return;
+          slot.innerHTML = '<div class="empty-state">טוען...</div>';
+          try{ const d = await fetchBreakdown(cand, job); slot.innerHTML = renderBreakdownHtml(d); }
+          catch(e){ slot.innerHTML = '<div class="empty-state">שגיאה בטעינת הפירוט</div>'; }
+        });
+        out._bdBound = true;
+      }
+    } else {
+      const rows = list.map(m=>{
+        const score = Math.round(((m.score||0)*100));
+        const badge = `<span class="badge ${score>=70?'success':score>=40?'warning':'neutral'}">${score}%</span>`;
+        const main = `<tr>
+          <td style="direction:ltr">${m.candidate_id||''}</td>
+          <td>${m.full_name||m.title||''}</td>
+          <td>${badge}</td>
+          <td>
+            <button class="btn-small" onclick="showCandidateDetails('${m.candidate_id||''}')">פרטים</button>
+            <button class="btn-small" data-bd="1" data-cand="${m.candidate_id||''}" data-job="${id}">פירוט התאמה</button>
+          </td>
+        </tr>`;
+        const exp = `<tr class="bd-row" id="bd-${m.candidate_id||''}-${id}" style="display:none"><td colspan="4"><div class="empty-state">טוען...</div></td></tr>`;
+        return main + exp;
+      }).join('');
+      out.innerHTML = `
+        <div class="muted" style="margin-bottom:8px">תוצאות עבור משרה ${id} (${list.length} התאמות)</div>
+        <div style="overflow:auto;max-height:50vh">
+          <table>
+            <thead><tr><th>מועמד</th><th>שם/כותרת</th><th>ציון</th><th>פעולות</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      if(!out._bdBound){
+        out.addEventListener('click', async (ev)=>{
+          const btn = ev.target.closest('button[data-bd]'); if(!btn) return;
+          const cand = btn.getAttribute('data-cand');
+          const job = btn.getAttribute('data-job');
+          const row = document.getElementById(`bd-${cand}-${job}`);
+          if(!row) return;
+          const shown = row.style.display !== 'none';
+          if(shown){ row.style.display='none'; return; }
+          row.style.display='table-row';
+          const slot = row.querySelector('td'); if(!slot) return;
+          slot.innerHTML = '<div class="empty-state">טוען...</div>';
+          try{ const d = await fetchBreakdown(cand, job); slot.innerHTML = renderBreakdownHtml(d); }
+          catch(e){ slot.innerHTML = '<div class="empty-state">שגיאה בטעינת הפירוט</div>'; }
+        });
+        out._bdBound = true;
+      }
+    }
+  }
+  // Wire up inputs
+  (function initSearchById(){
+    const idEl = document.getElementById('searchId');
+    if(!idEl) return; // page without panel
+    idEl.addEventListener('input', updateSearchValidity);
+    idEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); if(!document.getElementById('searchMatches').disabled) searchMatchesById(); } });
+    document.querySelectorAll('input[name="searchType"]').forEach(el=> el.addEventListener('change', ()=>{ updateSearchValidity(); document.getElementById('searchResults').style.display='none'; document.getElementById('searchResults').innerHTML=''; }));
+    const btn = document.getElementById('searchMatches'); if(btn) btn.addEventListener('click', searchMatchesById);
+    updateSearchValidity();
+  })();
+
+  function applyChatActions(actions){
+    if(!Array.isArray(actions)||!actions.length) return false;
+    let changed=false;
+    pushHistory();
+    for(const a of actions){
+      if(!validateAction(a)) continue;
+      if(a.type==='setFilters'){
+        const p=a.payload||{};
+        if(p.titleContains!==undefined){ matchesState.filters.titleContains = String(p.titleContains||''); changed=true; }
+        if(p.candidateId!==undefined){ matchesState.filters.candidateId = String(p.candidateId||''); changed=true; }
+        if(p.city!==undefined){ matchesState.filters.city = canonicalCity(p.city); changed=true; }
+        if(p.cities!==undefined && Array.isArray(p.cities)){
+          const arr = p.cities.map(c=>canonicalCity(c)).filter(Boolean);
+          const set = new Set(arr);
+          if(matchesState.filters.city) set.add(matchesState.filters.city);
+          matchesState.filters.city = '';
+          matchesState.filters.cities = Array.from(set);
+          changed=true;
+        }
+        if(p.scoreMin!==undefined){ matchesState.filters.scoreMin = normScore(p.scoreMin); changed=true; }
+        if(p.scoreMax!==undefined){ matchesState.filters.scoreMax = normScore(p.scoreMax); changed=true; }
+        matchesState.page = 1;
+      } else if(a.type==='setSort'){
+        const p=a.payload||{};
+        if(p.by) matchesState.sort.by = p.by;
+        if(p.dir) matchesState.sort.dir = p.dir;
+        changed=true;
+      } else if(a.type==='setPage'){
+        const p=a.payload||{};
+        if(p.page) { matchesState.page = Math.max(1, parseInt(p.page)); changed=true; }
+      } else if(a.type==='setK'){
+        const p=a.payload||{}; const k = Math.max(1, Math.min(20, parseInt(p.k)));
+        if(k && k!==matchesState.k){ matchesState.k = k; changed=true; const el=document.getElementById('mK'); if(el) el.value=String(k); }
+      } else if(a.type==='setCityFilter'){
+        const p=a.payload||{}; if(typeof p.enabled==='boolean'){ matchesState.cityFilter = p.enabled; changed=true; const el=document.getElementById('mCityFilter'); if(el) el.checked = !!p.enabled; }
+      } else if(a.type==='setCache'){
+        const p=a.payload||{};
+        if(p.strategy && ['off','on','hybrid'].includes(p.strategy)){ matchesState.cacheStrategy = p.strategy; changed=true; const el=document.getElementById('mStrategy'); if(el) el.value=p.strategy; }
+        if(p.maxAge!=null && Number.isFinite(Number(p.maxAge))){ const v=Math.max(0, Math.min(604800, Number(p.maxAge))); matchesState.cacheMaxAge=v; changed=true; const el=document.getElementById('mCacheAge'); if(el) el.value=String(v); }
+      } else if(a.type==='setESCO'){
+        const p=a.payload||{}; if(p.rp!=null){ matchesState.rp_esco = String(p.rp||''); changed=true; const el=document.getElementById('mRpESCO'); if(el) el.value=matchesState.rp_esco; }
+        if(p.fo!=null){ matchesState.fo_esco = String(p.fo||''); changed=true; const el=document.getElementById('mFoESCO'); if(el) el.value=matchesState.fo_esco; }
+      } else if(a.type==='refresh'){
+        changed=true;
+      }
+    }
+    if(changed){
+      renderFilterChips();
+      // Persist tuning and debounce refresh
+      try{ localStorage.setItem('matchesTuning', JSON.stringify({ k: matchesState.k, cityFilter: matchesState.cityFilter, cacheStrategy: matchesState.cacheStrategy, cacheMaxAge: matchesState.cacheMaxAge, rp_esco: matchesState.rp_esco, fo_esco: matchesState.fo_esco })); }catch{}
+      scheduleRefreshMatches();
+    }
+    return changed;
+  }
+
+  // Initialize controls and wire change listeners
+  (function initMatchControls(){
+    const k = document.getElementById('mK'); if(k){ k.value = String(matchesState.k||5); k.addEventListener('input', ()=>{ const v = Math.max(1, Math.min(20, parseInt(k.value||5))); if(v!==matchesState.k){ pushHistory(); matchesState.k=v; scheduleRefreshMatches(); } }); }
+    const cf = document.getElementById('mCityFilter'); if(cf){ cf.checked = !!matchesState.cityFilter; cf.addEventListener('change', ()=>{ pushHistory(); matchesState.cityFilter = !!cf.checked; scheduleRefreshMatches(); }); }
+    const st = document.getElementById('mStrategy'); if(st){ st.value = matchesState.cacheStrategy||'hybrid'; st.addEventListener('change', ()=>{ pushHistory(); matchesState.cacheStrategy = st.value; scheduleRefreshMatches(); }); }
+    const age = document.getElementById('mCacheAge'); if(age){ const v=Number(matchesState.cacheMaxAge); if(Number.isFinite(v)) age.value=String(v); age.addEventListener('input', ()=>{ let x = Number(age.value); if(!Number.isFinite(x)) x = 0; x = Math.max(0, Math.min(604800, Math.floor(x))); if(x!==matchesState.cacheMaxAge){ pushHistory(); matchesState.cacheMaxAge = x; scheduleRefreshMatches(); } }); }
+    const rp = document.getElementById('mRpESCO'); if(rp){ rp.value = matchesState.rp_esco||''; rp.addEventListener('change', ()=>{ pushHistory(); matchesState.rp_esco = rp.value.trim(); scheduleRefreshMatches(); }); }
+    const fo = document.getElementById('mFoESCO'); if(fo){ fo.value = matchesState.fo_esco||''; fo.addEventListener('change', ()=>{ pushHistory(); matchesState.fo_esco = fo.value.trim(); scheduleRefreshMatches(); }); }
+  })();
+
+  async function sendChat(){
+    if(!hasAuth()) { toast('התחבר תחילה', 'warning'); return; }
+    const inp = document.getElementById('chatQ');
+    const q = (inp.value||'').trim();
+    if(!q) return;
+    pushChat('user', q);
+    inp.value='';
+    const thinking = pushChat('bot','חושב...');
+    const tryEndpoints = async ()=>{
+      // primary: GPT-structured actions
+      try{
+        const r = await apiFetch(`${API}/chat/query`, { method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' }, body: JSON.stringify({ question: q }) });
+        if(r.ok){ return await r.json(); }
+      }catch(e){}
+      // fallback: deterministic matches chat
+      try{
+        const r2 = await apiFetch(`${API}/chat/matches`, { method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' }, body: JSON.stringify({ question: q }) });
+        if(r2.ok){ return await r2.json(); }
+      }catch(e){}
+      return { answer: 'לא הצלחתי להבין את הבקשה' };
+    };
+    try{
+      const j = await tryEndpoints();
+      let msg = j.answer || j.message || '';
+      if(Array.isArray(j.actions) && j.actions.length){
+        applyChatActions(j.actions);
+        if(!msg) msg = 'מעודכן ✅';
+      } else if(!msg){
+        msg = 'אין פעולות לביצוע';
+      }
+      thinking.textContent = msg;
+    }catch(e){
+      thinking.textContent = 'שגיאה בעיבוד הבקשה';
+    }
+  }
+
+  const chatSendBtn = document.getElementById('chatSend');
+  if(chatSendBtn) chatSendBtn.onclick = sendChat;
+
+  // Auto-restore session on load and activate last tab
+  (async function initSession(){
+    if(hasAuth()){
+      try{
+        if(state.token){
+          const me = await apiFetch(`${API}/auth/me`, { headers: { 'Authorization': `Bearer ${state.token}` } });
+          if(me.ok){ state.profile = await me.json(); }
+        }
+      }catch(e){}
+      showUser();
+      let tab = 'jobs';
+      try{ tab = localStorage.getItem('activeTab') || 'jobs'; }catch(e){}
+      activate(tab);
+      try{ await Promise.allSettled([refreshJobs(), refreshCandidates()]); }catch(e){}
+    } else {
+      showUser();
+      activate('dashboard');
+    }
+  })();
+
+
+  // Refresh button for demo data
+  const _matchesDemoBtn = document.getElementById('matchesDemo');
+  if(_matchesDemoBtn) _matchesDemoBtn.onclick = async () => {
+    document.getElementById('matchesMeta').textContent = 'טוען דמו...';
+    const tb = document.getElementById('matchesT');
+    tb.innerHTML = '';
+    try{
+      const r = await apiFetch(`${API}/bootstrap`, {method:'POST', headers: hdrs()});
+      if(!r.ok){ throw new Error(await r.text()); }
+      const j = await r.json();
+      const rows = j.results||[];
+      if(rows.length===0){
+        document.getElementById('matchesMeta').textContent = 'לא נמצאו התאמות';
+        return;
+      }
+      rows.forEach(row=>{
+        const top = (row.matches||[]).slice(0,3).map(m=>`${m.title||'משרה'} (${Math.round((m.score||0)*100)}%)`).join(' • ');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="direction:ltr">${row.candidate_id}</td>
+          <td>${row.title||''}</td>
+          <td>${(row.matches||[]).length}</td>
+          <td>${top}</td>`;
+        tb.appendChild(tr);
+      });
+      document.getElementById('matchesMeta').textContent = `סה"כ ${rows.length} רשומות`;
+    }catch(e){
+      document.getElementById('matchesMeta').textContent = 'שגיאה בטעינת דמו';
+      console.error('Demo load error:', e);
+    }
+  };
+
+  // Job upload progress reporting
+  document.getElementById('jobsUpload').onclick = async () => {
+    if(!hasAuth()) { alert('התחבר תחילה'); return; }
+    const f = document.getElementById('jobsFile').files[0];
+    if(!f){ alert('בחר קובץ'); return; }
+    
+    // Show progress
+    const progressEl = document.getElementById('uploadProgress');
+    const progressFill = progressEl.querySelector('.progress-fill');
+    const progressText = document.getElementById('progressText');
+    const reportEl = document.getElementById('jobsReport');
+    
+    progressEl.style.display = 'block';
+    progressFill.style.width = '20%';
+    progressText.textContent = 'מעלה קובץ...';
+    reportEl.textContent = '';
+    
+    const fd = new FormData(); fd.append('file', f);
+    let r; let j;
+    try{
+      progressFill.style.width = '50%';
+      progressText.textContent = 'מעבד עם AI...';
+      
+  r = await apiFetch(`${API}/jobs/batch_csv?format=agency_template&upsert=true`, {method:'POST', headers: hdrs(), body: fd});
+      
+      progressFill.style.width = '80%';
+      progressText.textContent = 'מסיים עיבוד...';
+    }catch(e){
+      progressEl.style.display = 'none';
+      toast('שגיאת רשת בעת הייבוא', 'error'); return;
+    }
+    progressFill.style.width = '100%';
+    progressText.textContent = 'הושלם!';
+    
+    if(!r.ok){ 
+      progressEl.style.display = 'none';
+      reportEl.textContent = 'כשל בייבוא'; 
+      toast('כשל בייבוא', 'error'); 
+      return; 
+    }
+    try{ j = await r.json(); }catch(e){ 
+      progressEl.style.display = 'none';
+      reportEl.textContent='תקלה בפענוח תשובת השרת'; 
+      toast('תקלה בפענוח תשובת השרת', 'error'); 
+      return; 
+    }
+    
+    // Hide progress and show results
+    setTimeout(() => progressEl.style.display = 'none', 2000);
+    
+    const s = j.summary || {};
+    const basicStats = `ייבוא: ${s.total||0} שורות | נוצרו ${s.created||0}, עודכנו ${s.updated||0}, כפולים ${s.duplicates||0}, שגיאות ${s.errors||0}`;
+    
+    // Enhanced LLM reporting
+    let llmDetails = '';
+    if(typeof s.llm_used === 'number' && s.llm_used > 0) {
+      const successRate = s.llm_success ? Math.round((s.llm_success / s.llm_used) * 100) : 0;
+      llmDetails = `\nAI: ${s.llm_success||0}/${s.llm_used} הצליחו (${successRate}%)`;
+    } else if(s.total > 0) {
+      llmDetails = '\nAI: לא הופעל';
+    }
+    
+    reportEl.textContent = basicStats + llmDetails;
+    if(typeof s.enriched === 'number'){
+      const llmPart = (typeof s.llm_used==='number') ? ` • LLM: הופעל על ${s.llm_used||0}, הצליח ב-${s.llm_success||0}` : '';
+      toast(`הושלמה העשרה ל-${s.enriched} משרות${llmPart}`, s.errors? 'warn':'ok');
+    }
+    await refreshJobs();
+  };
+
+  // Job single create
+  document.getElementById('jobCreate').onclick = async () => {
+    if(!hasAuth()) { alert('התחבר תחילה'); return; }
+    const payload = {
+      external_job_id: document.getElementById('jobExt').value.trim(),
+      title: document.getElementById('jobTitle').value.trim(),
+      city: document.getElementById('jobCity').value.trim(),
+      must_have: document.getElementById('jobMust').value.split(/[\n,;]/).map(s=>s.trim()).filter(Boolean),
+      nice_to_have: document.getElementById('jobNice').value.split(/[\n,;]/).map(s=>s.trim()).filter(Boolean),
+      description: document.getElementById('jobDesc').value,
+      agency_email: document.getElementById('jobEmail').value.trim()
+    };
+    const h = document.getElementById('jobCreateHint'); h.textContent='';
+    try{
+  const r = await apiFetch(`${API}/jobs`, {method:'POST', headers: {'Content-Type':'application/json', ...hdrs()}, body: JSON.stringify(payload)});
+      if(!r.ok){ h.textContent='שגיאה'; return; }
+      const j = await r.json(); h.textContent = `נוצר (${j.job_id})`;
+      await refreshJobs();
+    }catch(e){ h.textContent='שגיאה'; }
+  };
+
+  // Candidates upload
+  document.getElementById('candUpload').onclick = async () => {
+    if(!hasAuth()) { alert('התחבר תחילה'); return; }
+    const files = document.getElementById('candFiles').files;
+    if(!files || !files.length){ alert('בחר קבצים'); return; }
+
+    // If a CSV is present, preview mapping before upload
+    const firstCsv = Array.from(files).find(f => /\.csv$/i.test(f.name));
+    if(firstCsv){
+      try{
+        const { headers, rows } = await readCsvHead(firstCsv, 20);
+        if(headers && headers.length){
+          const preview = await requestMappingPreview('candidate', headers, rows.slice(0, 5));
+          showMappingModal({ preview, onApprove: async () => {
+            await uploadCandidateFiles(files);
+          }});
+          return; // wait for user approval
+        }
+      }catch(e){ console.warn('CSV preview failed, falling back to direct upload', e); }
+    }
+    // No CSV or preview failed -> direct upload
+    await uploadCandidateFiles(files);
+  };
+
+  async function uploadCandidateFiles(files){
+    const fd = new FormData(); Array.from(files).forEach(f=>fd.append('files', f));
+    const el = document.getElementById('candReport');
+    try{
+      const r = await apiFetch(`${API}/tenant/candidates/upload`, {method:'POST', headers: hdrs(), body: fd});
+      if(!r.ok){ el.textContent = 'כשל בהעלאה'; return; }
+      const j = await r.json(); el.textContent = `הועלו ${j.count} קבצים`;
+      await refreshCandidates();
+    }catch(e){ el.textContent = 'כשל בהעלאה'; }
+  }
+
+  // Minimal CSV head reader (handles quoted commas). Reads small slice for preview.
+  async function readCsvHead(file, maxRows=20){
+    const blob = file.slice(0, Math.min(file.size, 256 * 1024)); // 256KB
+    const text = await blob.text();
+    const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+    if(lines.length === 0) return { headers: [], rows: [] };
+    const headers = parseCsvLine(lines[0]);
+    const rows = [];
+    for(let i=1; i<Math.min(lines.length, maxRows+1); i++){
+      rows.push(parseCsvLine(lines[i]));
+    }
+    return { headers, rows };
+  }
+
+  function parseCsvLine(line){
+    const out = [];
+    let cur = '';
+    let inQuotes = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(inQuotes){
+        if(ch === '"'){
+          if(i+1 < line.length && line[i+1] === '"'){ cur += '"'; i++; }
+          else { inQuotes = false; }
+        } else { cur += ch; }
+      } else {
+        if(ch === ','){ out.push(cur); cur=''; }
+        else if(ch === '"'){ inQuotes = true; }
+        else { cur += ch; }
+      }
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  }
+
+  async function requestMappingPreview(kind, headers, sampleRows){
+    const r = await apiFetch(`${API}/mapping/preview`, {
+      method: 'POST', headers: { ...hdrs(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, headers, sample_rows: sampleRows })
+    });
+    if(!r.ok){ throw new Error('preview_failed'); }
+    return r.json();
+  }
+
+  function showMappingModal({ preview, onApprove }){
+    const modal = document.getElementById('mappingModal');
+    const content = document.getElementById('mappingModalContent');
+    const data = preview;
+
+    const cov = data.coverage || {mapped:0,total:0,percent:0};
+    const warns = data.warnings || [];
+    const proposed = data.proposed || {};
+    const auth = data.authoritative || {};
+
+    const rows = Object.keys(proposed).map(h=>{
+      const canon = proposed[h];
+      const isAuthName = auth.full_name && auth.full_name === h;
+      const isAuthCity = auth.city && auth.city === h;
+      return `<tr><td>${escapeHtml(h)}</td><td>${escapeHtml(canon)}</td><td>${isAuthName?'<span class="badge success">שם מועמד</span>':''} ${isAuthCity?'<span class="badge success">עיר</span>':''}</td></tr>`
+    }).join('');
+
+    const sample = (data.sample_preview||[]).map(r=>{
+      const after = r.after||{}; const keys = Object.keys(after);
+      const cols = keys.slice(0,6).map(k=>`<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(after[k]||''))}</div>`).join('');
+      return `<div class="llm-section"><div class="muted">שורה ${r.row_idx}</div>${cols}</div>`;
+    }).join('');
+
+    const warningsHtml = warns.length ? `<div class="llm-section" style="border:1px solid #f59e0b"><h4>אזהרות</h4><ul>${warns.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul></div>` : '';
+
+    content.innerHTML = `
+      <div class="modal-header">
+        <h3>תצוגה מקדימה של מיפוי כותרות</h3>
+        <button class="modal-close" onclick="closeMappingModal()">&times;</button>
+      </div>
+      <div class="llm-section">
+        <div>כיסוי מיפוי: ${cov.mapped}/${cov.total} (${cov.percent}%)</div>
+        <div class="muted">שם ועיר יילקחו אך ורק מהעמודות המסומנות כסמכותיות</div>
+      </div>
+      ${warningsHtml}
+      <div class="llm-section">
+        <h4>מיפוי מוצע</h4>
+        <div style="max-height:200px;overflow:auto">
+          <table style="width:100%"><thead><tr><th>כותרת בקובץ</th><th>כותרת קנונית</th><th>סטטוס</th></tr></thead><tbody>${rows}</tbody></table>
+        </div>
+      </div>
+      <div class="llm-section">
+        <h4>דוגמת נתונים לאחר מיפוי</h4>
+        ${sample || '<div class="muted">אין דוגמה זמינה</div>'}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button onclick="closeMappingModal()">בטל</button>
+        <button class="primary" id="mappingApproveBtn">אשר והעלה</button>
+      </div>`;
+
+    modal.style.display = 'block';
+    const approve = document.getElementById('mappingApproveBtn');
+    approve.onclick = async () => {
+      closeMappingModal();
+      try{ await onApprove?.(); } catch(e){ console.error(e); }
+    };
+  }
+
+  function closeMappingModal(){
+    const modal = document.getElementById('mappingModal');
+    modal.style.display = 'none';
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  }
+
+  // Job details modal functionality
+  async function showJobDetails(jobId) {
+    if(!hasAuth()) return;
+    try {
+  const r = await apiFetch(`${API}/jobs/${jobId}`, {headers: hdrs()});
+      if(!r.ok) { toast('שגיאה בטעינת פרטי המשרה', 'error'); return; }
+      const job = await r.json();
+      
+      const modal = document.getElementById('jobModal');
+      const content = document.getElementById('jobModalContent');
+      
+      // Helper function to format skill lists
+      function formatSkills(skills, title) {
+        if (!skills || skills.length === 0) return `<p class="muted">אין ${title}</p>`;
+        return `
+          <div class="llm-skills">
+            ${skills.map(skill => {
+              const name = skill.name || skill;
+              const source = skill._source ? ` (${skill._source})` : '';
+              const reason = skill.reason ? ` [${skill.reason}]` : '';
+              return `<span class="llm-skill">${name}${source}${reason}</span>`;
+            }).join('')}
+          </div>`;
+      }
+      
+      // Build comprehensive job information
+      let content_html = `
+        <div class="modal-header">
+          <h3>${job.title || 'משרה ללא כותרת'}</h3>
+          <button class="modal-close" onclick="closeJobModal()">&times;</button>
+        </div>`;
+      
+      // Basic Info Section
+      content_html += `
+        <div class="llm-section">
+          <h4>📋 מידע בסיסי</h4>
+          <p><strong>מזהה:</strong> ${job.job_id}</p>
+          <p><strong>מזהה חיצוני:</strong> ${job.external_job_id || 'לא צוין'}</p>
+          <p><strong>עיר:</strong> ${job.city_canonical || 'לא צוינה'}</p>
+          <p><strong>אימייל סוכנות:</strong> ${job.agency_email || 'לא צוין'}</p>
+        </div>`;
+      
+      // LLM Processing Status
+      const llmUsed = job.llm_used_on_enrich;
+      const llmSuccess = job.llm_success_on_enrich;
+      let llmStatusIcon = '';
+      let llmStatusText = '';
+      
+      if (llmSuccess) {
+        llmStatusIcon = '✅';
+        llmStatusText = 'עובד בהצלחה עם בינה מלאכותית';
+      } else if (llmUsed) {
+        llmStatusIcon = '⚠️';
+        llmStatusText = 'ניסיון עיבוד AI שלא הצליח במלואו';
+      } else if (llmUsed === false) {
+        llmStatusIcon = '🔄';
+        llmStatusText = 'עובד ללא בינה מלאכותית';
+      } else {
+        llmStatusIcon = '○';
+        llmStatusText = 'עיבוד בסיסי (לפני הוספת AI)';
+      }
+      
+      content_html += `
+        <div class="llm-section">
+          <h4>${llmStatusIcon} סטטוס עיבוד AI</h4>
+          <p>${llmStatusText}</p>
+        </div>`;
+      
+      // Job Description
+      if (job.job_description) {
+        content_html += `
+          <div class="llm-section">
+            <h4>📝 תיאור המשרה</h4>
+            <p style="white-space: pre-wrap">${job.job_description}</p>
+          </div>`;
+      }
+      
+      // Legacy Job Requirements (from older system)
+      if (job.job_requirements && job.job_requirements.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>📋 דרישות מערכת ישנה (${job.job_requirements.length})</h4>
+            <ul>
+              ${job.job_requirements.map(req => `<li>${req}</li>`).join('')}
+            </ul>
+          </div>`;
+      }
+      
+  // AI-Extracted Requirements
+  if (job.requirements) {
+        const req = job.requirements;
+        const mustHave = req.must_have_skills || [];
+        const niceToHave = req.nice_to_have_skills || [];
+        
+        content_html += `
+          <div class="llm-section">
+            <h4>🎯 דרישות מחולצות ע"י AI</h4>
+            <div style="margin-bottom: 12px;">
+              <strong>כישורים חובה (${mustHave.length}):</strong>
+              ${formatSkills(mustHave, 'כישורים חובה')}
+            </div>
+            <div>
+              <strong>כישורים רצויים (${niceToHave.length}):</strong>
+              ${formatSkills(niceToHave, 'כישורים רצויים')}
+            </div>
+          </div>`;
+      }
+      
+      // Seniority Level
+      if (job.seniority) {
+        content_html += `
+          <div class="llm-section">
+            <h4>👔 רמת ותק</h4>
+            <p>${job.seniority}</p>
+          </div>`;
+      }
+      
+      // Mandatory Requirements
+      if (job.mandatory_requirements && job.mandatory_requirements.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>⚠️ דרישות חובה נוספות (${job.mandatory_requirements.length})</h4>
+            <ul>
+              ${job.mandatory_requirements.map(req => `<li>${req}</li>`).join('')}
+            </ul>
+          </div>`;
+      }
+      
+      // Synthetic Skills (AI-generated)
+      if (job.synthetic_skills && job.synthetic_skills.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>🤖 כישורים סינתטיים (${job.synthetic_skills.length})</h4>
+            <p class="muted" style="font-size: 12px;">כישורים שנוצרו אוטומטית על בסיס ניתוח התפקיד</p>
+            ${formatSkills(job.synthetic_skills, 'כישורים סינתטיים')}
+          </div>`;
+      }
+      
+      // Raw JSON Data (for debugging/transparency)
+      content_html += `
+        <div class="llm-section">
+          <h4>🔍 נתונים גולמיים (JSON)</h4>
+          <details style="margin-top: 8px;">
+            <summary style="cursor: pointer; color: #93c5fd;">הצג JSON מלא</summary>
+            <pre style="background: #0a1020; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 11px; margin-top: 8px;">${JSON.stringify(job, null, 2)}</pre>
+          </details>
+        </div>`;
+      
+      content.innerHTML = content_html;
+      modal.style.display = 'block';
+    } catch(e) {
+      toast('שגיאה בטעינת פרטי המשרה', 'error');
+      console.error('Job details error:', e);
+    }
+  }
+  
+  function closeJobModal() {
+    document.getElementById('jobModal').style.display = 'none';
+  }
+  
+  function closeCandidateModal() {
+    document.getElementById('candidateModal').style.display = 'none';
+  }
+  
+  function closeMatchesModal() {
+    document.getElementById('matchesModal').style.display = 'none';
+  }
+  
+  function closeLetterModal() {
+    document.getElementById('letterModal').style.display = 'none';
+  }
+
+  // Candidate details modal functionality
+  async function showCandidateDetails(candidateId) {
+    if(!hasAuth()) return;
+    try {
+  const r = await apiFetch(`${API}/candidate/${candidateId}`, {headers: hdrs()});
+  if(!r.ok) { toast('שגיאה בטעינת פרטי המועמד', 'error'); return; }
+  // Backend may return {candidate: {...}}; unwrap defensively
+  const data = await r.json();
+  const candidate = (data && typeof data === 'object' && data.candidate) ? data.candidate : data;
+      
+      const modal = document.getElementById('candidateModal');
+      const content = document.getElementById('candidateModalContent');
+      
+      // Helper function to format skills
+      function formatSkills(skills, title) {
+        if (!skills || skills.length === 0) return `<p class="muted">אין ${title}</p>`;
+        return `
+          <div class="llm-skills">
+            ${skills.map(skill => `<span class="llm-skill">${skill}</span>`).join('')}
+          </div>`;
+      }
+      
+      // Build comprehensive candidate information
+      let content_html = `
+        <div class="modal-header">
+          <h3>${candidate.full_name || candidate.title || 'מועמד ללא שם'}</h3>
+          <button class="modal-close" onclick="closeCandidateModal()">&times;</button>
+        </div>`;
+      
+      // Basic Info Section
+      content_html += `
+        <div class="llm-section">
+          <h4>👤 מידע בסיסי</h4>
+          <p><strong>מזהה:</strong> ${candidate.candidate_id || candidateId}</p>
+          <p><strong>שם מלא:</strong> ${candidate.full_name || candidate.title || 'לא צוין'}</p>
+          <p><strong>תפקיד:</strong> ${candidate.title || candidate.full_name || 'לא צוין'}</p>
+          <p><strong>עיר:</strong> ${candidate.city || candidate.city_canonical || 'לא צוינה'}</p>
+          <p><strong>שנות ניסיון:</strong> ${candidate.years_experience || 'לא צוין'}</p>
+          <p><strong>Share ID:</strong> ${candidate.share_id || 'לא זמין'}</p>
+        </div>`;
+      
+      // Skills Section
+  const skillSet = (candidate.skill_set || candidate.skills || []);
+  if (Array.isArray(skillSet) && skillSet.length > 0) {
+        content_html += `
+          <div class="llm-section">
+    <h4>🎯 כישורים (${skillSet.length})</h4>
+    ${formatSkills(skillSet, 'כישורים')}
+          </div>`;
+      }
+      
+      // Summary Section
+      if (candidate.summary) {
+        content_html += `
+          <div class="llm-section">
+            <h4>📝 תקציר</h4>
+            <p style="white-space: pre-wrap">${candidate.summary}</p>
+          </div>`;
+      }
+      
+      // Tools Section
+      if (candidate.tools && candidate.tools.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>🛠️ כלים וטכנולוגיות (${candidate.tools.length})</h4>
+            ${formatSkills(candidate.tools, 'כלים')}
+          </div>`;
+      }
+      
+      // Languages Section
+      if (candidate.languages && candidate.languages.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>🌐 שפות (${candidate.languages.length})</h4>
+            ${formatSkills(candidate.languages, 'שפות')}
+          </div>`;
+      }
+      
+      // Raw JSON Data
+      content_html += `
+        <div class="llm-section">
+          <h4>🔍 נתונים גולמיים (JSON)</h4>
+          <details style="margin-top: 8px;">
+            <summary style="cursor: pointer; color: #93c5fd;">הצג JSON מלא</summary>
+            <pre style="background: #0a1020; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 11px; margin-top: 8px;">${JSON.stringify(candidate, null, 2)}</pre>
+          </details>
+        </div>`;
+      
+      content.innerHTML = content_html;
+      modal.style.display = 'block';
+    } catch(e) {
+      toast('שגיאה בטעינת פרטי המועמד', 'error');
+      console.error('Candidate details error:', e);
+    }
+  }
+
+  // Job matches modal functionality
+  async function showJobMatches(candidateId) {
+    if(!hasAuth()) return;
+    try {
+  const r = await apiFetch(`${API}/match/candidate/${candidateId}?k=10`, {headers: hdrs()});
+      if(!r.ok) { toast('שגיאה בטעינת התאמות', 'error'); return; }
+      const data = await r.json();
+      
+      const modal = document.getElementById('matchesModal');
+      const content = document.getElementById('matchesModalContent');
+      
+      let content_html = `
+        <div class="modal-header">
+          <h3>התאמות משרות למועמד</h3>
+          <button class="modal-close" onclick="closeMatchesModal()">&times;</button>
+        </div>`;
+      
+      if (!data.matches || data.matches.length === 0) {
+        content_html += `
+          <div class="llm-section">
+            <p class="muted">לא נמצאו התאמות למועמד זה</p>
+          </div>`;
+      } else {
+        content_html += `
+          <div class="llm-section">
+            <h4>🎯 נמצאו ${data.matches.length} התאמות</h4>
+            <p class="muted">ציון התאמה מבוסס על כישורים, מיקום ונתונים נוספים</p>
+          </div>`;
+        
+        data.matches.forEach((match, index) => {
+          const score = Math.round((match.score || 0) * 100);
+          const skillOverlap = match.skill_overlap || [];
+          const distance = match.distance_km ? `${match.distance_km} ק"מ` : 'מרחק לא ידוע';
+          
+          content_html += `
+            <div class="llm-section">
+              <h4>${index + 1}. ${match.title || 'משרה ללא כותרת'} - ${score}%</h4>
+              <p><strong>מיקום:</strong> ${match.city || 'לא צוין'} (${distance})</p>
+              <p><strong>סיבת התאמה:</strong> ${match.reason || 'לא צוין'}</p>
+              ${skillOverlap.length > 0 ? `
+                <p><strong>כישורים משותפים (${skillOverlap.length}):</strong></p>
+                <div class="llm-skills">
+                  ${skillOverlap.map(skill => `<span class="llm-skill">${skill}</span>`).join('')}
+                </div>
+              ` : '<p class="muted">אין כישורים משותפים מזוהים</p>'}
+              <div style="margin-top: 8px;">
+                <button class="btn-small" onclick="showJobDetails('${match.job_id}')">פרטי משרה</button>
+              </div>
+            </div>`;
+        });
+      }
+      
+      content.innerHTML = content_html;
+      modal.style.display = 'block';
+    } catch(e) {
+      toast('שגיאה בטעינת התאמות', 'error');
+      console.error('Job matches error:', e);
+    }
+  }
+
+  // Personal letter modal functionality
+  async function showPersonalLetter(shareId) {
+    if(!hasAuth()) return;
+    try {
+  const r = await apiFetch(`${API}/personal-letter/${shareId}`, {headers: hdrs()});
+      if(!r.ok) { 
+        if(r.status === 404) {
+          toast('לא נמצא מכתב אישי למועמד זה', 'warning');
+        } else {
+          toast('שגיאה בטעינת מכתב אישי', 'error');
+        }
+        return; 
+      }
+  const data = await r.json();
+      
+      const modal = document.getElementById('letterModal');
+      const content = document.getElementById('letterModalContent');
+      
+      const letter = data.letter || {};
+      
+      let content_html = `
+        <div class="modal-header">
+          <h3>מכתב אישי - ${data.candidate_name || 'מועמד'}</h3>
+          <button class="modal-close" onclick="closeLetterModal()">&times;</button>
+        </div>`;
+      
+      // Letter content
+      content_html += `
+        <div class="llm-section">
+          <h4>💌 תוכן המכתב</h4>
+          <div style="background: #0a1020; padding: 15px; border-radius: 8px; white-space: pre-wrap; line-height: 1.6;">
+            ${letter.letter_content || 'אין תוכן מכתב זמין'}
+          </div>
+        </div>`;
+      
+      // Key strengths
+      if (letter.key_strengths && letter.key_strengths.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>💪 נקודות חוזק מרכזיות</h4>
+            <div class="llm-skills">
+              ${letter.key_strengths.map(strength => `<span class="llm-skill">${strength}</span>`).join('')}
+            </div>
+          </div>`;
+      }
+      
+      // Market positioning
+      if (letter.market_positioning) {
+        content_html += `
+          <div class="llm-section">
+            <h4>📈 מיקום בשוק</h4>
+            <p>${letter.market_positioning}</p>
+          </div>`;
+      }
+      
+      // Confidence boost
+      if (letter.confidence_boost) {
+        content_html += `
+          <div class="llm-section">
+            <h4>⚡ הודעת עידוד</h4>
+            <p>${letter.confidence_boost}</p>
+          </div>`;
+      }
+      
+      // Next steps
+      if (letter.next_steps && letter.next_steps.length > 0) {
+        content_html += `
+          <div class="llm-section">
+            <h4>👉 צעדים הבאים</h4>
+            <ul>
+              ${letter.next_steps.map(step => `<li>${step}</li>`).join('')}
+            </ul>
+          </div>`;
+      }
+      
+      // Fetch top matches for actions (best-effort)
+      let actions_html = '';
+      try {
+        const matchesR = await apiFetch(`${API}/share/candidate/${shareId}?k=5`, {headers: hdrs()});
+        if (matchesR.ok) {
+          const matchesData = await matchesR.json();
+          const jobs = (matchesData.matches || []).slice(0, 3);
+          if (jobs.length > 0) {
+            const cards = await Promise.all(jobs.map(async (m) => {
+              const jid = m.job_id;
+              // tenant-aware job details
+              let jdoc = null;
+              try {
+                const jr = await apiFetch(`${API}/jobs/${jid}`, {headers: hdrs()});
+                if (jr.ok) jdoc = await jr.json();
+              } catch (e) {}
+              const title = jdoc?.title || m.title || 'משרה';
+              const city = jdoc?.city_canonical || m.city || '';
+              const reqs = (jdoc?.requirements?.must_have_skills || []).map(s=>s.name || s).slice(0,5);
+              const reqList = reqs.length ? reqs.join(', ') : (m.job_requirements || []).slice(0,5).join(', ');
+              return `
+                <div class="llm-section">
+                  <h4>${title}</h4>
+                  <p class="muted">${city}</p>
+                  ${reqList ? `<p><strong>דרישות:</strong> ${reqList}</p>` : ''}
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button class="btn-small" onclick="showJobDetails('${jid}')">פרטי משרה</button>
+                    <button class="btn-small" onclick="confirmApplication('${shareId}','${jid}')">אישור הגשת מועמדות</button>
+                  </div>
+                  <div style="background:#f0f8ff; padding:8px; border-radius:6px; border:1px solid #b3d9ff;">
+                    <p style="margin:0; font-size:13px; color:#0066cc;">
+                      📱 <strong>קישור נייד:</strong>
+                      <a href="/mobile-job.html?job_id=${jid}&share_id=${shareId}" 
+                         target="_blank" 
+                         style="color:#0066cc; text-decoration:underline;">
+                        צפה במשרה במובייל
+                      </a>
+                    </p>
+                    <p style="margin:4px 0 0; font-size:12px; color:#666;">
+                      קישור זה מיועד לשליחה ב-SMS למועמד
+                      <button onclick="copyMobileLink('${jid}', '${shareId}')" 
+                              style="margin-right:8px; padding:2px 8px; font-size:11px; background:#0066cc; color:white; border:none; border-radius:3px; cursor:pointer;">
+                        העתק קישור
+                      </button>
+                    </p>
+                  </div>
+                </div>`;
+            }));
+            actions_html = `
+              <div class="llm-section">
+                <h4>🧩 משרות מוצעות</h4>
+                ${cards.join('')}
+              </div>`;
+          }
+        }
+      } catch (e) { console.warn('matches fetch failed', e); }
+
+      // Meta information
+      content_html += `
+        <div class="llm-section">
+          <h4>📊 מידע נוסף</h4>
+          <p><strong>מספר מילים:</strong> ${letter.word_count || 'לא זמין'}</p>
+          <p><strong>מספר התאמות:</strong> ${data.match_count || 0}</p>
+          <p><strong>נוצר מהמטמון:</strong> ${data.cached ? 'כן' : 'לא'}</p>
+        </div>`;
+
+      // Actions
+      content_html += actions_html;
+      
+      content.innerHTML = content_html;
+      modal.style.display = 'block';
+    } catch(e) {
+      toast('שגיאה בטעינת מכתב אישי', 'error');
+      console.error('Personal letter error:', e);
+    }
+  }
+
+  // Copy mobile link to clipboard for SMS sending
+  function copyMobileLink(jobId, shareId) {
+    const baseUrl = window.location.origin;
+    const mobileUrl = `${baseUrl}/mobile-job.html?job_id=${jobId}&share_id=${shareId}`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(mobileUrl).then(() => {
+        toast('קישור הועתק ללוח! 📱', 'success');
+      }).catch(() => {
+        toast('שגיאה בהעתקת הקישור', 'error');
+      });
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = mobileUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast('קישור הועתק ללוח! 📱', 'success');
+      } catch (err) {
+        toast('שגיאה בהעתקת הקישור', 'error');
+      }
+      document.body.removeChild(textArea);
+    }
+  }
+
+  // Confirm application - POST /confirm/apply
+  async function confirmApplication(shareId, jobId){
+    if(!hasAuth()) return;
+    try{
+      const r = await apiFetch(`${API}/confirm/apply`, {
+        method: 'POST',
+        headers: { ...hdrs(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ share_id: shareId, job_id: jobId })
+      });
+      if(!r.ok){
+        const txt = await r.text();
+        toast('כשל בשליחת האישור: ' + (txt||r.status), 'error');
+        return;
+      }
+      const j = await r.json();
+      toast('נשלח מייל אישור ✅', 'ok');
+    }catch(e){
+      toast('שגיאת רשת בשליחת האישור', 'error');
+    }
+  }
+
+  // Generate personal letter functionality
+  async function generatePersonalLetter(shareId) {
+    if(!hasAuth()) return;
+    try {
+      toast('יוצר מכתב אישי...', 'info');
+      
+  const r = await apiFetch(`${API}/personal-letter`, {
+        method: 'POST',
+        headers: {...hdrs(), 'Content-Type': 'application/json'},
+        body: JSON.stringify({share_id: shareId, force: true})
+      });
+      
+      if(!r.ok) { 
+        const errorData = await r.json().catch(() => ({}));
+        const errorMsg = errorData.detail || 'שגיאה ביצירת מכתב אישי';
+        toast(errorMsg, 'error'); 
+        return; 
+      }
+      
+      const data = await r.json();
+      toast('מכתב אישי נוצר בהצלחה!', 'success');
+      
+      // Show the newly created letter
+      showPersonalLetter(shareId);
+      
+      // Refresh candidates list to update status
+      await refreshCandidates();
+    } catch(e) {
+      toast('שגיאה ביצירת מכתב אישי', 'error');
+      console.error('Generate personal letter error:', e);
+    }
+  }
+  
+  // (Removed duplicate window.onclick; a unified handler exists at the bottom of the file)
+  </script>
+
+    <!-- Job Details Modal -->
+  <div id="jobModal" class="modal">
+    <div class="modal-content">
+      <div id="jobModalContent"></div>
+    </div>
+  </div>
+
+    <div id="imports" class="panel" style="display:none">
+      <h2>ייבוא CSV</h2>
+      <div id="importsWrap" style="position:relative">
+        <div id="importsFallback" class="hint" style="position:absolute;top:8px;inset-inline:12px;z-index:2">
+          טוען דף הייבוא… אם נשאר ריק, <a href="/imports.html" target="_blank" rel="noopener">פתח בחלון חדש</a>
+        </div>
+        <iframe id="importsFrame" src="/imports.html" onload="(function(){var f=document.getElementById('importsFallback'); if(f) f.style.display='none';})()" style="width:100%;height:80vh;border:0;border-radius:12px;background:#0a1428"></iframe>
+      </div>
+      <div class="hint">אם אינך רואה מפתח API נטען בפינה בדף המוטמע, התחבר דרך הפורטל והדף ישתמש ב-API Key אוטומטית.</div>
+    </div>
+
+  <!-- Candidate Details Modal -->
+  <div id="candidateModal" class="modal">
+    <div class="modal-content">
+      <div id="candidateModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Job Matches Modal -->
+  <div id="matchesModal" class="modal">
+    <div class="modal-content">
+      <div id="matchesModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Personal Letter Modal -->
+  <div id="letterModal" class="modal">
+    <div class="modal-content">
+      <div id="letterModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Mapping Preview Modal -->
+  <div id="mappingModal" class="modal">
+    <div class="modal-content">
+      <div id="mappingModalContent"></div>
+    </div>
+  </div>
+
+<script>
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    const jobModal = document.getElementById('jobModal');
+    const candidateModal = document.getElementById('candidateModal');
+    const matchesModal = document.getElementById('matchesModal');
+    const letterModal = document.getElementById('letterModal');
+  const mappingModal = document.getElementById('mappingModal');
+    
+    if (event.target == jobModal) {
+      jobModal.style.display = 'none';
+    }
+    if (event.target == candidateModal) {
+      candidateModal.style.display = 'none';
+    }
+    if (event.target == matchesModal) {
+      matchesModal.style.display = 'none';
+    }
+    if (event.target == letterModal) {
+      letterModal.style.display = 'none';
+    }
+    if (event.target == mappingModal) {
+      mappingModal.style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

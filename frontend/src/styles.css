@@ -1,0 +1,49 @@
+body { 
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+	transition: background .3s, color .3s; 
+	direction: rtl;
+	min-height:100vh;
+}
+.card { box-shadow:0 2px 6px rgba(0,0,0,0.08); transition: background .3s, color .3s; }
+.btn { font-weight:500; }
+.modal { backdrop-filter: blur(2px); }
+
+/* Dark mode */
+.dark body, body.dark { background:#1d2125; color:#e2e5e9; }
+body.dark .card { background:#232a30; color:#e2e5e9; }
+body.dark .match-card { background:#273039 !important; }
+body.dark .badge.bg-primary { background:linear-gradient(135deg,#5563d6,#6a4f9b)!important; }
+body.dark .form-control, body.dark .form-select, body.dark textarea { background:#2b333a; color:#e2e5e9; border-color:#39424a; }
+body.dark .form-control:focus { background:#313b44; color:#fff; }
+body.dark .btn-outline-secondary { color:#d0d4d8; border-color:#47525c; }
+body.dark .btn-outline-secondary:hover { background:#47525c; }
+body.dark .text-muted { color:#b0b6bb !important; }
+
+.match-card { position:relative; }
+
+/* New visual design inspired by provided template */
+.candidate-card { background:#fff; border-radius:15px; padding:30px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.1); }
+.job-card { background:#fff; border-radius:15px; padding:25px; margin-bottom:25px; box-shadow:0 8px 25px rgba(0,0,0,0.1); border-right:5px solid #667eea; transition: transform .3s ease, box-shadow .3s ease; }
+.job-card:hover { transform: translateY(-5px); box-shadow:0 15px 35px rgba(0,0,0,0.15); }
+.match-percentage { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; border-radius:50px; padding:8px 20px; font-weight:600; display:inline-block; font-size:.9rem; }
+.skills-container { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.skill-badge { background:#e3f2fd; color:#1976d2; padding:6px 12px; border-radius:20px; margin:3px; display:inline-block; font-size:.75rem; border:1px solid #e3f2fd; transition:all .2s ease; }
+.skill-badge.matched { background:#e8f5e8; color:#2e7d32; border-color:#4caf50; }
+.skill-badge.missing { background:#ffebee; color:#c62828; border-color:#f44336; }
+.mandatory-skill { background:linear-gradient(135deg,#fff3cd 0%,#ffeaa7 100%)!important; border:2px solid #f39c12!important; color:#856404!important; font-weight:600; }
+.mandatory-skill.missing { background:linear-gradient(135deg,#ffebee 0%,#ffcdd2 100%)!important; border-color:#f44336!important; color:#c62828!important; }
+
+/* Dark mode adjustments for new elements */
+body.dark { background:#1d2125 linear-gradient(135deg,#1d2125,#252c32); }
+body.dark .job-card, body.dark .candidate-card { background:#232a30; border-right-color:#5563d6; }
+body.dark .skill-badge { background:#2b333a; color:#b9c2cc; border-color:#3a434c; }
+body.dark .skill-badge.matched { background:#1f3a29; color:#7ddc9b; border-color:#2e6441; }
+body.dark .skill-badge.missing { background:#3a1f23; color:#ff8e8e; border-color:#7a2d38; }
+body.dark .match-percentage { background:linear-gradient(135deg,#5563d6,#6a4f9b); }
+
+@media (max-width:768px){
+	.job-card { padding:18px; }
+	.match-percentage { padding:6px 14px; font-size:.8rem; }
+	.skill-badge { font-size:.65rem; margin:2px; }
+}

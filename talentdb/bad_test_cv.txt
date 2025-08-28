@@ -1,0 +1,13 @@
+John Smith
+Senior Software Engineer
+
+Skills: Python, JavaScript, React, Django
+Experience: 5 years
+Location: Tel Aviv
+Email: john@example.com
+
+Previous roles:
+- Software Developer at ABC Corp (3 years)
+- Junior Developer at XYZ Ltd (2 years)
+
+Education: Computer Science, Tel Aviv University

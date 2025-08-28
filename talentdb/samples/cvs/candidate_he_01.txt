@@ -1,0 +1,5 @@
+Title: Software Engineer
+סיכום: מפתח תוכנה עם ניסיון של 5 שנים בפיתוח backend ב-Python ועבודה עם מסדי נתונים.
+ניסיון: פיתוח microservices, אוטומציה, כתיבת בדיקות.
+Skills: Python, Docker, MongoDB
+שפות: עברית (שפת אם), אנגלית (גבוהה)

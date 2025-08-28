@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>תוצאות התאמה למועמד חדש</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+ body {font-family: system-ui, Arial; margin:0; background:#0d1117; color:#eee;}
+ header {padding:16px; background:#202938;}
+ h1 {margin:0; font-size:1.4rem;}
+ main {padding:20px; max-width:960px; margin:auto;}
+ .meta {background:#161b22; padding:12px 16px; border-radius:8px; margin-bottom:20px;}
+ .matches {display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+ .card {background:#1f2733; border:1px solid #303b47; padding:14px; border-radius:10px; position:relative;}
+ .score {position:absolute; top:8px; left:8px; background:#2563eb; color:#fff; padding:4px 8px; border-radius:6px; font-size:.75rem;}
+ .title {font-weight:600; font-size:0.95rem; margin-bottom:6px;}
+ .skills {display:flex; flex-wrap:wrap; gap:6px;}
+ .skill {background:#303b47; padding:4px 8px; border-radius:14px; font-size:.65rem;}
+ footer {margin-top:40px; padding:24px 0; text-align:center; font-size:0.75rem; color:#666;}
+ a {color:#58a6ff;}
+</style>
+</head>
+<body>
+<header>
+  <h1>תוצאות התאמה למועמד האחרון שנקלט</h1>
+</header>
+<main>
+  <div id="app" class="loading">טוען...</div>
+</main>
+<footer>Generated static view – refresh to update.</footer>
+<script>
+(async () => {
+  const candId = '689894d9bf650e8257d1f3ac';
+  const base = location.origin.replace(/\/$/,'');
+  const apiBase = base.replace(/:\d+$/,":8000");
+  async function j(url){ const r=await fetch(url); if(!r.ok) throw new Error(r.status); return r.json(); }
+  try {
+    const [matchResp, candResp] = await Promise.all([
+      j(`${apiBase}/match/candidate/${candId}?k=12&city_filter=false`),
+      j(`${apiBase}/candidate/${candId}`)
+    ]);
+    const cand = candResp.candidate;
+    const matches = matchResp.matches || [];
+    const root = document.getElementById('app');
+    root.innerHTML = `
+      <div class='meta'>
+        <div><strong>מזהה מועמד:</strong> ${cand.candidate_id}</div>
+        <div><strong>כותרת:</strong> ${cand.title || ''}</div>
+        <div><strong>מיומנויות (${(cand.skills||[]).length}):</strong> ${(cand.skills||[]).slice(0,30).join(', ')}</div>
+      </div>
+      <div class='matches'>
+        ${matches.map(m=>`<div class='card'>
+           <div class='score'>${(m.score*100).toFixed(1)}%</div>
+           <div class='title'>${m.title || ''}</div>
+           <div class='skills'>${(m.skills_overlap||[]).slice(0,10).map(s=>`<span class='skill'>${s}</span>`).join('') || '<span class=skill>אין חפיפה</span>'}</div>
+         </div>`).join('')}
+      </div>`;
+  } catch(e){
+    document.getElementById('app').textContent='שגיאה בטעינה';
+  }
+})();
+</script>
+</body>
+</html>

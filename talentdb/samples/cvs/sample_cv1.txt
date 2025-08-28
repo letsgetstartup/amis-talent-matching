@@ -1,0 +1,4 @@
+Title: Senior Machine Learning Engineer
+Experienced ML engineer with strong Python, PyTorch, Docker, Kubernetes, and MongoDB background. Previously acted as AI Engineer deploying scalable models.
+Built data pipelines and collaborated with software engineer teams.
+Skills: Python, PyTorch, Docker, Kubernetes, Mongo, Data Science

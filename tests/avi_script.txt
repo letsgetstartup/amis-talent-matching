@@ -1,0 +1,69 @@
+{
+  "resourcePath": "/Users/avirammizrahi/Desktop/amis"
+}
+
+
+
+/Users/avirammizrahi/Desktop/amis/.venv/bin/python /Users/avirammizrahi/Desktop/amis/run_server.py
+
+
+sleep 1; curl -sS -i http://127.0.0.1:8000/health || true
+
+
+I'll add a background VS Code task to run the API server using uvicorn so it stays up independently, run it, and verify the /health endpoint responds.
+
+
+
+Step-by-Step Explanation of the Matching Process in the System
+Imagine you're a 10-year-old kid playing a game where you have to match things, like matching socks or cards. In this computer system (called "amis"), there's a simple "matching process" that helps connect or check things, like making sure a server is running and healthy. It's not a big game, but a way for the computer to "match" if everything is working right.
+
+I'll explain it step by step, super simple, like telling a story. I'll use code examples from your project file (avi_script.txt) to show how it works. This file is like a little script that runs the system.
+
+Step 1: Setting Up the Path
+The system first sets a "resource path," which is like telling the computer where to look for its toys (files). It's like saying, "Hey, my stuff is in this folder!"
+
+Code example from your file:
+
+
+{  "resourcePath": "/Users/avirammizrahi/Desktop/amis"}
+This is just a note in the file – it tells the computer the main folder is amis.
+
+Step 2: Starting the Server
+Next, the system starts a "server," which is like turning on a toy robot that listens for commands. It uses a special program called python to run a file called run_server.py. This makes the server wake up and start working on your computer.
+
+Code example from your file:
+
+
+/Users/avirammizrahi/Desktop/amis/.venv/bin/python /Users/avirammizrahi/Desktop/amis/run_server.py
+This line runs the server. It's like pressing "start" on the robot!
+
+Step 3: Waiting a Bit
+After starting the server, the system waits for 1 second. Why? Because the robot needs a moment to get ready, like you waiting for your toy to light up.
+
+Code example from your file:
+
+
+sleep 1;
+This is a simple wait command – it pauses for 1 second.
+
+Step 4: Checking if It's Healthy (The "Matching" Part)
+Now comes the fun "matching" part! The system sends a quick message to the server to check if it's "healthy," like poking the robot to see if it says "I'm okay!" If it matches (responds correctly), great! If not, it doesn't break – it just tries anyway.
+
+This is done with a tool called curl, which sends a request to the server's "health" spot (like a special door on the robot).
+
+Code example from your file:
+
+
+curl -sS -i http://127.0.0.1:8000/health || true
+curl is the tool.
+http://127.0.0.1:8000/health is the address of the health check (like the robot's ear).
+|| true means "if it doesn't work, that's okay – keep going!"
+Step 5: What Happens Next?
+The comment in your file says: "I'll add a background VS Code task to run the API server using uvicorn so it stays up independently, run it, and verify the /health endpoint responds."
+
+This means the system will keep the server running in the background (like the robot playing by itself) and check if the health part responds. If it "matches" (responds), the system is happy!
+
+This whole process is simple: start the server, wait, check if it's healthy. It's not matching people or games – just making sure the computer parts are working together.
+
+If you want to run this yourself in VS Code on your Mac, open the terminal and paste those lines! Let me know if you need help with the terminal.
+

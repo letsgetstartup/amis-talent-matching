@@ -1,0 +1,736 @@
+[{
+  "_id": {
+    "$oid": "68ac6da810326fb704285d4e"
+  },
+  "direction": "c2j",
+  "source_id": "68ac2866fbb95ee25f8745be",
+  "target_id": "68aa61a931f94a5f359756b3",
+  "candidate_id": "68ac2866fbb95ee25f8745be",
+  "job_id": "68aa61a931f94a5f359756b3",
+  "tenant_id": null,
+  "status": "saved",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.6667,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": null,
+    "distance_score": null,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756130728
+},
+{
+  "_id": {
+    "$oid": "68ac884410326fb704285d4f"
+  },
+  "direction": "c2j",
+  "source_id": "68ac2866fbb95ee25f8745be",
+  "target_id": "68aa61a931f94a5f35975679",
+  "candidate_id": "68ac2866fbb95ee25f8745be",
+  "job_id": "68aa61a931f94a5f35975679",
+  "tenant_id": null,
+  "status": "saved",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.6667,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": null,
+    "distance_score": null,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756137540
+},
+{
+  "_id": {
+    "$oid": "68af64d7ee79a8186b0f1198"
+  },
+  "direction": "c2j",
+  "source_id": "68af2e02697377761f45e4a6",
+  "target_id": "68adf835078d334d9092b550",
+  "candidate_id": "68af2e02697377761f45e4a6",
+  "job_id": "68adf835078d334d9092b550",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 80,
+    "distance_score": 0.4828,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325079
+},
+{
+  "_id": {
+    "$oid": "68af653aee79a8186b0f11ce"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325178
+},
+{
+  "_id": {
+    "$oid": "68af653aee79a8186b0f11cf"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b550",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b550",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325178
+},
+{
+  "_id": {
+    "$oid": "68af653aee79a8186b0f11d0"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b519",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b519",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325178
+},
+{
+  "_id": {
+    "$oid": "68af653aee79a8186b0f11d1"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68ae892ddc8b36d3dcc08a88",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68ae892ddc8b36d3dcc08a88",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.4444,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325178
+},
+{
+  "_id": {
+    "$oid": "68af653aee79a8186b0f11d2"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b595",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b595",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.4706,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325178
+},
+{
+  "_id": {
+    "$oid": "68af65e7ee79a8186b0f11d3"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325351
+},
+{
+  "_id": {
+    "$oid": "68af6762e0ea670caab6407d"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325730
+},
+{
+  "_id": {
+    "$oid": "68af677ee0ea670caab6407e"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325758
+},
+{
+  "_id": {
+    "$oid": "68af67d3e0ea670caab6407f"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756325843
+},
+{
+  "_id": {
+    "$oid": "68af68ca826d306318e0d2a9"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": null,
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326090
+},
+{
+  "_id": {
+    "$oid": "68af6aa0826d306318e0d2ab"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b550",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b550",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326560
+},
+{
+  "_id": {
+    "$oid": "68af6aa0826d306318e0d2ac"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b595",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b595",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.4706,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326560
+},
+{
+  "_id": {
+    "$oid": "68af6aa0826d306318e0d2ad"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68ae892ddc8b36d3dcc08a88",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68ae892ddc8b36d3dcc08a88",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.4444,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326560
+},
+{
+  "_id": {
+    "$oid": "68af6aa0826d306318e0d2ae"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf836078d334d9092b62d",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf836078d334d9092b62d",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326560
+},
+{
+  "_id": {
+    "$oid": "68af6aa0826d306318e0d2af"
+  },
+  "direction": "c2j",
+  "source_id": "68af06822c0612ae48abe32a",
+  "target_id": "68adf835078d334d9092b519",
+  "candidate_id": "68af06822c0612ae48abe32a",
+  "job_id": "68adf835078d334d9092b519",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.5556,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326560
+},
+{
+  "_id": {
+    "$oid": "68af6ad7826d306318e0d2b6"
+  },
+  "direction": "c2j",
+  "source_id": "68af05b42c0612ae48abe304",
+  "target_id": "68adf835078d334d9092b517",
+  "candidate_id": "68af05b42c0612ae48abe304",
+  "job_id": "68adf835078d334d9092b517",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.7059,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": null,
+    "distance_score": null,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326615
+},
+{
+  "_id": {
+    "$oid": "68af6ad7826d306318e0d2b7"
+  },
+  "direction": "c2j",
+  "source_id": "68af05b42c0612ae48abe304",
+  "target_id": "68ae892ddc8b36d3dcc089c4",
+  "candidate_id": "68af05b42c0612ae48abe304",
+  "job_id": "68ae892ddc8b36d3dcc089c4",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0.25,
+    "title_similarity": 0.6,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 0,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326615
+},
+{
+  "_id": {
+    "$oid": "68af6ad7826d306318e0d2b8"
+  },
+  "direction": "c2j",
+  "source_id": "68af05b42c0612ae48abe304",
+  "target_id": "68adf836078d334d9092b5e2",
+  "candidate_id": "68af05b42c0612ae48abe304",
+  "job_id": "68adf836078d334d9092b5e2",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.7059,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 8.6,
+    "distance_score": 0.9752,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326615
+},
+{
+  "_id": {
+    "$oid": "68af6ad7826d306318e0d2b9"
+  },
+  "direction": "c2j",
+  "source_id": "68af05b42c0612ae48abe304",
+  "target_id": "68adf835078d334d9092b50d",
+  "candidate_id": "68af05b42c0612ae48abe304",
+  "job_id": "68adf835078d334d9092b50d",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0.3333,
+    "title_similarity": 0.6667,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 9.9,
+    "distance_score": 0.9662,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326615
+},
+{
+  "_id": {
+    "$oid": "68af6ad7826d306318e0d2ba"
+  },
+  "direction": "c2j",
+  "source_id": "68af05b42c0612ae48abe304",
+  "target_id": "68adf835078d334d9092b56a",
+  "candidate_id": "68af05b42c0612ae48abe304",
+  "job_id": "68adf835078d334d9092b56a",
+  "tenant_id": "68aa612a31f94a5f35975636",
+  "status": "auto",
+  "notes": null,
+  "score_snapshot": {
+    "skill_overlap_base": 0,
+    "title_similarity": 0.4,
+    "semantic_similarity": 0,
+    "embedding_similarity": 0,
+    "distance_km": 4.5,
+    "distance_score": 1,
+    "weights": {
+      "skill_weight": 0.85,
+      "title_weight": 0.15,
+      "semantic_weight": 0,
+      "embedding_weight": 0,
+      "distance_weight": 0.35,
+      "must_category_weight": 0.7,
+      "needed_category_weight": 0.3,
+      "min_skill_floor": 3
+    }
+  },
+  "ts": 1756326615
+}]

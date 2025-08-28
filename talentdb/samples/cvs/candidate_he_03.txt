@@ -1,0 +1,4 @@
+Title: Machine Learning Engineer
+סיכום: מהנדס ML המתמקד בפריסה ותחזוקה של מודלים בקנה מידה גדול.
+ניסיון: בניית Pipelines, שימוש ב-Kubernetes ו-Docker.
+Skills: Python, PyTorch, Kubernetes, Docker

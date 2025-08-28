@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "notes": "Config-driven mapping from raw CSV headers to canonical candidate keys. Extend as needed per data provider.",
+  "mapping": {
+    "Full Name": "full_name",
+    "First Name": "full_name",
+    "Last Name": "full_name",
+    "Candidate Name": "full_name",
+  "Name": "full_name",
+  "name": "full_name",
+    "שם מועמד": "full_name",
+    "שם מלא": "full_name",
+    "מועמד": "full_name",
+
+    "City": "city",
+    "Town": "city",
+    "Location": "city",
+    "שם ישוב": "city",
+    "שם יישוב": "city",
+    "עיר": "city",
+    "מגורים": "city",
+
+    "Phone": "phone",
+    "Mobile": "phone",
+    "Cell": "phone",
+    "טלפון": "phone",
+    "נייד": "phone",
+    "מספר נייד": "phone",
+
+    "Email": "email",
+    "E-mail": "email",
+    "אימייל": "email",
+    "מייל": "email",
+    "דוא\"ל": "email",
+
+    "Education": "education",
+    "השכלה": "education",
+
+    "Experience": "experience",
+    "Work Experience": "experience",
+    "נסיון": "experience",
+    "ניסיון": "experience",
+
+  "Notes": "notes",
+  "Notes_candidate": "notes",
+  "הערות": "notes",
+
+    "External Candidate ID": "external_candidate_id",
+    "Candidate ID": "external_candidate_id",
+    "מספר מועמד": "external_candidate_id",
+
+    "External Order ID": "external_order_id",
+    "Order ID": "external_order_id",
+    "מספר הזמנה": "external_order_id",
+
+    "Required Profession": "required_profession",
+  "profession": "required_profession",
+    "מקצוע נדרש": "required_profession",
+    "Field of Occupation": "field_of_occupation",
+  "occupation_field": "field_of_occupation",
+    "תחום עיסוק": "field_of_occupation",
+
+    "LinkedIn": "linkedin",
+    "LinkedIn URL": "linkedin",
+    "CV URL": "cv_url",
+    "Resume URL": "cv_url",
+    "Source": "source"
+  }
+}

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ייבוא CSV</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#0e1525;color:#e6edf3;margin:0}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0b1120;border-bottom:1px solid #1f2937}
+    .brand{font-weight:700}
+    .container{max-width:1100px;margin:0 auto;padding:20px}
+    .card{background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .col{flex:1 1 420px}
+    h2{margin:0 0 12px 0;font-size:20px}
+    h3{margin:0 0 10px 0;font-size:16px}
+    input[type="file"], select, textarea, input[type="text"]{width:100%;padding:10px;background:#0b1328;border:1px solid #203047;border-radius:8px;color:#e6edf3}
+    button{padding:10px 14px;border:0;border-radius:8px;background:#0ea5e9;color:#041018;cursor:pointer;font-weight:700}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .btn-secondary{background:#334155;color:#e6edf3}
+    .hint{opacity:.7;font-size:12px;margin-top:6px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#0e1b34;border:1px solid #1f2e48;font-size:12px}
+    .ok{color:#10b981}
+    .warn{color:#f59e0b}
+    .err{color:#ef4444}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .table{width:100%;border-collapse:collapse;margin-top:8px}
+    .table th,.table td{border-bottom:1px solid #1f2937;padding:6px 8px;text-align:right}
+    .progress{height:8px;background:#12223d;border-radius:999px;overflow:hidden;margin:8px 0}
+    .bar{height:8px;background:#00c2ff;width:0%;transition:width .2s ease}
+    .pill{display:inline-block;background:#0b2038;border:1px solid #203047;border-radius:999px;padding:4px 8px;margin-left:6px}
+    a{color:#7dd3fc;text-decoration:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">ייבוא CSV</div>
+    <div>
+      <span id="tenantInfo" class="pill">לא מחובר</span>
+      <a href="/agency-portal.html" class="pill">לפורטל</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <h2>ייבוא משרות (CSV/XLSX)</h2>
+          <input id="jobsFile" type="file" accept=".csv,.xlsx,.xlsm" />
+          <div class="hint">תמיכה בעברית/אנגלית. חובה לכלול מזהה משרה חיצוני וכותרת. headers ממופים אוטומטית.</div>
+          <div class="chips" id="jobsPreviewMeta"></div>
+          <div class="progress"><div class="bar" id="jobsBar"></div></div>
+          <div class="row">
+            <button id="jobsPreviewBtn" class="btn-secondary">תצוגה מקדימה</button>
+            <button id="jobsImportBtn">ייבוא קובץ</button>
+          </div>
+          <div class="hint mono" id="jobsResult"></div>
+        </div>
+        <div class="col">
+          <h2>ייבוא מועמדים (CSV/PDF/DOCX/TXT)</h2>
+          <input id="candsFile" type="file" accept=".csv,.pdf,.docx,.txt" multiple />
+          <div class="hint">CSV בפורמט: מספר מועמד, מועמד, מספר הזמנה, השכלה, נסיון, טלפון, מייל, עיר. ניתן גם PDF/DOCX/TXT.</div>
+          <div class="chips" id="candsPreviewMeta"></div>
+          <div class="progress"><div class="bar" id="candsBar"></div></div>
+          <div class="row">
+            <button id="candsPreviewBtn" class="btn-secondary">תצוגה מקדימה</button>
+            <button id="candsImportBtn">ייבוא</button>
+          </div>
+          <div class="hint mono" id="candsResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>מיפוי עמודות — תצוגה מקדימה</h3>
+      <div class="grid">
+        <div>
+          <div class="mono" id="previewCoverage">—</div>
+          <table class="table" id="previewTable">
+            <thead><tr><th>עמודה</th><th>מיפוי מוצע</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="previewWarnings" class="hint"></div>
+        </div>
+        <div>
+          <div class="mono">דוגמת נתונים לאחר מיפוי</div>
+          <table class="table" id="sampleTable">
+            <thead><tr><th>#</th><th>שדות</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Use same-origin API base for reliability with embedded iframe
+    const API = location.origin + '/mapping'.slice(0,0); // noop slice to keep string literal detection minimal
+    const state = { apiKey: localStorage.getItem('apiKey') || '', tenantId: localStorage.getItem('tenantId') || '' };
+    const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
+    const fmtBytes = n => n < 1024 ? n + ' B' : (n < 1024*1024 ? (n/1024).toFixed(1)+' KB' : (n/1024/1024).toFixed(2)+' MB');
+
+    async function apiFetch(url, opts={}){
+      const r = await fetch(url, opts);
+      return r;
+    }
+
+    function setBar(id, p){ document.getElementById(id).style.width = Math.max(0, Math.min(100, p)) + '%'; }
+    function chips(el, items){ el.innerHTML = ''; (items||[]).forEach(t => { const sp = document.createElement('span'); sp.className='chip'; sp.textContent=t; el.appendChild(sp); }); }
+    function elem(id){ return document.getElementById(id); }
+
+    // Tenant badge
+    (function(){
+      const el = elem('tenantInfo');
+      if(state.apiKey){ el.textContent = 'מפתח API נטען'; el.classList.add('ok'); }
+      else{ el.textContent = 'לא מחובר'; el.classList.add('warn'); }
+    })();
+
+    // CSV head reader (client-side) for preview
+    async function readCsvHead(file, maxRows=20){
+      const blob = file.slice(0, Math.min(file.size, 256*1024));
+      const text = await blob.text();
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if(lines.length === 0) return { headers: [], rows: [] };
+      const headerLine = lines[0];
+      const headers = headerLine.split(',').map(h => h.replace('\ufeff','').trim());
+      const rows = lines.slice(1, 1+maxRows).map(l => l.split(','));
+      return { headers, rows };
+    }
+
+    async function previewMapping(kind, file, metaEl){
+      if(!file){ metaEl.textContent = 'בחר קובץ'; return; }
+      if(!state.apiKey){ alert('נדרש API Key'); return; }
+      const { headers, rows } = await readCsvHead(file, 8);
+      if(headers.length === 0){ metaEl.textContent = 'שגיאה בקריאת קובץ'; return; }
+      const body = JSON.stringify({ kind, headers, sample_rows: rows.slice(0,3) });
+      const r = await apiFetch(`${API}/mapping/preview`, { method:'POST', headers: { 'Content-Type':'application/json', ...hdrs() }, body });
+      if(!r.ok){ metaEl.textContent = 'שגיאת שרת בתצוגה מקדימה'; return; }
+      const j = await r.json();
+      // coverage chips
+      const cov = j.coverage||{}; chips(metaEl, [ `מופה: ${cov.mapped||0}/${cov.total||0} (${cov.percent||0}%)` ]);
+      // table proposed
+      const tbody = elem('previewTable').querySelector('tbody'); tbody.innerHTML = '';
+      (Object.keys(j.proposed||{})).forEach(h => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${h}</td><td class='mono'>${j.proposed[h]}</td>`;
+        tbody.appendChild(tr);
+      });
+      // warnings
+      elem('previewWarnings').innerHTML = (j.warnings||[]).map(w => `<div class='warn'>⚠ ${w}</div>`).join('');
+      // samples
+      const samp = elem('sampleTable').querySelector('tbody'); samp.innerHTML = '';
+      (j.sample_preview||[]).forEach(row => {
+        const tr = document.createElement('tr');
+        const after = row.after || {}; const keys = Object.keys(after);
+        tr.innerHTML = `<td>${row.row_idx}</td><td class='mono'>${keys.map(k=>`${k}: ${after[k]}`).join(' | ')}</td>`;
+        samp.appendChild(tr);
+      });
+      elem('previewCoverage').textContent = 'תצוגה מקדימה הושלמה';
+    }
+
+    // Jobs preview/import
+    elem('jobsPreviewBtn').onclick = async () => {
+      const f = elem('jobsFile').files[0]; setBar('jobsBar', 20);
+      await previewMapping('job', f, elem('jobsPreviewMeta')); setBar('jobsBar', 60); setBar('jobsBar', 100);
+    };
+    elem('jobsImportBtn').onclick = async () => {
+      const f = elem('jobsFile').files[0]; if(!f){ alert('בחר קובץ'); return; }
+      if(!state.apiKey){ alert('נדרש API Key'); return; }
+      setBar('jobsBar', 15); elem('jobsResult').textContent = '';
+      const fd = new FormData(); fd.append('file', f);
+      try{
+        const r = await apiFetch(`${API}/jobs/batch_csv?format=agency_template&upsert=true`, { method:'POST', headers: hdrs(), body: fd });
+        setBar('jobsBar', 85);
+        if(!r.ok){ elem('jobsResult').textContent = 'כשל בייבוא'; setBar('jobsBar', 0); return; }
+        const j = await r.json();
+        const s = j.summary || {}; 
+        elem('jobsResult').textContent = `ייבוא: ${s.total||0} | נוצרו ${s.created||0}, עודכנו ${s.updated||0}, כפולים ${s.duplicates||0}, שגיאות ${s.errors||0}`;
+        setBar('jobsBar', 100);
+      }catch(e){ elem('jobsResult').textContent = 'שגיאת רשת'; setBar('jobsBar', 0); }
+    };
+
+    // Candidates preview/import
+    elem('candsPreviewBtn').onclick = async () => {
+      const f = elem('candsFile').files[0]; setBar('candsBar', 20);
+      // Only preview CSV head when the first file is CSV
+      if(f && /\.csv$/i.test(f.name)) await previewMapping('candidate', f, elem('candsPreviewMeta'));
+      setBar('candsBar', 100);
+    };
+    elem('candsImportBtn').onclick = async () => {
+      const fs = elem('candsFile').files; if(!fs || fs.length===0){ alert('בחר קבצים'); return; }
+      if(!state.apiKey){ alert('נדרש API Key'); return; }
+      setBar('candsBar', 10); elem('candsResult').textContent = '';
+      const fd = new FormData(); Array.from(fs).forEach(f=>fd.append('files', f));
+      try{
+        const r = await apiFetch(`${API}/tenant/candidates/upload`, { method:'POST', headers: hdrs(), body: fd });
+        setBar('candsBar', 85);
+        if(!r.ok){ elem('candsResult').textContent = 'כשל בהעלאה'; setBar('candsBar', 0); return; }
+        const j = await r.json();
+        elem('candsResult').textContent = `הועלו ${j.count||0} קבצים | נוצרו ${j.created||0} עודכנו ${j.updated||0} | שגיאות ${j.errors||0}`;
+        setBar('candsBar', 100);
+      }catch(e){ elem('candsResult').textContent = 'שגיאת רשת'; setBar('candsBar', 0); }
+    };
+  </script>
+</body>
+</html>

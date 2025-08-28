@@ -1,0 +1,297 @@
+{
+  "timestamp": "2025-08-20T18:11:57.196968",
+  "summary": {
+    "total_jobs_analyzed": 10,
+    "data_quality_score": 100.0,
+    "import_success_rate": 1.0,
+    "critical_issues_found": 0,
+    "overall_status": "PASS"
+  },
+  "data_quality_analysis": {
+    "total_jobs": 10,
+    "empty_fields": {},
+    "encoding_issues": [],
+    "potential_issues": [],
+    "job_summaries": [
+      {
+        "index": 0,
+        "job_id": "405627",
+        "title": "עובד/ת הרכבה",
+        "city": "אור עקיבא",
+        "issues": []
+      },
+      {
+        "index": 1,
+        "job_id": "405620",
+        "title": "עובד/ת ייצור עבודה מועדפת .",
+        "city": "קרית עקרון",
+        "issues": []
+      },
+      {
+        "index": 2,
+        "job_id": "405626",
+        "title": "צבעי/ת תעשייתי/ת",
+        "city": "אור עקיבא",
+        "issues": []
+      },
+      {
+        "index": 3,
+        "job_id": "405665",
+        "title": "מנהל/ת אחזקה",
+        "city": "עפולה",
+        "issues": []
+      },
+      {
+        "index": 4,
+        "job_id": "405690",
+        "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת שירות למוקד הדיגיטל!",
+        "city": "פתח תקווה",
+        "issues": []
+      },
+      {
+        "index": 5,
+        "job_id": "405691",
+        "title": "לחברת ביטוח מובילה דרוש/ה מברר/ת תביעות!",
+        "city": "פתח תקווה",
+        "issues": []
+      },
+      {
+        "index": 6,
+        "job_id": "405692",
+        "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת מכירות דירה יוצא!",
+        "city": "פתח תקווה",
+        "issues": []
+      },
+      {
+        "index": 7,
+        "job_id": "405731",
+        "title": "דרוש/ה מפעיל/ה כימי/ת / עובד/ת ייצור לתחום הפארמה",
+        "city": "באר שבע",
+        "issues": []
+      },
+      {
+        "index": 8,
+        "job_id": "405768",
+        "title": "לחברת אלומיניום דרוש/ה עוזר/ת מנהל מחסן",
+        "city": "חולון",
+        "issues": []
+      },
+      {
+        "index": 9,
+        "job_id": "405777",
+        "title": "חשמלאי/ת רכב-לחברה מובילה וגדולה בתחום התחבורה הציבורית!",
+        "city": "באר שבע",
+        "issues": []
+      }
+    ]
+  },
+  "import_test_results": [
+    {
+      "job_index": 0,
+      "job_id": "405627",
+      "title": "עובד/ת הרכבה",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 15.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.02}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 1,
+      "job_id": "405620",
+      "title": "עובד/ת ייצור עבודה מועדפת .",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 44.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 2,
+      "job_id": "405626",
+      "title": "צבעי/ת תעשייתי/ת",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 15.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.01}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 3,
+      "job_id": "405665",
+      "title": "מנהל/ת אחזקה",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 49.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 4,
+      "job_id": "405690",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת שירות למוקד הדיגי",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 12.0, \"synthetic_ratio\": 0.083, \"mandatory_detect_rate\": 1.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 5,
+      "job_id": "405691",
+      "title": "לחברת ביטוח מובילה דרוש/ה מברר/ת תביעות!",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 22.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 6,
+      "job_id": "405692",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת מכירות דירה יוצא!",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 12.0, \"synthetic_ratio\": 0.417, \"mandatory_detect_rate\": 0.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 7,
+      "job_id": "405731",
+      "title": "דרוש/ה מפעיל/ה כימי/ת / עובד/ת ייצור לתחום הפארמה",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 26.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 1.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 8,
+      "job_id": "405768",
+      "title": "לחברת אלומיניום דרוש/ה עוזר/ת מנהל מחסן",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 13.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 1.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    },
+    {
+      "job_index": 9,
+      "job_id": "405777",
+      "title": "חשמלאי/ת רכב-לחברה מובילה וגדולה בתחום התחבורה הצי",
+      "success": true,
+      "error_message": null,
+      "stdout": "Imported jobs: 1\nMetrics: {\"jobs_ingested\": 1, \"avg_skills\": 13.0, \"synthetic_ratio\": 0.0, \"mandatory_detect_rate\": 1.0, \"duration_sec\": 0.0}\nVisit /admin/jobs/all\n",
+      "stderr": "",
+      "exit_code": 0,
+      "processing_notes": []
+    }
+  ],
+  "pattern_analysis": {
+    "total_tests": 10,
+    "successful": 10,
+    "failed": 0,
+    "error_patterns": {},
+    "success_rate": 1.0,
+    "common_errors": [],
+    "problematic_jobs": []
+  },
+  "failure_investigation": {
+    "failed_count": 0,
+    "detailed_analysis": [],
+    "potential_causes": "set()",
+    "recommendations": []
+  },
+  "job_details": [
+    {
+      "index": 0,
+      "job_id": "405627",
+      "title": "עובד/ת הרכבה",
+      "city": "אור עקיבא",
+      "description_length": 169,
+      "requirements_length": 96
+    },
+    {
+      "index": 1,
+      "job_id": "405620",
+      "title": "עובד/ת ייצור עבודה מועדפת .",
+      "city": "קרית עקרון",
+      "description_length": 126,
+      "requirements_length": 358
+    },
+    {
+      "index": 2,
+      "job_id": "405626",
+      "title": "צבעי/ת תעשייתי/ת",
+      "city": "אור עקיבא",
+      "description_length": 86,
+      "requirements_length": 128
+    },
+    {
+      "index": 3,
+      "job_id": "405665",
+      "title": "מנהל/ת אחזקה",
+      "city": "עפולה",
+      "description_length": 948,
+      "requirements_length": 396
+    },
+    {
+      "index": 4,
+      "job_id": "405690",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת שירות למוקד הדיגיטל!",
+      "city": "פתח תקווה",
+      "description_length": 147,
+      "requirements_length": 83
+    },
+    {
+      "index": 5,
+      "job_id": "405691",
+      "title": "לחברת ביטוח מובילה דרוש/ה מברר/ת תביעות!",
+      "city": "פתח תקווה",
+      "description_length": 211,
+      "requirements_length": 162
+    },
+    {
+      "index": 6,
+      "job_id": "405692",
+      "title": "לחברת ביטוח מובילה דרוש/ה נציג/ת מכירות דירה יוצא!",
+      "city": "פתח תקווה",
+      "description_length": 200,
+      "requirements_length": 64
+    },
+    {
+      "index": 7,
+      "job_id": "405731",
+      "title": "דרוש/ה מפעיל/ה כימי/ת / עובד/ת ייצור לתחום הפארמה",
+      "city": "באר שבע",
+      "description_length": 339,
+      "requirements_length": 200
+    },
+    {
+      "index": 8,
+      "job_id": "405768",
+      "title": "לחברת אלומיניום דרוש/ה עוזר/ת מנהל מחסן",
+      "city": "חולון",
+      "description_length": 420,
+      "requirements_length": 95
+    },
+    {
+      "index": 9,
+      "job_id": "405777",
+      "title": "חשמלאי/ת רכב-לחברה מובילה וגדולה בתחום התחבורה הציבורית!",
+      "city": "באר שבע",
+      "description_length": 423,
+      "requirements_length": 92
+    }
+  ]
+}

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<title>CV → Job Recommendations</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex" />
+<style>
+:root {
+  --bg:#0d1117; --panel:#161b22; --panel-alt:#1f2733; --border:#303b47; --accent:#2563eb; --accent-grad:linear-gradient(90deg,#2563eb,#3b82f6); --text:#e6edf3; --muted:#8b949e; --danger:#dc3545; --warn:#d29922; --ok:#2ea043; --radius:14px; --focus:0 0 0 2px #1d4ed8,0 0 0 4px rgba(37,99,235,.35);
+  font-family: system-ui, Arial, sans-serif;
+}
+html,body {margin:0; padding:0; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;}
+body {min-height:100vh; display:flex; flex-direction:column;}
+header {padding:22px 26px 14px;}
+h1 {margin:0 0 4px; font-size:1.65rem; background:var(--accent-grad); -webkit-background-clip:text; color:transparent; font-weight:600;}
+.subtitle {color:var(--muted); font-size:.9rem;}
+main {width:100%; max-width:1180px; margin:0 auto; padding:0 26px 60px; flex:1;}
+.panel {background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px 26px; margin:0 0 28px; position:relative;}
+.panel.alt {background:var(--panel-alt);} 
+section h2 {margin:0 0 12px; font-size:1.15rem; font-weight:600;}
+.upload-zone {border:2px dashed #3d4653; border-radius:18px; padding:34px 26px; text-align:center; background:#121a24; transition:.25s; cursor:pointer; position:relative;}
+.upload-zone.drag {background:#182433; border-color:#2563eb; box-shadow:0 0 0 2px #2563eb44;}
+.upload-zone input[type=file] {position:absolute; inset:0; opacity:0; cursor:pointer;}
+textarea {width:100%; min-height:140px; resize:vertical; background:#0f1620; border:1px solid #28313d; border-radius:12px; padding:12px 14px; color:var(--text); font:inherit; line-height:1.4;}
+textarea:focus, button:focus {outline:none; box-shadow:var(--focus);} 
+.controls {display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:18px;}
+button {background:var(--accent-grad); color:#fff; border:0; padding:12px 24px; border-radius:30px; font:600 0.95rem system-ui, sans-serif; cursor:pointer; display:inline-flex; gap:8px; align-items:center; transition:.25s;}
+button[disabled] {opacity:.45; cursor:not-allowed; filter:grayscale(.3);} 
+button.secondary {background:#303b47; color:var(--text);} 
+.status {margin-top:14px; font-size:.85rem; color:var(--muted);} 
+.status strong {color:#fff;}
+.progress-line {height:4px; width:100%; background:#1c2531; border-radius:2px; overflow:hidden; margin-top:10px;}
+.progress-line span {display:block; height:100%; width:0; background:var(--accent-grad); animation:indeterminate 2s linear infinite;}
+@keyframes indeterminate {0%{transform:translateX(-100%);} 50%{transform:translateX(0);} 100%{transform:translateX(100%);} }
+.results {display:none;}
+.tier-group {margin-top:28px;}
+.tier-group h3 {margin:0 0 10px; font-size:1rem; font-weight:600; letter-spacing:.5px; text-transform:uppercase; color:#9ba3ad;}
+.jobs {display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+.job {background:var(--panel-alt); border:1px solid var(--border); border-radius:18px; padding:14px 16px 18px; position:relative; display:flex; flex-direction:column; gap:10px;}
+.job.top {border:2px solid #2563eb; box-shadow:0 6px 14px -4px rgba(37,99,235,.4);} 
+.score {position:absolute; top:10px; left:10px; background:#2563eb; color:#fff; font-size:.7rem; font-weight:600; padding:4px 8px; border-radius:8px; letter-spacing:.5px;}
+.job h3 {margin:0 0 2px; font-size:1rem; font-weight:600;}
+.meta-sm {font-size:.65rem; text-transform:uppercase; letter-spacing:.5px; color:#6b7480;}
+.skill-chips {display:flex; flex-wrap:wrap; gap:6px; line-height:1.5;}
+.chip {background:#28313d; padding:5px 9px; border-radius:14px; font-size:.65rem; color:#d1d9e0; border:1px solid #354150;}
+.chip.overlap {background:#1e3a26; border-color:#2ea043; color:#8af39d;}
+.chip.missing {background:#3a2023; border-color:#dc3545; color:#ffb3bb;}
+.chip.extra {background:#202f42; border-color:#2563eb; color:#8dc2ff;}
+.inline-field {display:flex; gap:10px; align-items:center;}
+.copy-box {display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:16px;}
+small.hint {display:block; margin-top:6px; font-size:.65rem; color:#6c7682;}
+footer {margin:40px 0 50px; text-align:center; font-size:.65rem; color:#5d666f;}
+.badge {display:inline-block; background:#303b47; padding:4px 10px; border-radius:20px; font-size:.6rem; letter-spacing:.5px; text-transform:uppercase; color:#9ca6b4;}
+.alert {padding:10px 14px; border-radius:12px; font-size:.75rem; line-height:1.35; background:#2a1518; border:1px solid #852029; color:#ffb3bb; margin-top:14px; display:none;}
+.alert.warn {background:#322716; border-color:#9d6b17; color:#f9d18b;}
+.alert.ok {background:#13281d; border-color:#1f6d42; color:#7bf2b0;}
+.hide{display:none !important;}
+/* Slide-over */
+.drawer {position:fixed; top:0; right:0; width:0; max-width:420px; height:100%; background:#111a24; border-left:1px solid #26313d; box-shadow:-4px 0 14px -4px rgba(0,0,0,.55); overflow:hidden; transition:.35s cubic-bezier(.6,.2,.1,1); display:flex; flex-direction:column;}
+.drawer.open {width:100%;}
+@media (min-width:560px){ .drawer.open {width:420px;} }
+.drawer header {padding:18px 20px 12px; display:flex; gap:10px; align-items:center; background:#101820;}
+.drawer h3 {margin:0; font-size:1.05rem; font-weight:600;}
+.drawer .close {margin-left:auto; background:#303b47; border:0; color:#d1d9e0; padding:6px 12px; border-radius:8px; font-size:.7rem; cursor:pointer;}
+.drawer form {padding:10px 20px 26px; display:flex; flex-direction:column; gap:12px;}
+.drawer label {font-size:.7rem; letter-spacing:.5px; font-weight:600; color:#9aa4af;}
+.drawer input, .drawer textarea {background:#0f1620; border:1px solid #28313d; border-radius:10px; padding:10px 12px; color:var(--text); font:inherit;}
+.drawer textarea {min-height:90px; resize:vertical;}
+.drawer button.primary {background:var(--accent-grad); color:#fff; border:0; padding:11px 20px; border-radius:26px; font-weight:600; cursor:pointer;}
+.drawer .foot-note {font-size:.6rem; color:#5f6770; line-height:1.3; margin-top:4px;}
+.job-actions {display:flex; gap:8px; flex-wrap:wrap;}
+.job-actions button {background:#28313d; color:#d1d9e0; padding:6px 12px; border-radius:10px; border:1px solid #34424f; font-size:.65rem; cursor:pointer;}
+.job-actions button.apply {background:#1f452d; border-color:#326a45; color:#9af2bd;}
+.job.applied {opacity:.7;}
+.tier-badge {position:absolute; top:10px; right:10px; font-size:.55rem; letter-spacing:.7px; background:#303b47; padding:4px 8px; border-radius:20px; text-transform:uppercase; color:#9aa4af;}
+.job.top .tier-badge {background:#1f3350; color:#b0c9ff;}
+@media (max-width:840px){
+  header {padding:20px 20px 10px;}
+  main {padding:0 20px 50px;}
+  .upload-zone {padding:30px 20px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Upload Your CV</h1>
+  <div class="subtitle">Get instant AI‑powered job recommendations (beta)</div>
+</header>
+<main>
+  <section class="panel" id="uplPanel" aria-labelledby="uplHeading">
+    <h2 id="uplHeading">1. Upload or Paste</h2>
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="application/pdf,.pdf,.txt,.docx" />
+      <strong>Drop PDF / DOCX / TXT here</strong>
+      <div style="font-size:.7rem; margin-top:6px; color:var(--muted)">or click to choose • max 5 MB</div>
+    </div>
+    <small class="hint">Optional: Paste CV text (used only if no file provided)</small>
+    <textarea id="cvText" placeholder="Paste CV text here (optional)..."></textarea>
+    <div class="controls">
+      <button id="submitBtn" disabled>Upload & Analyze</button>
+      <button id="resetBtn" class="secondary" type="button" disabled>Reset</button>
+      <span class="badge" id="stateBadge">IDLE</span>
+    </div>
+    <div class="status" id="statusMsg" aria-live="polite"></div>
+    <div class="progress-line" id="progressLine" style="display:none"><span></span></div>
+    <div class="alert" id="errBox"></div>
+  </section>
+
+  <!-- Personal Letter Section -->
+  <section class="panel" id="letterPanel" style="display:none;">
+    <h2>📝 Personal Letter</h2>
+    <div id="letterContent" style="background:#0d1a23; border:1px solid #2d3b47; padding:18px 20px; border-radius:14px; font-size:.9rem; line-height:1.6; white-space:pre-wrap; direction:rtl; text-align:right; font-family:'Segoe UI',Tahoma,Arial,sans-serif;"></div>
+    <div id="letterMeta" style="margin-top:12px; font-size:.7rem; color:var(--muted);"></div>
+    <div class="controls" style="margin-top:16px;">
+      <button id="copyLetterBtn" class="secondary" onclick="copyLetter()">Copy Letter</button>
+      <button id="showStrengthsBtn" class="secondary" onclick="toggleStrengths()">Show Strengths</button>
+    </div>
+    <div id="strengthsBox" style="display:none; margin-top:16px; background:#1a2332; border:1px solid #2d3b47; padding:14px 16px; border-radius:12px;">
+      <h4 style="margin:0 0 8px; font-size:.8rem; color:var(--accent);">Key Strengths</h4>
+      <ul id="strengthsList" style="margin:0; padding-right:18px; font-size:.8rem; line-height:1.4; direction:rtl;"></ul>
+    </div>
+  <div id="letterUnavailable" class="alert warn" style="display:none; margin-top:18px;">Letter not available – missing required candidate data.</div>
+  </section>
+
+  <section class="panel alt results" id="resultsPanel" aria-labelledby="resHeading">
+    <h2 id="resHeading">2. Recommended Jobs</h2>
+    <div id="candMeta" style="font-size:.8rem; color:var(--muted); margin-bottom:10px;"></div>
+    <div class="copy-box">
+      <div class="inline-field" style="flex:1; min-width:240px;">
+        <input id="shareLink" style="flex:1; background:#0f1620; border:1px solid #28313d; border-radius:10px; padding:10px 12px; color:var(--text); font:inherit;" readonly />
+        <button id="copyBtn" type="button" class="secondary" style="padding:10px 16px;">Copy</button>
+      </div>
+      <button id="newBtn" type="button">New Upload</button>
+    </div>
+    <div class="jobs" id="jobs"></div>
+    <div class="alert warn" id="pendingNote">Still processing… You can copy the share link and refresh later.</div>
+  </section>
+</main>
+<footer>Prototype • Data processed transiently for recommendations • Refresh to update</footer>
+<div class="drawer" id="applyDrawer" aria-hidden="true">
+  <header>
+    <h3 id="drawerTitle">Apply</h3>
+    <button class="close" id="drawerClose" type="button">Close</button>
+  </header>
+  <form id="applyForm">
+    <input type="hidden" id="formJobId" />
+    <label>Full Name
+      <input type="text" id="formName" placeholder="Full name" />
+    </label>
+    <label>Email
+      <input type="email" id="formEmail" placeholder="name@example.com" />
+    </label>
+    <label>Phone
+      <input type="tel" id="formPhone" placeholder="05x-xxxxxxx" />
+    </label>
+    <label>Note (optional)
+      <textarea id="formNote" placeholder="A short message for the recruiter..."></textarea>
+    </label>
+    <button class="primary" id="applySubmit" type="submit">Submit Application</button>
+    <div class="foot-note">Submitting shares your CV-derived profile with this job's recruiter. We never expose your original file.</div>
+    <div class="alert ok" id="applySuccess" style="display:none;">Application submitted ✓</div>
+    <div class="alert" id="applyError" style="display:none;">Failed to submit application</div>
+  </form>
+</div>
+<script>
+(function(){
+  const apiBase = (function(){
+    // Heuristic: frontend likely served at 5173, backend at 8000
+    const loc = window.location;
+    const host = loc.hostname;
+  return loc.protocol + '//' + host + ':8080';
+  })();
+  const el = id=>document.getElementById(id);
+  const fileInput = el('fileInput');
+  const cvText = el('cvText');
+  const submitBtn = el('submitBtn');
+  const resetBtn = el('resetBtn');
+  const statusMsg = el('statusMsg');
+  const progressLine = el('progressLine');
+  const errBox = el('errBox');
+  const dropZone = el('dropZone');
+  const resultsPanel = el('resultsPanel');
+  const jobsDiv = el('jobs');
+  const shareLink = el('shareLink');
+  const copyBtn = el('copyBtn');
+  const newBtn = el('newBtn');
+  const stateBadge = el('stateBadge');
+  const candMeta = el('candMeta');
+  const pendingNote = el('pendingNote');
+
+  let currentShare = null; let polling = false; let pollAttempts = 0; let cancelPoll = false; let uploadedCandidateId = null; let matchReady = false; let appliedJobs = new Set();
+  // Drawer elements
+  const drawer = el('applyDrawer');
+  const drawerClose = el('drawerClose');
+  const applyForm = el('applyForm');
+  const formJobId = el('formJobId');
+  const formName = el('formName');
+  const formEmail = el('formEmail');
+  const formPhone = el('formPhone');
+  const formNote = el('formNote');
+  const applySubmit = el('applySubmit');
+  const applySuccess = el('applySuccess');
+  const applyError = el('applyError');
+
+  function setState(state){
+    stateBadge.textContent = state;
+  }
+  function setStatus(msg){ statusMsg.innerHTML = msg; }
+  function setError(msg){ if(!msg){errBox.style.display='none'; return;} errBox.textContent = msg; errBox.style.display='block'; }
+  function enableActions(enable){ submitBtn.disabled = !enable; }
+  function toggleProgress(show){ progressLine.style.display = show ? 'block':'none'; }
+  function bytesFmt(b){ if(b<1024) return b+' B'; if(b<1024*1024) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(2)+' MB'; }
+
+  function validate(){
+    const f = fileInput.files[0];
+    const hasFile = !!f;
+    const hasText = cvText.value.trim().length > 40; // minimal text length heuristic
+    submitBtn.disabled = !(hasFile || hasText) || polling;
+  }
+  fileInput.addEventListener('change', validate);
+  cvText.addEventListener('input', validate);
+
+  ;['dragenter','dragover'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault(); dropZone.classList.add('drag');}));
+  ;['dragleave','drop'].forEach(evt=>dropZone.addEventListener(evt,e=>{e.preventDefault(); if(evt==='drop'){ handleDrop(e);} dropZone.classList.remove('drag'); }));
+  function handleDrop(e){
+    const dt = e.dataTransfer; if(!dt) return; const files = dt.files; if(!files || !files.length) return; fileInput.files = files; validate(); }
+
+  function buildShareURL(id){ return window.location.origin.replace(/:\d+$/,'') + '/share/candidate/' + id + '/html'; }
+  function buildJSONURL(id){ return apiBase + '/share/candidate/' + id; }
+  function fetchApplied(){
+    if(!currentShare) return;
+    fetch(apiBase+'/apply/status/'+currentShare)
+      .then(r=>r.ok?r.json():null)
+      .then(js=>{ if(js && Array.isArray(js.applied_job_ids)){ appliedJobs = new Set(js.applied_job_ids); markApplied(); } });
+  }
+  function markApplied(){
+    jobsDiv.querySelectorAll('[data-job]').forEach(card=>{
+      const jid = card.getAttribute('data-job');
+      if(appliedJobs.has(jid)) card.classList.add('applied');
+    });
+  }
+  // Analytics batching
+  const evQueue = [];
+  function track(type, payload){
+    evQueue.push({type, ts: Date.now()/1000, payload});
+    if(evQueue.length >= 5) flushEvents();
+  }
+  function flushEvents(){
+    if(!evQueue.length) return;
+    const batch = evQueue.splice(0, evQueue.length);
+    fetch(apiBase+'/analytics',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({events: batch})}).catch(()=>{});
+  }
+  setInterval(flushEvents, 8000);
+
+  async function submit(){
+    setError('');
+    const f = fileInput.files[0];
+    if(f){
+      const ext = (f.name.split('.').pop()||'').toLowerCase();
+      if(!['pdf','txt','docx'].includes(ext)) { setError('Unsupported file type: '+ext); return; }
+      if(f.size > 5*1024*1024){ setError('File too large ('+bytesFmt(f.size)+') – limit 5MB'); return; }
+    }
+    const usingFile = !!f;
+    const fd = new FormData();
+    if(usingFile){ fd.append('file', f); }
+    else {
+      const blob = new Blob([cvText.value], {type:'text/plain'});
+      fd.append('file', new File([blob], 'inline.txt', {type:'text/plain'}));
+    }
+    setState('UPLOADING'); enableActions(false); toggleProgress(true); setStatus('<strong>Uploading…</strong>');
+    try {
+      const res = await fetch(apiBase + '/upload/candidate', {method:'POST', body: fd});
+      if(!res.ok) { const txt = await res.text(); throw new Error('Upload failed '+res.status+' '+txt); }
+      const js = await res.json();
+      currentShare = js.share_id; uploadedCandidateId = js.candidate_id; matchReady = js.status === 'ready';
+      shareLink.value = buildShareURL(currentShare);
+      setState('PROCESSING'); setStatus('Ingestion started. Share ID: <strong>'+currentShare+'</strong>');
+      resultsPanel.style.display='block';
+      pollAttempts = 0; cancelPoll=false; polling = true; pendingNote.style.display='none';
+      poll();
+      track('upload_success',{share_id:currentShare});
+      // If backend already returned personal letter, display immediately
+      if(js.personal_letter && js.personal_letter.letter_content){
+        displayPersonalLetter({letter: js.personal_letter, candidate_name: js.personal_letter.candidate_name||'', match_count: js.personal_letter.match_count||0});
+      } else {
+        // Attempt to load personal letter after successful upload (with retry, extended)
+        setTimeout(() => loadPersonalLetterWithRetry(currentShare, 10), 1500);
+      }
+    } catch(e){
+      setError(e.message || 'Upload error'); setState('ERROR'); enableActions(true); toggleProgress(false); }
+  }
+
+  async function poll(){
+    if(!currentShare || cancelPoll) return; pollAttempts++;
+    const schedule = [0, 4000, 4000, 6000, 8000, 10000, 12000, 12000, 12000];
+    const delay = schedule[Math.min(pollAttempts, schedule.length-1)];
+    if(delay>0) await new Promise(r=>setTimeout(r, delay));
+    try {
+      const url = buildJSONURL(currentShare)+'?k=12&ts=' + Date.now();
+      const res = await fetch(url, {method:'GET'});
+      if(res.status === 404){
+        if(pollAttempts <= 2){ poll(); return; }
+        setStatus('Share not found yet (404)… retrying'); poll(); return;
+      }
+      if(!res.ok){ setStatus('Temporary error '+res.status+' – retrying'); poll(); return; }
+  const js = await res.json();
+      render(js);
+      if(!matchReady){ // in case backend marks ready later
+        matchReady = true; // we treat first successful response as ready for now
+      }
+      const matches = js.matches || [];
+      if(matches.length === 0 && pollAttempts < 12){
+        setStatus('Waiting for matches… attempt '+pollAttempts);
+        poll(); return;
+      }
+      if(matches.length === 0){
+        pendingNote.style.display='block';
+        setStatus('Still processing – you can revisit the share link later.');
+      } else {
+        setStatus('Completed. Found '+matches.length+' matches.');
+        track('matches_ready',{share_id:currentShare, count: matches.length});
+      }
+      polling = false; toggleProgress(false); setState('READY'); enableActions(true); resetBtn.disabled=false;
+      fetchApplied();
+    } catch(e){
+      if(pollAttempts < 12){ setStatus('Network issue – retry '+pollAttempts); poll(); }
+      else { setError('Polling failed repeatedly.'); toggleProgress(false); setState('ERROR'); polling=false; }
+    }
+  }
+
+  function render(js){
+    if(!js) return; const c = js.candidate || {}; const matches = js.matches || [];
+    candMeta.innerHTML = 'Candidate: <strong>' + escapeHtml(c.title || 'Untitled') + '</strong> • Share ID: ' + escapeHtml(c.share_id||'') + ' • Skills: ' + (c.skills||[]).length;
+    // Group into tiers
+    const groups = {strong:[], good:[], explore:[]};
+    matches.forEach((m,i)=>{
+      const sc = m.score || 0;
+      if(sc >= 0.75) groups.strong.push([m,i]); else if(sc >= 0.5) groups.good.push([m,i]); else groups.explore.push([m,i]);
+    });
+    const order = [ ['strong','Strong Fit'], ['good','Good Match'], ['explore','Explore'] ];
+    jobsDiv.innerHTML = order.map(([key,label])=> groups[key].length?tierBlock(label, groups[key]):'').join('');
+    markApplied();
+  }
+  function tierBlock(label, arr){
+    return `<div class="tier-group"><h3>${escapeHtml(label)}</h3><div class="jobs">${arr.map(([m,i])=>jobCard(m,i)).join('')}</div></div>`;
+  }
+  function jobCard(m,i){
+    const overlap = (m.skill_overlap||[]).slice(0,8);
+    const jobOnly = (m.job_only_skills||[]).slice(0,6);
+    const extra = (m.candidate_only_skills||[]).slice(0,6);
+    function chips(list, cls){ return list.map(s=>'<span class="chip '+cls+'">'+escapeHtml(s)+'</span>').join(''); }
+    const reason = (m.reason||'').split('|').map(r=>r.trim()).filter(Boolean).slice(0,2).map(r=>'<li>'+escapeHtml(r)+'</li>').join('');
+    const score = (m.score||0).toFixed(2);
+    return `<div class="job ${i===0?'top':''}" data-job="${escapeHtml(m.job_id||'')}">
+      <div class="score">${score}</div>
+      <div class="tier-badge">${tierLabel(m.score||0)}</div>
+      <h3>${escapeHtml(m.title||'Job')}</h3>
+      <div class="meta-sm">JOB ID ${escapeHtml(m.job_id||'')}</div>
+      <ul style="margin:4px 0 8px; padding-left:18px; font-size:.65rem; line-height:1.35;">${reason||'<li>Partial match</li>'}</ul>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div class="skill-chips">${chips(overlap,'overlap')||'<span class=chip>—</span>'}</div>
+        <div class="skill-chips">${chips(jobOnly,'missing')||''}</div>
+        <div class="skill-chips">${chips(extra,'extra')||''}</div>
+      </div>
+      <div class="job-actions">
+        <button class="apply" type="button" data-apply="${escapeHtml(m.job_id||'')}">Apply</button>
+        <button type="button" data-save="${escapeHtml(m.job_id||'')}">Save</button>
+      </div>
+    </div>`;
+  }
+  function tierLabel(score){ if(score>=0.75) return 'STRONG'; if(score>=0.5) return 'GOOD'; return 'EXPLORE'; }
+  function escapeHtml(str){ return (str||'').replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c])); }
+
+  submitBtn.addEventListener('click', ()=>{ if(submitBtn.disabled) return; submit(); });
+  copyBtn.addEventListener('click', ()=>{ if(!shareLink.value) return; navigator.clipboard.writeText(shareLink.value).then(()=>{ setStatus('Link copied'); }); });
+  newBtn.addEventListener('click', ()=> startNew());
+  resetBtn.addEventListener('click', ()=> startNew());
+  jobsDiv.addEventListener('click', e=>{
+    const t = e.target;
+    if(t instanceof HTMLElement){
+      const jid = t.getAttribute('data-apply');
+      if(jid){ openDrawer(jid); track('apply_click',{job_id:jid, share_id:currentShare}); }
+      const save = t.getAttribute('data-save');
+      if(save){ t.textContent='Saved'; t.disabled=true; track('save_job',{job_id:save, share_id:currentShare}); }
+    }
+  });
+  drawerClose.addEventListener('click', closeDrawer);
+  applyForm.addEventListener('submit', submitApplication);
+  function openDrawer(jobId){ formJobId.value=jobId; drawer.classList.add('open'); drawer.setAttribute('aria-hidden','false'); applySuccess.style.display='none'; applyError.style.display='none'; formNote.value=''; }
+  function closeDrawer(){ drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
+  async function submitApplication(ev){ ev.preventDefault(); applySubmit.disabled=true; applyError.style.display='none'; applySuccess.style.display='none';
+    try {
+      const payload = {share_id: currentShare, job_id: formJobId.value, contact_name: formName.value||undefined, contact_email: formEmail.value||undefined, contact_phone: formPhone.value||undefined, note: formNote.value||undefined};
+      const res = await fetch(apiBase+'/apply',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      if(!res.ok) throw new Error('apply failed '+res.status);
+      const js = await res.json();
+      appliedJobs.add(payload.job_id); markApplied();
+      applySuccess.style.display='block'; track('apply_submit_success',{job_id:payload.job_id, application_id:js.application_id});
+      setTimeout(()=>closeDrawer(), 1200);
+    } catch(err){ applyError.style.display='block'; track('apply_submit_error',{job_id: formJobId.value}); }
+    finally { applySubmit.disabled=false; }
+  }
+
+  // Personal Letter Functions
+  async function loadPersonalLetter(shareId) {
+    if (!shareId) return;
+    try {
+      const res = await fetch(`${apiBase}/personal-letter/${shareId}`);
+      if (res.ok) {
+        const data = await res.json();
+        displayPersonalLetter(data);
+        return true;
+      }
+      // If 404 try availability endpoint to show missing fields reason
+      if(res.status === 404){
+        const avail = await fetch(`${apiBase}/personal-letter/availability/${shareId}`);
+        if(avail.ok){
+          const js = await avail.json();
+            if(js && !js.available){
+              const box = document.getElementById('letterUnavailable');
+              if(box){
+                box.style.display='block';
+                if(js.missing && js.missing.length){
+                  box.textContent = 'Letter not available – missing: ' + js.missing.join(', ');
+                }
+                document.getElementById('letterPanel').style.display='block';
+              }
+            }
+        }
+      }
+    } catch (e) {
+      console.log('Personal letter not ready yet:', e.message);
+    }
+    return false;
+  }
+
+  async function loadPersonalLetterWithRetry(shareId, maxRetries = 5) {
+    if (!shareId) return;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const success = await loadPersonalLetter(shareId);
+      if (success) return;
+      
+      // Wait before retry (exponential backoff)
+      const delay = Math.min(2000 * Math.pow(1.5, attempt), 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    console.log('Personal letter not available after retries');
+  }
+
+  function displayPersonalLetter(data) {
+    const letter = data.letter || {};
+    const letterPanel = document.getElementById('letterPanel');
+    const letterContent = document.getElementById('letterContent');
+    const letterMeta = document.getElementById('letterMeta');
+    const strengthsList = document.getElementById('strengthsList');
+    
+    if (letter.letter_content) {
+      letterContent.textContent = letter.letter_content;
+      letterMeta.textContent = `Generated for ${data.candidate_name || 'candidate'} • ${data.match_count || 0} jobs analyzed`;
+      
+      // Populate strengths
+      const strengths = letter.key_strengths || [];
+      strengthsList.innerHTML = strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+      
+      letterPanel.style.display = 'block';
+    }
+  }
+
+  window.copyLetter = function() {
+    const content = document.getElementById('letterContent').textContent;
+    if (content) {
+      navigator.clipboard.writeText(content).then(() => {
+        const btn = document.getElementById('copyLetterBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    }
+  };
+
+  window.toggleStrengths = function() {
+    const box = document.getElementById('strengthsBox');
+    const btn = document.getElementById('showStrengthsBtn');
+    if (box.style.display === 'none') {
+      box.style.display = 'block';
+      btn.textContent = 'Hide Strengths';
+    } else {
+      box.style.display = 'none';
+      btn.textContent = 'Show Strengths';
+    }
+  };
+
+  function startNew(){ 
+    cancelPoll=true; polling=false; currentShare=null; pollAttempts=0; uploadedCandidateId=null; matchReady=false; 
+    enableActions(false); submitBtn.disabled=true; fileInput.value=''; cvText.value=''; shareLink.value=''; jobsDiv.innerHTML=''; 
+    resultsPanel.style.display='none'; 
+    document.getElementById('letterPanel').style.display='none'; // Hide letter panel on reset
+    setStatus(''); setError(''); setState('IDLE'); toggleProgress(false); resetBtn.disabled=true; pendingNote.style.display='none'; 
+  }
+
+  // Initial
+  validate();
+  track('page_view', {path: location.pathname});
+})();
+</script>
+</body>
+</html>

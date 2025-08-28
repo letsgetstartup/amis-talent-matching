@@ -1,0 +1,21 @@
+{
+  "name": "talentdb",
+  "version": "1.0.0",
+  "description": "Ingest candidate CVs & job descriptions, extract & normalize skills (LLM + heuristics), persist exclusively in MongoDB, and serve rich matching/search/explainability APIs. All runtime persistence uses Mongo; no JSON snapshot files or mock fallbacks. Vocab seed JSON can be auto-removed after bootstrap.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+  "mongo-express": "node node_modules/mongo-express/app",
+  "mongoku": "npx mongoku"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "mongoku": "^1.7.1"
+  }
+}

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency Quick Match</title>
+  <style>
+    :root{--bg:#0f172a;--panel:#0b1324;--border:#1f2937;--muted:#94a3b8;--accent:#22d3ee;--ok:#10b981;--err:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0f172a 0%,#0b1220 100%);color:#e2e8f0}
+    header{position:sticky;top:0;z-index:10;display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(17,24,39,.85);backdrop-filter:blur(6px)}
+    header .brand{font-weight:700}
+    header .user{font-size:14px;color:#a5b4fc}
+    .wrap{max-width:860px;margin:0 auto;padding:18px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+    .col{flex:1 1 260px}
+    label{font-size:13px;color:#93c5fd;display:block;margin-bottom:6px}
+    input,select{width:100%;background:#0a1020;color:#e2e8f0;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+    button{background:#1f2937;border:1px solid #334155;color:#e2e8f0;border-radius:10px;padding:10px 14px;cursor:pointer}
+    button.primary{background:linear-gradient(90deg,#22d3ee,#38bdf8);color:#0b1324;border:none;font-weight:600}
+    .muted{color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--border);padding:8px;font-size:13px}
+    th{color:#a5b4fc;background:var(--panel);position:sticky;top:0}
+    .status{font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid #334155;display:inline-block}
+    .status.ok{background:#052e26;color:#34d399;border-color:#065f46}
+    .status.err{background:#2a0b0e;color:#fecaca;border-color:#7f1d1d}
+    .status.wait{background:#0a1428;color:#93c5fd;border-color:#334155}
+    .right{float:inline-end}
+    .loading{opacity:.7;pointer-events:none}
+    .toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:#0b1324;border:1px solid var(--border);color:#e2e8f0;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  </style>
+  <link rel="icon" href="data:," />
+  <meta name="robots" content="noindex,nofollow" />
+</head>
+<body>
+  <header>
+    <div class="brand">Agency Quick Match</div>
+    <div class="user" id="userSlot">לא מחובר</div>
+  </header>
+  <div class="wrap">
+    <div id="toast" class="toast"></div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 10px">חיפוש התאמות לפי מזהה</h2>
+      <div class="row">
+        <div class="col" style="min-width:180px">
+          <label>סוג חיפוש</label>
+          <div style="display:flex;gap:14px;align-items:center">
+            <label><input type="radio" name="searchType" value="candidate" id="tCand" checked> מועמד</label>
+            <label><input type="radio" name="searchType" value="job" id="tJob"> משרה</label>
+          </div>
+        </div>
+        <div class="col" style="min-width:280px">
+          <label for="entityId">מזהה (24 הקסה)</label>
+          <input id="entityId" placeholder="לדוגמה: 68af2e02697377761f45e4a6" />
+          <div id="idErr" class="hint" style="color:#ef4444"></div>
+        </div>
+        <div class="col" style="max-width:120px">
+          <label for="topK">Top K</label>
+          <input id="topK" type="number" min="1" max="20" value="5" />
+        </div>
+        <div class="col" style="min-width:180px">
+          <label>סינון לפי עיר</label>
+          <label><input id="cityFilter" type="checkbox" checked> קרבה גיאוגרפית</label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button id="runBtn" class="primary" disabled>חפש התאמות</button>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input id="autoSave" type="checkbox" checked> שמור התאמות למונגו אוטומטית</label>
+        </div>
+      </div>
+      <div id="summary" class="hint" style="margin-top:8px"></div>
+    </div>
+
+    <div id="resultsCard" class="panel" style="display:none">
+      <h3 style="margin:0 0 8px">תוצאות</h3>
+      <div class="hint" id="saveMeta" style="margin-bottom:8px"></div>
+      <div style="overflow:auto;max-height:60vh">
+        <table>
+          <thead>
+            <tr id="headRow"><th>כותרת/שם</th><th>עיר</th><th>ציון</th><th>מזהה</th><th>סטטוס שמירה</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel muted">
+      טיפ: ניתן לחזור לפורטל המלא בכתובת <a href="/agency-portal.html" style="color:#93c5fd">/agency-portal.html</a>
+    </div>
+  </div>
+
+  <script>
+  const API = location.origin;
+  const state = { apiKey:null, token:null, tenantId:null, profile:null };
+  try{ state.apiKey = localStorage.getItem('apiKey'); state.token = localStorage.getItem('token'); state.tenantId = localStorage.getItem('tenantId'); }catch{}
+  const hasAuth = () => !!state.apiKey;
+  const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
+  function showUser(){ const el = document.getElementById('userSlot'); el.textContent = hasAuth() ? 'מחובר' : 'לא מחובר'; }
+  showUser();
+
+  function toast(msg, kind='info', ms=3000){ const el = document.getElementById('toast'); el.textContent = msg; el.style.borderColor = kind==='error'?'#ef4444':kind==='ok'?'#10b981':'#334155'; el.style.display='block'; clearTimeout(window.__t); window.__t=setTimeout(()=>el.style.display='none', ms); }
+
+  const idInput = document.getElementById('entityId');
+  const idErr = document.getElementById('idErr');
+  const runBtn = document.getElementById('runBtn');
+  const topK = document.getElementById('topK');
+  const cityFilter = document.getElementById('cityFilter');
+  const tCand = document.getElementById('tCand');
+  const tJob = document.getElementById('tJob');
+  const resultsCard = document.getElementById('resultsCard');
+  const rowsEl = document.getElementById('rows');
+  const headRow = document.getElementById('headRow');
+  const saveMeta = document.getElementById('saveMeta');
+  const summary = document.getElementById('summary');
+  const autoSave = document.getElementById('autoSave');
+
+  const HEX24 = /^[0-9a-fA-F]{24}$/;
+  function validate(){ const v = idInput.value.trim(); const ok = HEX24.test(v); idErr.textContent = ok? '': 'מזהה לא תקין (חייב 24 ספרות הקסה)'; runBtn.disabled = !ok; return ok; }
+  idInput.addEventListener('input', validate); validate();
+
+  async function apiFetch(input, init={}){
+    const merged = { cache:'no-store', ...init, headers: { 'Pragma':'no-cache', 'Cache-Control':'no-store', ...(init.headers||{}), ...hdrs() } };
+    return fetch(input, merged);
+  }
+
+  function pct(x){ const n = Number(x||0); return (Math.round(n*1000)/10).toFixed(1) + '%'; }
+  function asCity(c){ return (c||'').toString().replace(/_/g,' '); }
+  function setLoading(on){ runBtn.classList.toggle('loading', !!on); runBtn.disabled = !!on || !validate(); runBtn.textContent = on ? 'מחפש…' : 'חפש התאמות'; }
+
+  const savedSet = new Set(); // dedupe within session
+  function keyFor(direction, source, target){ return `${direction}:${source}:${target}`; }
+
+  async function savePairs(direction, sourceId, targets){
+    if(!autoSave.checked || !targets.length) return {ok:0,fail:0};
+    // small concurrency limiter
+    const maxC = 5; let idx=0, ok=0, fail=0;
+    async function one(tid){
+      const k = keyFor(direction, sourceId, tid);
+      if(savedSet.has(k)) return true; // already saved this session
+      try{
+        const r = await apiFetch(`${API}/match/save`, {method:'POST', headers:{'Content-Type':'application/json', ...hdrs()}, body: JSON.stringify({direction, source_id: sourceId, target_id: tid, status:'auto'})});
+        if(r.ok){ savedSet.add(k); ok++; return true; }
+        fail++; return false;
+      }catch{ fail++; return false; }
+    }
+    async function worker(){
+      while(idx < targets.length){ const i=idx++; await one(targets[i]); updateSaveMeta(ok, fail, targets.length); }
+    }
+    const workers = Array.from({length: Math.min(maxC, targets.length)}, worker);
+    await Promise.all(workers);
+    return {ok, fail};
+  }
+
+  function updateSaveMeta(ok, fail, total){ saveMeta.textContent = `שמירה: ${ok}/${total} הצלחות` + (fail? `, ${fail} כשלים`:''); }
+
+  function render(direction, sourceId, list){
+    resultsCard.style.display='block';
+    rowsEl.innerHTML='';
+    headRow.innerHTML = direction==='c2j' ? '<th>כותרת משרה</th><th>עיר</th><th>ציון</th><th>מזהה משרה</th><th>סטטוס שמירה</th>' : '<th>שם מועמד/כותרת</th><th>עיר</th><th>ציון</th><th>מזהה מועמד</th><th>סטטוס שמירה</th>';
+    const total = list.length; updateSaveMeta(0,0,total);
+    for(const m of list){
+      const title = m.title || m.full_name || '';
+      const city = asCity(m.city || m.city_canonical || '');
+      const score = pct(m.score);
+      const id = m.job_id || m.candidate_id || '';
+      const tr = document.createElement('tr');
+      const status = document.createElement('span'); status.className='status wait'; status.textContent='ממתין';
+      tr.innerHTML = `<td>${title}</td><td>${city}</td><td>${score}</td><td>${id}</td>`;
+      const td = document.createElement('td'); td.appendChild(status); tr.appendChild(td);
+      rowsEl.appendChild(tr);
+      m.__statusEl = status; // attach
+    }
+    return (ok,fail)=>{ /* update per-row not tracked individually here to keep page small */ updateSaveMeta(ok,fail,total); };
+  }
+
+  async function run(){
+    if(!validate()) return; setLoading(true); saveMeta.textContent=''; rowsEl.innerHTML=''; resultsCard.style.display='none';
+    const id = idInput.value.trim(); const k = Math.max(1, Math.min(20, Number(topK.value||5) || 5)); const cf = !!cityFilter.checked;
+    const isCandidate = tCand.checked; const direction = isCandidate ? 'c2j' : 'j2c';
+    const url = isCandidate ? `${API}/match/candidate/${id}?k=${encodeURIComponent(k)}&city_filter=${cf}` : `${API}/match/job/${id}?k=${encodeURIComponent(k)}&city_filter=${cf}`;
+    summary.textContent = isCandidate ? `מועמד ${id} → Top ${k} משרות (קרבה: ${cf?'כן':'לא'})` : `משרה ${id} → Top ${k} מועמדים (קרבה: ${cf?'כן':'לא'})`;
+    try{
+      const r = await apiFetch(url);
+      if(r.status === 404){ toast('לא נמצא (ייתכן שאינו שייך לדייר שלך)', 'error'); setLoading(false); return; }
+      if(!r.ok){ toast('שגיאת רשת בעת איסוף התאמות', 'error'); setLoading(false); return; }
+      const js = await r.json();
+      const matches = Array.isArray(js.matches)? js.matches : [];
+      if(!matches.length){ toast('לא נמצאו התאמות', 'info'); rowsEl.innerHTML=''; resultsCard.style.display='block'; setLoading(false); return; }
+      const updateTotals = render(direction, id, matches);
+      // Collect target ids and save
+      const targets = matches.map(m => isCandidate ? m.job_id : m.candidate_id).filter(Boolean);
+      const {ok, fail} = await savePairs(direction, id, targets);
+      // Update badges globally based on saved set membership
+      for(const m of matches){
+        const targetId = isCandidate ? m.job_id : m.candidate_id;
+        if(!m.__statusEl) continue;
+        const kKey = keyFor(direction, id, targetId);
+        if(savedSet.has(kKey)){ m.__statusEl.textContent='נשמר'; m.__statusEl.className='status ok'; }
+        else { m.__statusEl.textContent='נכשל'; m.__statusEl.className='status err'; }
+      }
+      updateTotals(ok, fail);
+    }catch(e){ toast('כשל בביצוע הבקשה', 'error'); }
+    finally{ setLoading(false); }
+  }
+
+  runBtn.addEventListener('click', run);
+  </script>
+</body>
+</html>

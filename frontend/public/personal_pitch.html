@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8" />
+<title>Personal Pitch Generator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+:root { --bg:#0d1117; --panel:#161b22; --panel2:#1f2733; --border:#2b3642; --accent:#2563eb; --accent-grad:linear-gradient(90deg,#2563eb,#3b82f6); --text:#e6edf3; --muted:#8b949e; --danger:#dc3545; --ok:#2ea043; }
+body {margin:0; font-family:system-ui,Arial,sans-serif; background:var(--bg); color:var(--text);} h1{margin:0 0 6px; font-size:1.55rem; background:var(--accent-grad); -webkit-background-clip:text; color:transparent;}
+header{padding:24px 26px 14px;} .sub{color:var(--muted); font-size:.85rem;} main{max-width:1240px; margin:0 auto; padding:0 26px 80px;}
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:20px 24px 26px; margin:0 0 30px; position:relative;}
+.panel h2{margin:0 0 12px; font-size:1.1rem; font-weight:600;}
+.upload-zone{border:2px dashed #36424f; background:#121a1f; border-radius:18px; padding:30px 24px; text-align:center; cursor:pointer; position:relative; transition:.25s;}
+.upload-zone.drag{border-color:var(--accent); background:#182233;}
+.upload-zone input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer;}
+textarea{width:100%; min-height:120px; background:#0f1620; border:1px solid #273341; border-radius:12px; padding:12px 14px; color:var(--text); resize:vertical; font:inherit;}
+button{background:var(--accent-grad); color:#fff; border:0; padding:12px 22px; font:600 .9rem system-ui,sans-serif; border-radius:30px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;}
+button[disabled]{opacity:.45; cursor:not-allowed;}
+button.secondary{background:#303b47;}
+.badge{display:inline-block; background:#28313d; padding:4px 10px; border-radius:18px; font-size:.6rem; letter-spacing:.6px; text-transform:uppercase; color:#a7b3c0;}
+.status{margin-top:10px; font-size:.75rem; color:var(--muted);} .error{background:#31171b; border:1px solid #803038; padding:10px 14px; border-radius:12px; margin-top:12px; font-size:.75rem; display:none;}
+.jobs-grid{display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
+.job{background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:14px 16px 16px; display:flex; flex-direction:column; gap:10px; position:relative;}
+.job .score{position:absolute; top:10px; left:10px; background:#2563eb; color:#fff; font-size:.65rem; padding:4px 8px; border-radius:8px; letter-spacing:.5px;}
+.job h3{margin:0 0 2px; font-size:.95rem; font-weight:600;} .meta{font-size:.6rem; letter-spacing:.5px; text-transform:uppercase; color:#7f8893;}
+.check{position:absolute; top:10px; right:10px;} .job.selected{border:2px solid var(--accent);}
+.skill-chips{display:flex; flex-wrap:wrap; gap:6px;}
+.chip{background:#28313d; font-size:.6rem; padding:4px 8px; border-radius:12px; border:1px solid #34424f;}
+.controls{display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:16px;}
+.tone-select{background:#0f1620; border:1px solid #273341; border-radius:12px; padding:10px 12px; color:var(--text); font:inherit;}
+#pitchOut{white-space:pre-wrap; background:#101a23; border:1px solid #273341; padding:18px 20px; border-radius:16px; font-size:.85rem; line-height:1.5;}
+.tabs{display:flex; gap:8px; margin:18px 0 12px;} .tabs button{background:#28313d; padding:8px 16px; border-radius:20px; font-size:.7rem;} .tabs button.active{background:var(--accent-grad);}
+small.hint{display:block; font-size:.6rem; color:#69737e; margin-top:6px;}
+#jsonView{display:none; background:#0f1620; padding:14px 16px; border:1px solid #273341; border-radius:14px; font:12px/1.4 monospace; overflow:auto; max-height:340px;}
+footer{margin:50px 0 60px; text-align:center; font-size:.6rem; color:#5d6670;}
+.spinner{width:22px; height:22px; border:3px solid #2d3b47; border-top:3px solid var(--accent); border-radius:50%; animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media (max-width:860px){header{padding:22px 20px 10px;} main{padding:0 20px 70px;} .jobs-grid{grid-template-columns:1fr;}}
+</style>
+</head><body>
+<header><h1>Personal Pitch</h1><div class="sub">Upload CV → Select Jobs → Generate tailored application text</div></header>
+<main>
+  <section class="panel" id="uploadPanel"><h2>1. Upload or Paste CV</h2>
+      <div class="upload-zone" id="dropZone"><input type="file" id="fileInput" accept="application/pdf,.pdf,.docx,.txt" />
+        <strong>Drop PDF / DOCX / TXT</strong><div style="font-size:.65rem; margin-top:4px; color:var(--muted);">or click to browse • max 5MB</div></div>
+      <small class="hint">Optional: paste text (used only if no file uploaded)</small>
+      <textarea id="cvText" placeholder="Paste CV text... (optional)"></textarea>
+      <div class="controls"><button id="uploadBtn" disabled>Upload & Match</button><span class="badge" id="uplState">IDLE</span></div>
+      <div class="status" id="uplStatus"></div><div class="error" id="uplError"></div>
+  </section>
+  <section class="panel" id="jobsPanel" style="display:none;"><h2>2. Select Jobs <span style="font-weight:400; color:var(--muted); font-size:.75rem;">(choose up to 5)</span></h2>
+      <div id="jobsGrid" class="jobs-grid"></div>
+      <div class="controls">
+        <select id="tone" class="tone-select"><option value="professional">Professional</option><option value="enthusiastic">Enthusiastic</option><option value="concise">Concise</option><option value="persuasive">Persuasive</option><option value="balanced">Balanced</option></select>
+        <button id="genBtn" disabled>Generate My Pitch</button>
+        <button id="regenBtn" class="secondary" disabled>Regenerate</button>
+        <span class="badge" id="selCount">0 selected</span>
+      </div>
+      <div class="status" id="genStatus"></div><div class="error" id="genError"></div>
+  </section>
+  <section class="panel" id="pitchPanel" style="display:none;"><h2>3. Personalized Pitch</h2>
+      <div class="tabs"><button id="tabText" class="active" type="button">Text</button><button id="tabJson" type="button">JSON</button></div>
+    <div id="pitchOut"></div>
+    <div id="candidateMsg" style="margin-top:18px; background:#18222c; border:1px solid #273341; padding:14px 16px; border-radius:14px; font-size:.8rem; line-height:1.45; display:none;"></div>
+    <div id="improveBox" style="margin-top:16px; display:none;">
+      <h3 style="margin:0 0 10px; font-size:.8rem; letter-spacing:.5px; text-transform:uppercase; color:#8b949e;">Improvement Suggestions</h3>
+      <ul id="improveList" style="margin:0; padding-left:18px; font-size:.7rem; line-height:1.4;"></ul>
+    </div>
+      <pre id="jsonView"></pre>
+      <div class="controls"><button id="copyBtn" class="secondary" disabled>Copy Text</button><button id="downloadBtn" class="secondary" disabled>Download .txt</button></div>
+      <small class="hint" id="pitchMeta"></small>
+  </section>
+</main>
+<footer>Prototype – LLM generated content. Review before sending.</footer>
+<script>(function(){
+const el=id=>document.getElementById(id);
+const fileInput=el('fileInput'), cvText=el('cvText'), uploadBtn=el('uploadBtn'), uplStatus=el('uplStatus'), uplError=el('uplError'), uplState=el('uplState');
+const jobsPanel=el('jobsPanel'), jobsGrid=el('jobsGrid'), selCount=el('selCount');
+const genBtn=el('genBtn'), regenBtn=el('regenBtn'), genStatus=el('genStatus'), genError=el('genError'), toneSel=el('tone');
+const pitchPanel=el('pitchPanel'), pitchOut=el('pitchOut'), jsonView=el('jsonView'), copyBtn=el('copyBtn'), downloadBtn=el('downloadBtn'), pitchMeta=el('pitchMeta');
+const candidateMsg=el('candidateMsg'), improveBox=el('improveBox'), improveList=el('improveList');
+const tabText=el('tabText'), tabJson=el('tabJson');
+let shareId=null, candidateId=null, matches=[], selected=new Set(), lastPitch=null, lastJobsKey='';
+const apiBase=location.protocol+'//'+location.hostname+':8000';
+function validateUpload(){const f=fileInput.files[0]; const hasF=!!f; const hasT=cvText.value.trim().length>40; uploadBtn.disabled=!(hasF||hasT);}
+fileInput.addEventListener('change', validateUpload); cvText.addEventListener('input', validateUpload);
+['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault(); dropZone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault(); if(ev==='drop') handleDrop(e); dropZone.classList.remove('drag');}));
+function handleDrop(e){ const files=e.dataTransfer.files; if(files&&files.length){ fileInput.files=files; validateUpload(); }}
+uploadBtn.addEventListener('click', doUpload);
+async function doUpload(){ uplError.style.display='none'; uplState.textContent='UPLOADING'; uploadBtn.disabled=true; const f=fileInput.files[0]; if(f && f.size>5*1024*1024){uplError.textContent='File too large'; uplError.style.display='block'; uploadBtn.disabled=false; return;}
+ const fd=new FormData(); if(f){ fd.append('file', f);} else {fd.append('file', new File([cvText.value],'inline.txt',{type:'text/plain'}));}
+ uplStatus.textContent='Uploading…';
+ try { const res=await fetch(apiBase+'/upload/candidate',{method:'POST', body:fd}); if(!res.ok) throw new Error('Upload failed '+res.status); const js=await res.json(); shareId=js.share_id; candidateId=js.candidate_id; uplState.textContent='MATCHING'; uplStatus.textContent='Fetching recommendations…'; await pollMatches(); }
+ catch(e){ uplError.textContent=e.message||'Upload error'; uplError.style.display='block'; uplState.textContent='ERROR'; uploadBtn.disabled=false; }
+}
+async function pollMatches(){ for(let attempt=0; attempt<10; attempt++){ try{ const r=await fetch(apiBase+'/share/candidate/'+shareId+'?k=20'); if(r.ok){ const js=await r.json(); matches=js.matches||[]; if(matches.length){ renderJobs(); return;} } }catch{} await new Promise(r=>setTimeout(r, 1500)); }
+ uplStatus.textContent='No matches yet – try again later.'; uplState.textContent='READY'; }
+function renderJobs(){ uplState.textContent='READY'; uplStatus.textContent='Matches ready'; jobsPanel.style.display='block'; jobsGrid.innerHTML=matches.map(m=>jobCard(m)).join(''); updateSelectionUI(); }
+function jobCard(m){ const overlap=(m.skill_overlap||[]).slice(0,6); return `<div class="job" data-job="${escapeHtml(m.job_id||'')}">
+ <input type="checkbox" class="check" data-check="${escapeHtml(m.job_id||'')}" />
+ <div class="score">${(m.score||0).toFixed(2)}</div>
+ <h3>${escapeHtml(m.title||'Job')}</h3>
+ <div class="meta">JOB ID ${escapeHtml(m.job_id||'')}</div>
+ <div class="skill-chips">${overlap.map(s=>`<span class=chip>${escapeHtml(s)}</span>`).join('') || '<span class=chip>—</span>'}</div>
+</div>`; }
+jobsGrid.addEventListener('change', e=>{ const t=e.target; if(!(t instanceof HTMLInputElement)) return; const jid=t.getAttribute('data-check'); if(!jid) return; if(t.checked){ if(selected.size>=5){ t.checked=false; return;} selected.add(jid);} else selected.delete(jid); highlight(); updateSelectionUI(); });
+function highlight(){ jobsGrid.querySelectorAll('.job').forEach(card=>{ const jid=card.getAttribute('data-job'); card.classList.toggle('selected', selected.has(jid)); const cb=card.querySelector('input[type=checkbox]'); if(cb) cb.checked=selected.has(jid); }); }
+function updateSelectionUI(){ selCount.textContent=selected.size+' selected'; genBtn.disabled=selected.size===0; regenBtn.disabled=selected.size===0 || !lastPitch; }
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+
+genBtn.addEventListener('click', ()=>generatePitch(false)); regenBtn.addEventListener('click', ()=>generatePitch(true));
+async function generatePitch(force){ genError.style.display='none'; genStatus.textContent='Generating pitch…'; genBtn.disabled=true; regenBtn.disabled=true; const job_ids=[...selected]; const tone=toneSel.value; try { const res=await fetch(apiBase+'/pitch',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({share_id:shareId, job_ids, tone, force})}); if(!res.ok) throw new Error('Pitch failed '+res.status); const js=await res.json(); lastPitch=js; lastJobsKey=job_ids.sort().join(',')+tone; renderPitch(js); genStatus.textContent=js.cached?'Loaded cached pitch':'Pitch ready'; } catch(e){ genError.textContent=e.message||'Error generating pitch'; genError.style.display='block'; genStatus.textContent='Error'; } finally { genBtn.disabled=false; regenBtn.disabled=selected.size===0 || !lastPitch; }
+}
+function renderPitch(js){ pitchPanel.style.display='block'; copyBtn.disabled=false; downloadBtn.disabled=false; const p=js.pitch||{}; const intro=p.intro||''; const summ=p.job_fit_summary||''; const cta=p.call_to_action||''; const per=p.per_job_points||[]; const diff=p.differentiators||[]; const cm=p.candidate_message||''; const textParts=[intro,'',summ,'', ...per.map(it=>'Job: '+(it.title||it.job_id)+'\n- '+(it.fit_points||[]).join('\n- ')),'', 'Differentiators:\n- '+diff.join('\n- '),'', cta]; if(cm){ textParts.push('', 'Personal Letter:\n'+cm); } pitchOut.textContent=textParts.filter(Boolean).join('\n\n'); jsonView.textContent=JSON.stringify(p, null, 2); pitchMeta.textContent='Tone: '+escapeHtml(js.tone||'')+' • Word Count: '+(p.word_count||'?')+(js.cached?' • cached':''); tabText.classList.add('active'); tabJson.classList.remove('active'); pitchOut.style.display='block'; jsonView.style.display='none'; // Candidate message panel (hidden if merged into text)
+ if(cm){ candidateMsg.style.display='none'; } else { candidateMsg.style.display='none'; }
+ const impr=p.improvement_suggestions||[]; if(impr.length){ improveBox.style.display='block'; improveList.innerHTML=impr.map(s=>'<li><strong>'+escapeHtml(s.skill)+':</strong> '+escapeHtml(s.action)+'</li>').join(''); } else { improveBox.style.display='none'; improveList.innerHTML=''; }
+}
+copyBtn.addEventListener('click', ()=>{ if(!lastPitch) return; navigator.clipboard.writeText(pitchOut.textContent).then(()=>{ genStatus.textContent='Copied'; }); });
+downloadBtn.addEventListener('click', ()=>{ if(!lastPitch) return; const blob=new Blob([pitchOut.textContent],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='pitch.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); });
+ tabText.addEventListener('click',()=>{ tabText.classList.add('active'); tabJson.classList.remove('active'); pitchOut.style.display='block'; jsonView.style.display='none'; });
+ tabJson.addEventListener('click',()=>{ tabJson.classList.add('active'); tabText.classList.remove('active'); pitchOut.style.display='none'; jsonView.style.display='block'; });
+})();</script>
+</body></html>

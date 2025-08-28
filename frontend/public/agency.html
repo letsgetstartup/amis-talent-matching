@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agency Onboarding & Jobs</title>
+<style>
+  :root{--bg:#0b1220;--panel:#121a2b;--border:#25314a;--accent:#2563eb;--text:#e6eefc;--muted:#92a1bd}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Arial}
+  header{padding:20px}
+  h1{margin:0;font-size:20px;background:linear-gradient(90deg,#7aa2ff,#2dd4bf);background-clip:text;-webkit-background-clip:text;color:transparent}
+  main{max-width:980px;margin:0 auto;padding:0 20px 60px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 16px 18px;margin:16px 0}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+  input,textarea{width:100%;background:#0e1524;border:1px solid #22314d;color:var(--text);padding:10px;border-radius:8px}
+  textarea{min-height:80px;resize:vertical}
+  .col{flex:1 1 240px}
+  .btn{background:#1f2f50;color:#d7e6ff;border:1px solid #2a3b63;padding:10px 14px;border-radius:10px;cursor:pointer}
+  .btn.primary{background:#1a49bd;border-color:#2b63f2}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .kv{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0e1524;border:1px solid #22314d;border-radius:8px;padding:10px;overflow:auto}
+  small{color:var(--muted)}
+  .ok{color:#22d3ee}
+  .err{color:#f87171}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Agency Onboarding & Job Upload</h1>
+    <small>Self-serve: create an agency, get an API key, add jobs, and upload candidates.</small>
+  </header>
+  <main>
+    <section class="card" id="signupCard">
+      <h3 style="margin:0 0 8px">1) Create Agency</h3>
+      <div class="row">
+        <div class="col">
+          <label>Company</label>
+          <input id="company" placeholder="Acme Agency" />
+        </div>
+        <div class="col">
+          <label>Admin Name</label>
+          <input id="adminName" placeholder="Admin Name" />
+        </div>
+        <div class="col">
+          <label>Email</label>
+          <input id="email" placeholder="admin@example.com" />
+        </div>
+        <div class="col">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="••••••••" />
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn primary" id="signupBtn">Create Agency</button>
+        <div id="signupStatus"></div>
+      </div>
+      <div class="kv" id="tenantBox" style="display:none;margin-top:10px"></div>
+    </section>
+
+    <section class="card" id="loginCard">
+      <h3 style="margin:0 0 8px">1b) Login (existing agency)</h3>
+      <div class="row">
+        <div class="col">
+          <label>Email</label>
+          <input id="loginEmail" placeholder="admin@example.com" />
+        </div>
+        <div class="col">
+          <label>Password</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" />
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" id="loginBtn">Login</button>
+        <div id="loginStatus"></div>
+      </div>
+      <div class="kv" id="tokenBox" style="display:none;margin-top:10px"></div>
+      <small>After login, your Tenant ID will be filled for API key issuance.</small>
+    </section>
+
+    <section class="card" id="apikeyCard">
+      <h3 style="margin:0 0 8px">2) Issue API Key</h3>
+      <div class="row">
+        <div class="col">
+          <label>Tenant ID</label>
+          <input id="tenantId" placeholder="Copy from above" />
+        </div>
+        <div class="col">
+          <label>Key Name (optional)</label>
+          <input id="keyName" placeholder="default" />
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" id="keyBtn">Create API Key</button>
+        <div id="keyStatus"></div>
+      </div>
+      <div class="kv" id="keyBox" style="display:none;margin-top:10px"></div>
+    </section>
+
+    <section class="card">
+  <h3 style="margin:0 0 8px">3) Add Job</h3>
+      <div class="row">
+        <div class="col"><label>External Job ID</label><input id="jobExt" placeholder="AG-001" /></div>
+        <div class="col"><label>Title</label><input id="jobTitle" placeholder="Office Administrator" /></div>
+        <div class="col"><label>City</label><input id="jobCity" placeholder="תל אביב / tel aviv" /></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Must-have skills (comma or newline)</label><textarea id="jobMust" placeholder="שירות לקוחות, אקסל"></textarea></div>
+        <div class="col"><label>Nice-to-have skills</label><textarea id="jobNice" placeholder="SAP"></textarea></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Description</label><textarea id="jobDesc" placeholder="Short description..."></textarea></div>
+        <div class="col"><label>Agency Email</label><input id="jobEmail" placeholder="jobs@agency.example" /></div>
+        <div class="col"><label>Remote?</label><input id="jobRemote" placeholder="true/false" /></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" id="addJobBtn">Create Job</button>
+        <div id="jobStatus"></div>
+      </div>
+      <div class="kv" id="jobBox" style="display:none;margin-top:10px"></div>
+      <small>Jobs are tenant-scoped via X-API-Key header.</small>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">3b) Upload Jobs CSV (batch)</h3>
+      <div class="row">
+        <div class="col">
+          <label>CSV/XLSX File</label>
+          <input type="file" id="jobsCsv" accept=".csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx,application/vnd.ms-excel.sheet.macroEnabled.12,.xlsm" />
+        </div>
+        <div class="col">
+          <label>Upsert existing by external_job_id?</label>
+          <select id="csvUpsert">
+            <option value="false" selected>No (skip duplicates)</option>
+            <option value="true">Yes (update duplicates)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" id="csvUploadBtn">Upload CSV</button>
+        <div id="csvStatus"></div>
+      </div>
+      <div class="kv" id="csvBox" style="display:none;margin-top:10px"></div>
+      <small>
+        Supports CSV and Excel (XLSX/XLSM). Headers supported: external_job_id, title, city, must_have, nice_to_have, description, agency_email, remote, occupation_field.
+      </small>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">4) Upload Candidates (tenant-scoped)</h3>
+      <div class="row">
+        <div class="col">
+          <input type="file" id="candFiles" multiple accept=".pdf,.txt,.docx,application/pdf" />
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" id="candUploadBtn">Upload Files</button>
+        <div id="candStatus"></div>
+      </div>
+      <div class="kv" id="candBox" style="display:none;margin-top:10px"></div>
+      <small>Use share link /share/candidate/{share_id}/html to view matches.</small>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">Helpful Links</h3>
+      <div class="row">
+        <div class="col">
+          <a class="btn" href="/recommend.html" target="_blank">Public CV Upload</a>
+        </div>
+        <div class="col">
+          <a class="btn" href="/admin/jobs" target="_blank">Admin: Jobs</a>
+        </div>
+        <div class="col">
+          <a class="btn" href="/admin/candidates" target="_blank">Admin: Candidates</a>
+        </div>
+      </div>
+    </section>
+  </main>
+<script>
+(function(){
+  const api = location.protocol + '//' + location.hostname + ':8080';
+  const $ = id => document.getElementById(id);
+  let apiKey = '';
+
+  function parseList(val){
+    if(!val) return [];
+    return val.split(/\n|,/).map(s=>s.trim()).filter(Boolean);
+  }
+  function showBox(el, obj){ el.style.display='block'; el.textContent = JSON.stringify(obj, null, 2); }
+
+  $('signupBtn').addEventListener('click', async ()=>{
+    $('signupStatus').textContent = 'Creating…';
+    try{
+      const body = { company: $('company').value, name: $('adminName').value, email: $('email').value, password: $('password').value };
+      const r = await fetch(api + '/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('signupStatus').innerHTML = '<span class="ok">OK</span>';
+      showBox($('tenantBox'), js);
+      $('tenantId').value = js.tenant_id || '';
+    }catch(e){ $('signupStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+
+  $('keyBtn').addEventListener('click', async ()=>{
+    $('keyStatus').textContent = 'Issuing…';
+    try{
+      const body = { tenant_id: $('tenantId').value, name: $('keyName').value || 'default' };
+      const r = await fetch(api + '/auth/apikey', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('keyStatus').innerHTML = '<span class="ok">OK</span>';
+      apiKey = js.key || '';
+      showBox($('keyBox'), js);
+    }catch(e){ $('keyStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+
+  $('loginBtn').addEventListener('click', async ()=>{
+    $('loginStatus').textContent = 'Logging in…';
+    try{
+      const body = { email: $('loginEmail').value, password: $('loginPassword').value };
+      const r = await fetch(api + '/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('loginStatus').innerHTML = '<span class="ok">OK</span>';
+      $('tenantId').value = js.tenant_id || '';
+      showBox($('tokenBox'), js);
+    }catch(e){ $('loginStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+
+  $('addJobBtn').addEventListener('click', async ()=>{
+    $('jobStatus').textContent = 'Creating…';
+    try{
+      if(!apiKey){ throw new Error('API key missing'); }
+      const job = {
+        external_job_id: $('jobExt').value,
+        title: $('jobTitle').value,
+        city: $('jobCity').value,
+        must_have: parseList($('jobMust').value),
+        nice_to_have: parseList($('jobNice').value),
+        description: $('jobDesc').value,
+        agency_email: $('jobEmail').value,
+        remote: $('jobRemote').value.trim().toLowerCase()==='true'
+      };
+      const r = await fetch(api + '/jobs', { method:'POST', headers:{'Content-Type':'application/json','X-API-Key': apiKey}, body: JSON.stringify(job) });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('jobStatus').innerHTML = '<span class="ok">OK</span>';
+      showBox($('jobBox'), js);
+    }catch(e){ $('jobStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+
+  $('candUploadBtn').addEventListener('click', async ()=>{
+    $('candStatus').textContent = 'Uploading…';
+    try{
+      if(!apiKey){ throw new Error('API key missing'); }
+      const fi = $('candFiles');
+      if(!fi.files || fi.files.length===0) throw new Error('Choose files');
+      const fd = new FormData();
+      for(const f of fi.files){ fd.append('files', f); }
+      const r = await fetch(api + '/tenant/candidates/upload', { method:'POST', headers:{'X-API-Key': apiKey}, body: fd });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('candStatus').innerHTML = '<span class="ok">OK</span>';
+      showBox($('candBox'), js);
+    }catch(e){ $('candStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+
+  $('csvUploadBtn').addEventListener('click', async ()=>{
+    $('csvStatus').textContent = 'Uploading CSV…';
+    try{
+      if(!apiKey){ throw new Error('API key missing'); }
+      const fi = $('jobsCsv');
+      if(!fi.files || fi.files.length===0) throw new Error('Choose CSV file');
+      const upsert = $('csvUpsert').value === 'true';
+      const fd = new FormData();
+      fd.append('file', fi.files[0]);
+  const r = await fetch(api + '/jobs/batch_csv?upsert=' + String(upsert) + '&format=agency_template', {
+        method:'POST',
+        headers:{'X-API-Key': apiKey},
+        body: fd
+      });
+      const js = await r.json();
+      if(!r.ok) throw new Error(js.detail || r.status);
+      $('csvStatus').innerHTML = '<span class="ok">OK</span>';
+      showBox($('csvBox'), js);
+    }catch(e){ $('csvStatus').innerHTML = '<span class="err">'+(e.message||'error')+'</span>'; }
+  });
+})();
+</script>
+</body>
+</html>

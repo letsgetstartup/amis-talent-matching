@@ -1,0 +1,17 @@
+John Doe
+Software Engineer
+
+Experience:
+- 5 years of Python development
+- Web application development with Django and Flask
+- Database design and optimization
+- Team leadership experience
+
+Skills:
+- Python, JavaScript, SQL
+- React, Django, Flask
+- PostgreSQL, MongoDB
+- Git, Docker, AWS
+
+Education:
+Bachelor of Computer Science, 2018

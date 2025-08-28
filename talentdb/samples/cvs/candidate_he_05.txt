@@ -1,0 +1,4 @@
+Title: Senior Software Engineer
+סיכום: מהנדס תוכנה בכיר, מוביל צוותים ואחראי על ארכיטקטורה.
+ניסיון: בניית מערכות מבוזרות, הובלת קוד נקי ו-DevOps בסיסי.
+Skills: Python, Docker, MongoDB, Kubernetes

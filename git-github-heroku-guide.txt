@@ -1,0 +1,307 @@
+==================================================
+GIT, GITHUB & HEROKU DEPLOYMENT GUIDE FOR DUMMIES
+==================================================
+
+This guide explains step-by-step how to:
+1. Use Git to save your code versions
+2. Use GitHub to store your code online
+3. Deploy your app to Heroku server
+
+==================================================
+PART 1: SETTING UP GIT
+==================================================
+
+1. CHECK IF GIT IS INSTALLED
+   Open Terminal and type:
+   git --version
+   
+   If you see a version number, Git is installed. If not, install it:
+   - Mac: Install Xcode Command Line Tools or download from git-scm.com
+   - Windows: Download from git-scm.com
+
+2. CONFIGURE GIT (FIRST TIME ONLY)
+   git config --global user.name "Your Name"
+   git config --global user.email "your.email@example.com"
+
+3. INITIALIZE GIT IN YOUR PROJECT
+   Navigate to your project folder:
+   cd /Users/avirammizrahi/Desktop/amis
+   
+   Initialize Git:
+   git init
+
+==================================================
+PART 2: BASIC GIT COMMANDS
+==================================================
+
+1. CHECK STATUS OF YOUR FILES
+   git status
+   (Shows which files are changed, added, or deleted)
+
+2. ADD FILES TO STAGING
+   Add specific file:
+   git add filename.py
+   
+   Add all files:
+   git add .
+
+3. COMMIT (SAVE) YOUR CHANGES
+   git commit -m "Describe what you changed"
+   
+   Example:
+   git commit -m "Added new matching algorithm"
+
+4. VIEW COMMIT HISTORY
+   git log --oneline
+   (Shows all your saved versions)
+
+==================================================
+PART 3: SETTING UP GITHUB
+==================================================
+
+1. CREATE GITHUB ACCOUNT
+   Go to github.com and sign up for free
+
+2. CREATE A NEW REPOSITORY
+   - Click "New" or "+" button
+   - Name your repository (e.g., "amis-talent-matching")
+   - Choose "Public" or "Private"
+   - DON'T initialize with README (we already have code)
+   - Click "Create repository"
+
+3. CONNECT YOUR LOCAL PROJECT TO GITHUB
+   Copy the commands GitHub shows you, usually:
+   
+   git remote add origin https://github.com/yourusername/your-repo-name.git
+   git branch -M main
+   git push -u origin main
+
+==================================================
+PART 4: DAILY WORKFLOW WITH GIT & GITHUB
+==================================================
+
+EVERY TIME YOU MAKE CHANGES:
+
+1. CHECK WHAT CHANGED
+   git status
+
+2. ADD YOUR CHANGES
+   git add .
+
+3. COMMIT WITH MESSAGE
+   git commit -m "Brief description of what you did"
+
+4. PUSH TO GITHUB
+   git push
+
+EXAMPLE WORKFLOW:
+# You edited some files
+git status                          # See what changed
+git add .                          # Stage all changes
+git commit -m "Fixed breakdown API bug"  # Save with message
+git push                           # Upload to GitHub
+
+==================================================
+PART 5: RETRIEVING OLD VERSIONS
+==================================================
+
+1. SEE ALL VERSIONS
+   git log --oneline
+   
+   Output example:
+   abc1234 Fixed breakdown API bug
+   def5678 Added chat functionality
+   ghi9012 Initial commit
+
+2. GO BACK TO SPECIFIC VERSION
+   git checkout abc1234
+   (Replace abc1234 with actual commit hash)
+
+3. RETURN TO LATEST VERSION
+   git checkout main
+
+4. CREATE NEW BRANCH FROM OLD VERSION
+   git checkout -b fix-branch abc1234
+   (Creates new branch from that version)
+
+==================================================
+PART 6: DEPLOYING TO HEROKU
+==================================================
+
+1. INSTALL HEROKU CLI
+   Download from: https://devcenter.heroku.com/articles/heroku-cli
+   
+   Test installation:
+   heroku --version
+
+2. LOGIN TO HEROKU
+   heroku login
+   (Opens browser to login)
+
+3. CREATE HEROKU APP
+   heroku create your-app-name
+   
+   Example:
+   heroku create amis-talent-matching
+
+4. PREPARE YOUR PROJECT FOR HEROKU
+
+   A. CREATE requirements.txt (if not exists):
+   pip freeze > requirements.txt
+
+   B. CREATE Procfile (no extension):
+   echo "web: uvicorn talentdb.scripts.api:app --host=0.0.0.0 --port=\$PORT" > Procfile
+
+   C. CREATE runtime.txt (specify Python version):
+   echo "python-3.13.5" > runtime.txt
+
+5. SET ENVIRONMENT VARIABLES ON HEROKU
+   heroku config:set MONGODB_URL="your_mongodb_connection_string"
+   heroku config:set OPENAI_API_KEY="your_openai_api_key"
+   heroku config:set SECRET_KEY="your_secret_key"
+
+6. DEPLOY TO HEROKU
+   git add .
+   git commit -m "Prepare for Heroku deployment"
+   git push heroku main
+
+7. OPEN YOUR DEPLOYED APP
+   heroku open
+
+==================================================
+PART 7: UPDATING YOUR HEROKU APP
+==================================================
+
+EVERY TIME YOU WANT TO UPDATE THE LIVE APP:
+
+1. Make your changes locally
+2. Test them locally first:
+   python run_server.py
+
+3. Commit and push to GitHub:
+   git add .
+   git commit -m "Your update description"
+   git push
+
+4. Deploy to Heroku:
+   git push heroku main
+
+5. Check if it works:
+   heroku open
+
+==================================================
+PART 8: USEFUL COMMANDS REFERENCE
+==================================================
+
+GIT COMMANDS:
+git status              # Check file status
+git add .               # Add all files
+git commit -m "msg"     # Save changes
+git push                # Upload to GitHub
+git pull                # Download from GitHub
+git log --oneline       # View history
+git checkout main       # Go to main branch
+git branch              # List branches
+
+HEROKU COMMANDS:
+heroku logs --tail      # View live logs
+heroku restart          # Restart app
+heroku config           # View environment variables
+heroku ps               # Check app status
+heroku run bash         # Access server terminal
+
+==================================================
+PART 9: TROUBLESHOOTING
+==================================================
+
+PROBLEM: "Permission denied" when pushing
+SOLUTION: Check your GitHub credentials
+git config --global user.name
+git config --global user.email
+
+PROBLEM: Heroku deployment fails
+SOLUTION: Check logs
+heroku logs --tail
+
+PROBLEM: App crashes on Heroku
+SOLUTION: 
+1. Check requirements.txt has all dependencies
+2. Check Procfile is correct
+3. Check environment variables are set
+
+PROBLEM: Forgot to commit before pushing
+SOLUTION:
+git add .
+git commit -m "Your message"
+git push
+
+==================================================
+PART 10: BACKUP STRATEGY
+==================================================
+
+RECOMMENDED WORKFLOW:
+
+1. WORK LOCALLY
+   - Make small changes
+   - Test frequently
+   - Commit often (daily or after each feature)
+
+2. BACKUP TO GITHUB
+   - Push at least once per day
+   - Always push before major changes
+
+3. DEPLOY TO HEROKU
+   - Deploy only tested, working versions
+   - Deploy weekly or when ready for users
+
+EXAMPLE SCHEDULE:
+- Morning: git pull (get latest)
+- During work: commit after each small change
+- Evening: git push (backup to GitHub)
+- Weekly: git push heroku main (deploy to live)
+
+==================================================
+EMERGENCY RECOVERY
+==================================================
+
+IF YOU LOSE YOUR LOCAL FILES:
+1. Clone from GitHub:
+   git clone https://github.com/yourusername/your-repo-name.git
+
+2. Navigate to folder:
+   cd your-repo-name
+
+3. Install dependencies:
+   pip install -r requirements.txt
+
+4. Continue working!
+
+==================================================
+SUMMARY CHECKLIST
+==================================================
+
+INITIAL SETUP (ONE TIME):
+□ Install Git
+□ Configure Git with name/email
+□ Create GitHub account
+□ Create repository on GitHub
+□ Connect local project to GitHub
+□ Install Heroku CLI
+□ Create Heroku app
+□ Set environment variables on Heroku
+
+DAILY WORKFLOW:
+□ git status (check changes)
+□ git add . (stage files)
+□ git commit -m "message" (save version)
+□ git push (backup to GitHub)
+
+DEPLOYMENT WORKFLOW:
+□ Test locally first
+□ Commit and push to GitHub
+□ git push heroku main (deploy)
+□ heroku open (check live app)
+
+Remember: Commit early, commit often, and always test before deploying!
+
+==================================================
