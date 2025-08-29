@@ -8,6 +8,7 @@ Entrypoint to run the API server with best practices:
 import os
 import sys
 
+os.environ["MCP_ENABLED"] = os.getenv("MCP_ENABLED", "0")
 
 ROOT_DIR = os.path.dirname(__file__)
 
@@ -52,9 +53,10 @@ def main() -> None:
             reload_excludes=reload_excludes,
         )
     else:
-        workers = int(os.getenv("WORKERS", "1"))
+        # Note: uvicorn.Config no longer accepts 'workers' in >=0.30.
+        # We'll run a single process here; use Gunicorn in production for multi-workers.
         config = uvicorn.Config(
-            "scripts.api:app", host=host, port=port, log_level=log_level, reload=False, workers=workers
+            "scripts.api:app", host=host, port=port, log_level=log_level, reload=False
         )
 
     server = uvicorn.Server(config)

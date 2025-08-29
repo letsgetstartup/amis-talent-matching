@@ -154,6 +154,7 @@ from bson import ObjectId as _ObjectId
 
 # --- Optional Assistants integration (feature-flag) ---
 ASSISTANTS_ENABLED = os.getenv("OPENAI_ASSISTANTS_ENABLED", "0").lower() in {"1", "true", "yes"}
+MCP_ENABLED = os.getenv("MCP_ENABLED", "0").lower() in {"1", "true", "yes"}
 
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
@@ -451,6 +452,90 @@ def require_api_key(x_api_key: str = Header(default=None, alias="X-API-Key")):
         raise HTTPException(status_code=401, detail="Unauthorized")
     return True
 
+# ---- MCP integration helpers (feature-flagged, safe fallbacks) ----
+def _mcp_or_native_candidates_for_job(job_id: str, top_k: int, tenant_id: str | None):
+    """Return candidates for a job using MCP tool when enabled; fallback to native.
+    Output shape matches existing downstream code expectations.
+    """
+    try:
+        if MCP_ENABLED:
+            from ..mcp.server import call_tool  # type: ignore
+            ctx = {"tenant_id": tenant_id}
+            res = call_tool("match_job_to_candidates", {"job_id": str(job_id), "k": int(top_k)}, context=ctx)
+            rows = []
+            if res and res.get("ok") and isinstance(res.get("data"), dict):
+                for r in (res["data"].get("rows") or [])[: int(max(1, min(top_k, 50)) )]:
+                    bd = r.get("breakdown") or {}
+                    cnt = r.get("counters") or {}
+                    rows.append({
+                        "score": r.get("score") or 0.0,
+                        "candidate_id": r.get("candidate_id") or "",
+                        "job_id": r.get("job_id") or str(job_id),
+                        "title": r.get("title") or "",
+                        "city": r.get("city") or "",
+                        # expose breakdown at top-level for UI components
+                        "title_score": bd.get("title_score"),
+                        "semantic_score": bd.get("semantic_score"),
+                        "embedding_score": bd.get("embedding_score"),
+                        "skills_score": bd.get("skills_score"),
+                        "distance_score": bd.get("distance_score"),
+                        # counters expected by UI
+                        "skills_matched_must": ((cnt.get("must") or {}).get("have")),
+                        "skills_total_must": ((cnt.get("must") or {}).get("total")),
+                        "skills_matched_nice": ((cnt.get("nice") or {}).get("have")),
+                        "skills_total_nice": ((cnt.get("nice") or {}).get("total")),
+                    })
+            return rows
+    except Exception:
+        # fall back to native
+        pass
+    try:
+        return get_or_compute_candidates_for_job(job_id, top_k=int(top_k), city_filter=True, tenant_id=tenant_id)
+    except Exception:
+        return []
+
+
+def _mcp_or_native_jobs_for_candidate(candidate_id: str, top_k: int, tenant_id: str | None):
+    """Return jobs for a candidate using MCP tool when enabled; fallback to native.
+    Output shape matches existing downstream code expectations.
+    """
+    try:
+        if MCP_ENABLED:
+            from ..mcp.server import call_tool  # type: ignore
+            ctx = {"tenant_id": tenant_id}
+            res = call_tool("match_candidate_to_jobs", {"candidate_id": str(candidate_id), "k": int(top_k)}, context=ctx)
+            rows = []
+            if res and res.get("ok") and isinstance(res.get("data"), dict):
+                for r in (res["data"].get("rows") or [])[: int(max(1, min(top_k, 50)) )]:
+                    bd = r.get("breakdown") or {}
+                    cnt = r.get("counters") or {}
+                    rows.append({
+                        "score": r.get("score") or 0.0,
+                        "candidate_id": r.get("candidate_id") or str(candidate_id),
+                        "job_id": r.get("job_id") or "",
+                        "title": r.get("title") or "",
+                        "city": r.get("city") or "",
+                        # expose breakdown at top-level for UI components
+                        "title_score": bd.get("title_score"),
+                        "semantic_score": bd.get("semantic_score"),
+                        "embedding_score": bd.get("embedding_score"),
+                        "skills_score": bd.get("skills_score"),
+                        "distance_score": bd.get("distance_score"),
+                        # counters expected by UI
+                        "skills_matched_must": ((cnt.get("must") or {}).get("have")),
+                        "skills_total_must": ((cnt.get("must") or {}).get("total")),
+                        "skills_matched_nice": ((cnt.get("nice") or {}).get("have")),
+                        "skills_total_nice": ((cnt.get("nice") or {}).get("total")),
+                    })
+            return rows
+    except Exception:
+        # fall back to native
+        pass
+    try:
+        return jobs_for_candidate(candidate_id, top_k=int(top_k), max_distance_km=30, tenant_id=tenant_id)
+    except Exception:
+        return []
+
 def _sample_paths(kind: str):
     d = SAMPLES_DIR / ("cvs" if kind == "candidate" else "jobs")
     if d.exists():
@@ -557,6 +642,42 @@ class PitchRequest(BaseModel):
     tone: str = "professional"
     force: bool = False
 
+# ---- Minimal MCP diagnostics endpoints (feature-flagged) ----
+@app.get("/mcp/health")
+def mcp_health():
+    try:
+        from ..mcp import get_mcp_runtime  # type: ignore
+        rt = get_mcp_runtime()
+        return {"enabled": rt.is_enabled(), "health": rt.health()}
+    except Exception:
+        return {"enabled": False, "health": {"enabled": False, "started": False, "server": False}}
+
+@app.get("/mcp/tools")
+def mcp_tools(_: bool = Depends(require_api_key)):
+    try:
+        if not MCP_ENABLED:
+            return {"enabled": False, "tools": []}
+        from ..mcp.server import list_tools  # type: ignore
+        return {"enabled": True, "tools": list_tools()}
+    except Exception:
+        return {"enabled": False, "tools": []}
+
+class McpCallRequest(BaseModel):
+    name: str
+    arguments: dict[str, Any] = {}
+
+@app.post("/mcp/call")
+def mcp_call(body: McpCallRequest, _: bool = Depends(require_api_key), tenant_id: str | None = Depends(optional_tenant_id)):
+    if not MCP_ENABLED:
+        return {"ok": False, "error": {"code": "mcp_disabled"}}
+    try:
+        from ..mcp.server import call_tool  # type: ignore
+        ctx = {"tenant_id": tenant_id}
+        res = call_tool(body.name, body.arguments or {}, context=ctx)
+        return res
+    except Exception as e:
+        return {"ok": False, "error": {"code": "mcp_error", "message": str(e)}}
+
 class PersonalLetterRequest(BaseModel):
     share_id: str
     force: bool = False
@@ -582,6 +703,7 @@ def _pitch_cache_key(share_id: str, job_ids: list[str], tone: str) -> str:
 
 @app.get("/health")
 def health():
+    print("DEBUG: Health endpoint called")
     return {"status": "ok"}
 
 @app.get("/ready")
@@ -4091,7 +4213,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         yield _json.dumps({"type":"text_delta","text":"שולף מועמדים למשרה..."}, ensure_ascii=False) + "\n"
                         ui=[]
                         try:
-                            matches = get_or_compute_candidates_for_job(oid0, top_k=top_k0, city_filter=True, tenant_id=tenant_id)
+                            matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
                             rows=[]
                             for r in (matches or [])[:top_k0]:
                                 try:
@@ -4131,7 +4253,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     return StreamingResponse(_gen_job_early(), media_type="application/x-ndjson")
                 else:
                     try:
-                        matches = get_or_compute_candidates_for_job(oid0, top_k=top_k0, city_filter=True, tenant_id=tenant_id)
+                        matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
                         rows=[]
                         for r in (matches or [])[:top_k0]:
                             try:
@@ -4170,7 +4292,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         yield _json.dumps({"type":"text_delta","text":"שולף משרות למועמד..."}, ensure_ascii=False) + "\n"
                         ui=[]
                         try:
-                            ms = jobs_for_candidate(oid0, top_k=top_k0, max_distance_km=30, tenant_id=tenant_id)
+                            ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
                             rows=[]
                             for r in (ms or [])[:top_k0]:
                                 try:
@@ -4208,7 +4330,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     return StreamingResponse(_gen_cand_early(), media_type="application/x-ndjson")
                 else:
                     try:
-                        ms = jobs_for_candidate(oid0, top_k=top_k0, max_distance_km=30, tenant_id=tenant_id)
+                        ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
                         rows=[]
                         for r in (ms or [])[:top_k0]:
                             try:
@@ -4283,7 +4405,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     yield _json.dumps({"type":"text_delta","text":"מאתר מועמדים למשרה..."}, ensure_ascii=False) + "\n"
                     ui: list[dict] = []
                     try:
-                        matches = get_or_compute_candidates_for_job(job_oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                        matches = _mcp_or_native_candidates_for_job(job_oid, top_k, tenant_id)
                         rows = []
                         for r in (matches or [])[:top_k]:
                             try:
@@ -4373,7 +4495,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         yield _json.dumps({"type":"text_delta","text":"שולף מועמדים למשרה..."}, ensure_ascii=False) + "\n"
                         ui = []
                         try:
-                            matches = get_or_compute_candidates_for_job(oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                            matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
                             rows = []
                             for r in (matches or [])[:top_k]:
                                 try:
@@ -4402,7 +4524,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     return StreamingResponse(_gen_job2(), media_type="application/x-ndjson")
                 else:
                     try:
-                        matches = get_or_compute_candidates_for_job(oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                        matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
                         rows = []
                         for r in (matches or [])[:top_k]:
                             try:
@@ -4424,7 +4546,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         yield _json.dumps({"type":"text_delta","text":"שולף משרות למועמד..."}, ensure_ascii=False) + "\n"
                         ui = []
                         try:
-                            ms = jobs_for_candidate(oid, top_k=top_k, max_distance_km=30, tenant_id=tenant_id)
+                            ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
                             rows = []
                             for r in (ms or [])[:top_k]:
                                 try:
@@ -4453,7 +4575,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     return StreamingResponse(_gen_cand(), media_type="application/x-ndjson")
                 else:
                     try:
-                        ms = jobs_for_candidate(oid, top_k=top_k, max_distance_km=30, tenant_id=tenant_id)
+                        ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
                         rows = []
                         for r in (ms or [])[:top_k]:
                             try:

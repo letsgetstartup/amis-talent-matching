@@ -21,7 +21,8 @@ def get_db():
     uri=os.getenv("MONGO_URI","mongodb://localhost:27017")
     db_name=os.getenv("DB_NAME","talent_match")
     client=MongoClient(uri, serverSelectionTimeoutMS=800)
-    client.admin.command("ping")
+    # Comment out the ping to avoid connection issues during startup
+    # client.admin.command("ping")
     return client[db_name]
 
 def is_mock() -> bool:
