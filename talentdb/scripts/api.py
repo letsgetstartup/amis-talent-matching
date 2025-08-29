@@ -18,7 +18,7 @@ import json
 import logging
 import os
 import time
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -38,6 +38,7 @@ from .ingest_agent import (
     jobs_for_candidate,
     db,
     get_or_compute_matches,
+    get_or_compute_candidates_for_job,
     get_cached_matches,
     backfill_matches,
     backfill_job_matches,
@@ -2604,11 +2605,11 @@ def match_job(job_id: str, k: int = 5, city_filter: bool = True, rp_esco: str | 
         eff_max_age = int(max_age if max_age is not None else int(os.getenv("MATCH_CACHE_MAX_AGE", "86400")))
     except Exception:
         eff_max_age = max_age or None
-    # Best-effort cached flag
+    # Best-effort cached flag (fresh cache doc exists)
     cached_hit = False
     try:
         doc = _get_job_cache(job_id, tenant_id, city_filter=city_filter, max_age=eff_max_age)
-        if doc and isinstance(doc.get("matches"), list) and len(doc.get("matches") or []) >= int(k or 1):
+        if doc:
             cached_hit = True
     except Exception:
         cached_hit = False
@@ -2650,11 +2651,11 @@ def match_candidate(
     except Exception:
         eff_max_age = max_age or None
 
-    # Best-effort cached flag (non-blocking)
+    # Best-effort cached flag (non-blocking; fresh cache doc exists)
     cached_hit = False
     try:
         doc = _get_cache(cand_id, tenant_id, city_filter=city_filter, max_age=eff_max_age)
-        if doc and isinstance(doc.get("matches"), list) and len(doc.get("matches") or []) >= int(k or 1):
+        if doc:
             cached_hit = True
     except Exception:
         cached_hit = False
@@ -3595,7 +3596,7 @@ def _build_gpt_dsl(question: str, tenant_id: str | None) -> dict | None:
         return None
 
 @app.post("/chat/query")
-def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_tenant_id)):
+def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_tenant_id), request: Request = None):
     import time
     t0 = time.time()
     # Lightweight per-tenant limiter (30/min)
@@ -3611,9 +3612,196 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         pass
 
     dsl_raw = _build_gpt_dsl(req.question, tenant_id)
+    # Quick path: detect explicit "candidates for job <id>" requests (Heb/Eng) and return strict-only results
+    try:
+        import re as _re
+        qtext = str(req.question or '')
+        qlow = qtext.lower()
+        # Keywords: Hebrew (מועמד, משרה) or English (candidate, job)
+        wants_candidates = ('מועמד' in qtext) or ('candidate' in qlow)
+        mentions_job = ('משרה' in qtext) or ('job' in qlow)
+        # Accept ObjectId with an optional space after first two hex chars (e.g., "68 ae..."), or a clean 24-hex
+        m = _re.search(r"\b([0-9a-fA-F]{24})\b", qtext)
+        m_sp = _re.search(r"\b([0-9a-fA-F]{2})\s*([0-9a-fA-F]{22})\b", qtext)
+        job_oid = None
+        if m:
+            job_oid = m.group(1)
+        elif m_sp:
+            job_oid = (m_sp.group(1) + m_sp.group(2))
+        # Optional k in text (first small integer 1..50)
+        k = None
+        try:
+            mnum = _re.search(r"\b(\d{1,2})\b", qtext)
+            if mnum:
+                vi = int(mnum.group(1))
+                if 1 <= vi <= 50:
+                    k = vi
+        except Exception:
+            pass
+        if wants_candidates and mentions_job and job_oid:
+            top_k = int(k or 5)
+            if request and request.query_params.get("stream") in ("1","true","yes"):
+                def _gen_job():
+                    import json as _json
+                    yield _json.dumps({"type":"text_delta","text":"מאתר מועמדים למשרה..."}, ensure_ascii=False) + "\n"
+                    ui: list[dict] = []
+                    try:
+                        matches = get_or_compute_candidates_for_job(job_oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                        rows = []
+                        for r in (matches or [])[:top_k]:
+                            try:
+                                sc = float(r.get('score') or r.get('best_score') or 0.0)
+                            except Exception:
+                                sc = 0.0
+                            rows.append({
+                                "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
+                                "title": r.get('title') or r.get('candidate_title') or '',
+                                "score": round(sc, 3)
+                            })
+                        if rows:
+                            ui.append({
+                                "kind": "Table",
+                                "id": "job-candidates",
+                                "columns": [
+                                    {"key":"candidate_id","title":"מועמד"},
+                                    {"key":"title","title":"תפקיד"},
+                                    {"key":"score","title":"ציון"}
+                                ],
+                                "rows": rows,
+                                "primaryKey": "candidate_id"
+                            })
+                        else:
+                            ui.append({
+                                "kind": "RichText",
+                                "id": "no-results-guidance",
+                                "html": "לא נמצאו מועמדים למשרה זו. ודאו שמזהה המשרה תקין ונסו לשנות סינונים. מוצגים רק נתוני אמת."
+                            })
+                        # KPI
+                        ui.append({
+                            "kind": "Metric",
+                            "id": "matches-kpi",
+                            "label": "מספר תוצאות",
+                            "value": int(len(rows))
+                        })
+                    except Exception:
+                        ui.append({"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."})
+                    env = {"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                    yield _json.dumps(env, ensure_ascii=False) + "\n"
+                    yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                return StreamingResponse(_gen_job(), media_type="application/x-ndjson")
+    except Exception:
+        pass
     if not dsl_raw:
         # fallback to simple intent parser → actions (includes tuning)
         actions = _parse_actions_from_question(req.question)
+        # If client requested streaming, emit NDJSON with assistant_ui envelope (with a small table if possible)
+        try:
+            if request and request.query_params.get("stream") in ("1","true","yes"):
+                def _gen():
+                    import json as _json
+                    yield _json.dumps({"type":"text_delta","text":"מעבד בקשה..."}, ensure_ascii=False) + "\n"
+                    ui: list[dict] = []
+                    # Derive a minimal MatchQuery from parsed actions (if present)
+                    try:
+                        mq_kwargs = {"k":5, "limit":10, "page":1, "city_filter": True}
+                        import re as _re
+                        _oid = _re.compile(r"^[0-9a-fA-F]{24}$")
+                        for a in (actions or [])[:5]:
+                            if not isinstance(a, dict):
+                                continue
+                            if a.get("type") == "setFilters":
+                                p = a.get("payload") or {}
+                                if isinstance(p.get("titleContains"), str):
+                                    mq_kwargs["title_contains"] = p["titleContains"]
+                                if isinstance(p.get("candidateId"), str) and _oid.match(p["candidateId"].strip()):
+                                    mq_kwargs["candidate_id"] = p["candidateId"].strip()
+                                # city or cities
+                                cities = []
+                                if isinstance(p.get("cities"), list):
+                                    cities = [str(c) for c in p["cities"][:10]]
+                                elif isinstance(p.get("city"), str) and p["city"]:
+                                    cities = [p["city"]]
+                                if cities:
+                                    mq_kwargs["city_in"] = cities
+                                # scoreMin/scoreMax → score dict
+                                score = {}
+                                if p.get("scoreMin") is not None:
+                                    try:
+                                        score["$gte"] = float(p["scoreMin"])  # normalized later by endpoint
+                                    except Exception:
+                                        pass
+                                if p.get("scoreMax") is not None:
+                                    try:
+                                        score["$lte"] = float(p["scoreMax"])  # normalized later by endpoint
+                                    except Exception:
+                                        pass
+                                if score:
+                                    mq_kwargs["score"] = score
+                            elif a.get("type") == "setSort":
+                                p = a.get("payload") or {}
+                                if isinstance(p.get("by"), str):
+                                    mq_kwargs["sort_by"] = p["by"]
+                                if isinstance(p.get("dir"), str):
+                                    mq_kwargs["sort_dir"] = p["dir"]
+                            elif a.get("type") == "setPage":
+                                p = a.get("payload") or {}
+                                try:
+                                    ps = int(p.get("pageSize") or p.get("size") or 10)
+                                    mq_kwargs["limit"] = max(1, min(20, ps))
+                                except Exception:
+                                    pass
+                        mq = MatchQuery(**mq_kwargs)
+                        mr = match_report_query(mq, tenant_id)
+                        rows = []
+                        for r in (mr.get('results') or [])[:10]:
+                            try:
+                                best = float(r.get('best_score') or 0.0)
+                            except Exception:
+                                best = 0.0
+                            rows.append({
+                                "candidate_id": str(r.get('candidate_id') or ''),
+                                "title": r.get('title') or '',
+                                "score": round(best, 3)
+                            })
+                        # Strict-only: don't relax; if empty, show guidance only
+                        if rows:
+                            ui.append({
+                                "kind": "Table",
+                                "id": "matches",
+                                "columns": [
+                                    {"key":"candidate_id","title":"מועמד"},
+                                    {"key":"title","title":"תפקיד"},
+                                    {"key":"score","title":"ציון"}
+                                ],
+                                "rows": rows,
+                                "primaryKey": "candidate_id"
+                            })
+                        else:
+                            # No rows for strict filters: add user guidance (no sample data)
+                            ui.append({
+                                "kind": "RichText",
+                                "id": "no-results-guidance",
+                                "html": "לא נמצאו תוצאות. נסו להרפות סינונים (הסירו עיר/ציון מינימלי, הגדילו גודל עמוד, או שנו את החיפוש). המערכת מציגה רק נתוני אמת — ללא נתוני דמו."
+                            })
+                        # Always include a KPI metric for quick context
+                        try:
+                            total = int(mr.get('count') or 0)
+                            ui.append({
+                                "kind": "Metric",
+                                "id": "matches-kpi",
+                                "label": "מספר תוצאות",
+                                "value": total
+                            })
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+                    env = {"type":"assistant_ui","narration":"הוחל סינון בסיסי","actions": actions, "ui": ui}
+                    yield _json.dumps(env, ensure_ascii=False) + "\n"
+                    yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                return StreamingResponse(_gen(), media_type="application/x-ndjson")
+        except Exception:
+            pass
         return {"answer":"החלת סינון בסיסי","actions": actions, "dsl": None, "took_ms": int((time.time()-t0)*1000)}
     view, filt, sorts, page, warnings = _validate_and_normalize_dsl(dsl_raw)
     # Start with DSL actions (filters/sort/page)
@@ -3642,6 +3830,81 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         })
     except Exception:
         pass
+    # If client requested streaming, emit NDJSON events
+    try:
+        if request and request.query_params.get("stream") in ("1","true","yes"):
+            def _gen():
+                import json as _json
+                # Quick initial hint
+                yield _json.dumps({"type":"text_delta","text":"מיישם סינון..."}, ensure_ascii=False) + "\n"
+                # Build a small UI table using current DSL → match report (limited)
+                ui: list[dict] = []
+                try:
+                    # Derive MatchQuery from DSL
+                    mq = MatchQuery(
+                        k=5,
+                        limit=min(10, page.size if hasattr(page, 'size') else 10),
+                        page=1,
+                        city_filter=True,
+                        title_contains=getattr(filt, 'title_contains', None),
+                        candidate_id=getattr(filt, 'candidate_id', None),
+                        city_in=getattr(filt, 'city_in', None),
+                        score=getattr(filt, 'score', None),
+                        sort_by=sorts[0].by if (isinstance(sorts, list) and sorts) else 'score',
+                        sort_dir=sorts[0].dir if (isinstance(sorts, list) and sorts) else 'desc',
+                    )
+                    mr = match_report_query(mq, tenant_id)
+                    rows = []
+                    for r in (mr.get('results') or [])[:10]:
+                        try:
+                            best = float(r.get('best_score') or 0.0)
+                        except Exception:
+                            best = 0.0
+                        rows.append({
+                            "candidate_id": str(r.get('candidate_id') or ''),
+                            "title": r.get('title') or '',
+                            "score": round(best, 3)
+                        })
+                    # Strict-only: no relaxed fallback; if empty, send guidance only
+                    if rows:
+                        ui.append({
+                            "kind": "Table",
+                            "id": "matches",
+                            "columns": [
+                                {"key":"candidate_id","title":"מועמד"},
+                                {"key":"title","title":"תפקיד"},
+                                {"key":"score","title":"ציון"}
+                            ],
+                            "rows": rows,
+                            "primaryKey": "candidate_id"
+                        })
+                    else:
+                        # No rows for strict filters: add user guidance (no sample data)
+                        ui.append({
+                            "kind": "RichText",
+                            "id": "no-results-guidance",
+                            "html": "לא נמצאו תוצאות. נסו להרפות סינונים (הסירו עיר/ציון מינימלי, הגדילו גודל עמוד, או שנו את החיפוש). המערכת מציגה רק נתוני אמת — ללא נתוני דמו."
+                        })
+                    # KPI metric for context
+                    try:
+                        total = int(mr.get('count') or 0)
+                        ui.append({
+                            "kind": "Metric",
+                            "id": "matches-kpi",
+                            "label": "מספר תוצאות",
+                            "value": total
+                        })
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
+                yield _json.dumps(env, ensure_ascii=False) + "\n"
+                yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+            return StreamingResponse(_gen(), media_type="application/x-ndjson")
+    except Exception:
+        pass
+
     return {
         "answer": answer,
         "actions": actions,
@@ -3813,7 +4076,19 @@ def read_category_weights():
 
 @app.get("/match/explain/{cand_id}/{job_id}")
 def explain_match(cand_id: str, job_id: str):
-    from .ingest_agent import db, _skill_set, _title_similarity, get_weights, _semantic_similarity, _embedding_similarity, WEIGHT_DISTANCE, _CITY_CACHE
+    from .ingest_agent import (
+        db,
+        _skill_set,
+        _title_similarity,
+        get_weights,
+        _semantic_similarity,
+        _embedding_similarity,
+        WEIGHT_DISTANCE,
+        _CITY_CACHE,
+        _ensure_embedding,
+        semantic_similarity_public_raw as _sem_raw,
+        embedding_similarity_public_raw as _emb_raw,
+    )
     from bson import ObjectId
     cand = db["candidates"].find_one({"_id": ObjectId(cand_id)})
     job = db["jobs"].find_one({"_id": ObjectId(job_id)})
@@ -3855,8 +4130,14 @@ def explain_match(cand_id: str, job_id: str):
     missing_for_job = job_sk - cand_sk
     missing_for_cand = cand_sk - job_sk
     title_sim = _title_similarity(str(cand.get('title','')), str(job.get('title','')))
+    # Weighted sims (respect current weights)
     sem_sim = _semantic_similarity(str(cand.get('text_blob','')), str(job.get('text_blob','')))
     emb_sim = _embedding_similarity(cand.get('embedding'), job.get('embedding'))
+    # Raw sims (for explain UI even when weight=0); ensure embeddings exist via fallback hasher
+    sem_sim_raw = _sem_raw(str(cand.get('text_blob','')), str(job.get('text_blob','')))
+    c_emb = _ensure_embedding(dict(cand)).get('embedding')
+    j_emb = _ensure_embedding(dict(job)).get('embedding')
+    emb_sim_raw = _emb_raw(c_emb, j_emb)
     w = get_weights()
     base_overlap = (len(overlap)/max(len(cand_sk),len(job_sk)) if max(len(cand_sk),len(job_sk))>0 else 0.0)
     # Weighted must/needed breakdown
@@ -3888,8 +4169,10 @@ def explain_match(cand_id: str, job_id: str):
         "candidate_only_skills": sorted(list(missing_for_job)),
         "job_only_skills": sorted(list(missing_for_cand)),
         "title_similarity": round(title_sim,4),
-        "semantic_similarity": round(sem_sim,4),
-        "embedding_similarity": round(emb_sim,4),
+    "semantic_similarity": round(sem_sim,4),
+    "embedding_similarity": round(emb_sim,4),
+    "semantic_similarity_raw": round(sem_sim_raw,4),
+    "embedding_similarity_raw": round(emb_sim_raw,4),
         "base_skill_overlap": round(base_overlap,4),
         "must_ratio": None if must_ratio is None else round(must_ratio,4),
         "needed_ratio": None if needed_ratio is None else round(needed_ratio,4),

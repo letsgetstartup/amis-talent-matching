@@ -2559,8 +2559,25 @@ def _hash_to_vec(text: str, dims: int = 32) -> list[float]:
     return [v/mx for v in arr]
 
 def _embedding_similarity(a: list | None, b: list | None) -> float:
+    """Weighted embedding similarity used in ranking; returns 0 when embedding weight is disabled.
+    This preserves previous behavior to avoid extra computation in ranking paths when weight is 0.
+    """
     if WEIGHT_EMBEDDING <= 0:
         return 0.0
+    if not a or not b:
+        return 0.0
+    n=min(len(a), len(b))
+    if n==0:
+        return 0.0
+    import math
+    dot=sum(a[i]*b[i] for i in range(n))
+    na=math.sqrt(sum(a[i]*a[i] for i in range(n)))
+    nb=math.sqrt(sum(b[i]*b[i] for i in range(n)))
+    if na==0 or nb==0: return 0.0
+    return dot/(na*nb)
+
+def _embedding_similarity_raw(a: list | None, b: list | None) -> float:
+    """Raw cosine similarity independent of weights; used for explain/debug views."""
     if not a or not b:
         return 0.0
     n=min(len(a), len(b))
@@ -2679,6 +2696,7 @@ def _semantic_tokens(text: str) -> set:
     return toks
 
 def _semantic_similarity(a_txt: str, b_txt: str) -> float:
+    """Weighted semantic similarity used in ranking; returns 0 when semantic weight is disabled."""
     if WEIGHT_SEMANTIC <= 0:
         return 0.0
     a = _semantic_tokens(a_txt)
@@ -2688,8 +2706,20 @@ def _semantic_similarity(a_txt: str, b_txt: str) -> float:
     inter = len(a & b)
     return inter / max(len(a), len(b))
 
+def _semantic_similarity_raw(a_txt: str, b_txt: str) -> float:
+    """Raw token-overlap similarity independent of weights; used for explain/debug views."""
+    a = _semantic_tokens(a_txt)
+    b = _semantic_tokens(b_txt)
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    return inter / max(len(a), len(b))
+
 # Public alias for explain endpoint import (intentionally not prefixed underscore)
 semantic_similarity_public = _semantic_similarity
+# Public raw variants for explain/debug
+semantic_similarity_public_raw = _semantic_similarity_raw
+embedding_similarity_public_raw = _embedding_similarity_raw
 
 def recompute_embeddings() -> int:
     updated=0

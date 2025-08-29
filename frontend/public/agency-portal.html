@@ -33,6 +33,7 @@
     th{color:#a5b4fc;position:sticky;top:0;background:#0b1324}
     .status.ok{color:var(--ok)}.status.err{color:var(--err)}.status.upd{color:#60a5fa}
     .hint{font-size:12px;color:#94a3b8}
+  .small{font-size:12px}
     .drop{border:1px dashed #334155;border-radius:12px;padding:16px;text-align:center;background:#0a1428}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .badge{padding:2px 6px;border-radius:6px;font-size:11px;font-weight:600}
@@ -59,6 +60,13 @@
   .chat-input input{flex:1}
   .empty-state{padding:14px;border:1px dashed #334155;border-radius:12px;background:#0a1428;color:#94a3b8}
   .loading{opacity:.7}
+  /* Score Explainer */
+  .explain-card{background:#0a1020;border:1px solid #1f2937;border-radius:12px;padding:12px}
+  .meter{height:8px;background:#0f172a;border:1px solid #1f2937;border-radius:999px;overflow:hidden}
+  .meter>span{display:block;height:100%;background:#38bdf8}
+  .grid-explain{display:grid;gap:10px}
+  .grid-explain.cols-2{grid-template-columns:1fr 1fr}
+  @media(max-width:720px){.grid-explain.cols-2{grid-template-columns:1fr}}
     @media(max-width:720px){.grid2{grid-template-columns:1fr}}
   </style>
 </head>
@@ -74,6 +82,7 @@
   <div class="tab" data-tab="jobs">משרות</div>
   <div class="tab" data-tab="candidates">מועמדים</div>
   <div class="tab" data-tab="matches">התאמות+צ'אט</div>
+  <div class="tab" data-tab="copilot">Copilot</div>
       <div class="tab" data-tab="upload">העלאה</div>
   <div class="tab" data-tab="imports">ייבוא CSV</div>
       <div style="margin-inline-start:auto" class="muted"><button id="logoutBtn">התנתק</button></div>
@@ -199,6 +208,14 @@
 
     <div id="matches" class="panel" style="display:none">
       <h2>התאמות מועמדים למשרות</h2>
+      <!-- Global Score Explainer (collapsible) -->
+      <div class="panel" style="margin:10px 0 16px 0">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+          <h3 style="margin:0">איך מחשבים את הציון?</h3>
+          <button id="toggleGlobalExplainer" class="btn-small">הצג/הסתר</button>
+        </div>
+        <div id="globalExplainer" class="explain-card" style="margin-top:10px;display:none"></div>
+      </div>
       <!-- New: Quick search by Candidate/Job ID -->
       <div class="panel" style="margin:10px 0 16px 0">
         <h3>חיפוש התאמות לפי מזהה</h3>
@@ -263,6 +280,62 @@
           </div>
         </div>
       </div>
+      <!-- Phase 2: Weights & config controls -->
+      <div class="panel" style="margin:10px 0 16px 0">
+        <h3>שקלול ציונים והגדרות (שרת)</h3>
+        <div class="grid2" style="gap:14px">
+          <div>
+            <h4 style="margin:0 0 6px">משקלים עיקריים (0–1)</h4>
+            <div class="grid-explain" style="gap:8px">
+              <div>
+                <label for="wSkills">משקל מיומנויות</label>
+                <input id="wSkills" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.30" />
+              </div>
+              <div>
+                <label for="wTitle">משקל כותרת</label>
+                <input id="wTitle" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.15" />
+              </div>
+              <div>
+                <label for="wSemantic">משקל סמנטי</label>
+                <input id="wSemantic" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.20" />
+              </div>
+              <div>
+                <label for="wEmbedding">משקל Embedding</label>
+                <input id="wEmbedding" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.25" />
+              </div>
+              <div>
+                <label for="wDistance">משקל מרחק</label>
+                <input id="wDistance" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.10" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 style="margin:0 0 6px">קטגוריות וספים</h4>
+            <div class="grid-explain" style="gap:8px">
+              <div>
+                <label for="cwMust">משקל קטגוריית חובה</label>
+                <input id="cwMust" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.70" />
+                <div class="hint small">מומלץ שסכום חובה+יתרון = 1</div>
+              </div>
+              <div>
+                <label for="cwNeeded">משקל קטגוריית יתרון</label>
+                <input id="cwNeeded" type="number" min="0" max="1" step="0.01" inputmode="decimal" placeholder="לדוגמה: 0.30" />
+              </div>
+              <div>
+                <label for="minSkillFloor">רצפת מיומנויות (מינימום)</label>
+                <input id="minSkillFloor" type="number" min="0" step="1" inputmode="numeric" placeholder="לדוגמה: 0" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="weightsLoad">טען מהשרת</button>
+          <button id="weightsNormalize">נרמל משקלים</button>
+          <button id="weightsLocal">החל מקומית</button>
+          <button id="weightsSave" class="primary">שמור לשרת</button>
+          <span id="weightsStatus" class="hint"></span>
+        </div>
+      </div>
       <div class="row" style="margin-bottom:10px">
         <div class="col">
           <input id="matchesLimit" type="number" value="50" min="1" max="500" />
@@ -290,6 +363,24 @@
             </div>
             <div class="hint">הצ'אט משתמש בנתונים ממונגו ו-API של OpenAI דרך FastAPI</div>
           </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="copilot" class="panel" style="display:none">
+      <h2>Recruiter Copilot</h2>
+      <div class="hint" style="margin-bottom:8px">השדה מקבל הוראות בשפה טבעית. הבוט עשוי להציג טקסט, טבלאות או מדדים בזמן אמת ולחולל פעולות במסך ההתאמות.</div>
+      <div id="copilotKpis" class="chips" aria-live="polite" style="margin-bottom:8px"></div>
+      <div id="copilotUi" style="display:grid;gap:12px;margin-bottom:12px"></div>
+      <div class="panel">
+        <h3>צ'אט Copilot</h3>
+        <div class="chat-box">
+          <div id="copilotLog" class="chat-log" aria-live="polite"></div>
+          <div class="chat-input">
+            <input id="copilotQ" placeholder="לדוגמה: הצג טופ 5 התאמות למועמד X בתל אביב ומיין לפי ציון" />
+            <button id="copilotSend">שלח</button>
+          </div>
+          <div class="hint">תשובות מוזרמות בקו אחד ומעודכנות תוך כדי; הבוט משתמש בנתוני המערכת וב-UI Actions.</div>
         </div>
       </div>
     </div>
@@ -321,6 +412,9 @@
     cacheMaxAge: 86400,
     rp_esco: '',
     fo_esco: '',
+  // Live tuning knobs (phase 2 ready; read-only until actions applied)
+  weights: { title:0.15, semantic:0.2, embedding:0.25, skills:0.3, distance:0.1 },
+  thresholds: { mustMin:0.0, neededMin:0.0, disqualifyBelow:null },
     filters: { titleContains: '', candidateId: '', city: '', cities: [], scoreMin: null, scoreMax: null },
     sort: { by: 'score', dir: 'desc' }
   };
@@ -337,6 +431,24 @@
         rp_esco: String(saved.rp_esco||''),
         fo_esco: String(saved.fo_esco||'')
       });
+      if(saved.weights && typeof saved.weights==='object'){
+        const w = saved.weights; const clamp=(x)=>Number.isFinite(Number(x))? Math.max(0, Math.min(1, Number(x))):undefined;
+        matchesState.weights = {
+          title: clamp(w.title) ?? 0.15,
+          semantic: clamp(w.semantic) ?? 0.2,
+          embedding: clamp(w.embedding) ?? 0.25,
+          skills: clamp(w.skills) ?? 0.3,
+          distance: clamp(w.distance) ?? 0.1,
+        };
+      }
+      if(saved.thresholds && typeof saved.thresholds==='object'){
+        const t = saved.thresholds; const c=(x)=>{ const v=Number(x); return Number.isFinite(v)? Math.max(0, Math.min(1, v)) : null; };
+        matchesState.thresholds = {
+          mustMin: c(t.mustMin) ?? 0,
+          neededMin: c(t.neededMin) ?? 0,
+          disqualifyBelow: t.disqualifyBelow!=null ? c(t.disqualifyBelow) : null
+        };
+      }
     }
   }catch{}
 
@@ -381,7 +493,7 @@
   function validateAction(a){
     if(!a || typeof a !== 'object') return false;
     const t = a.type;
-    if(!['setFilters','setSort','setPage','refresh','setK','setCityFilter','setCache','setESCO'].includes(t)) return false;
+  if(!['setFilters','setSort','setPage','refresh','setK','setCityFilter','setCache','setESCO','setWeights','setThresholds','saveTuning'].includes(t)) return false;
     const p = a.payload || {};
     try{
       if(t==='setFilters'){
@@ -403,6 +515,13 @@
       } else if(t==='setSort'){
         if(p.by && !['score','date','title'].includes(String(p.by))) return false;
         if(p.dir && !['asc','desc'].includes(String(p.dir))) return false;
+      } else if(t==='setWeights'){
+        const keys=['title','semantic','embedding','skills','distance'];
+        for(const k of keys){ if(p[k]!=null && !Number.isFinite(Number(p[k]))) return false; }
+      } else if(t==='setThresholds'){
+        if(p.mustMin!=null && !Number.isFinite(Number(p.mustMin))) return false;
+        if(p.neededMin!=null && !Number.isFinite(Number(p.neededMin))) return false;
+        if(p.disqualifyBelow!=null && !Number.isFinite(Number(p.disqualifyBelow))) return false;
       } else if(t==='setPage'){
         if(p.page!=null && (!Number.isFinite(Number(p.page)) || Number(p.page) < 1)) return false;
       }
@@ -414,7 +533,7 @@
   let matchesRefreshT;
   function scheduleRefreshMatches(){
     try{ clearTimeout(matchesRefreshT); }catch{}
-    try{ localStorage.setItem('matchesTuning', JSON.stringify({ k: matchesState.k, cityFilter: matchesState.cityFilter, cacheStrategy: matchesState.cacheStrategy, cacheMaxAge: matchesState.cacheMaxAge, rp_esco: matchesState.rp_esco, fo_esco: matchesState.fo_esco })); }catch{}
+  try{ localStorage.setItem('matchesTuning', JSON.stringify({ k: matchesState.k, cityFilter: matchesState.cityFilter, cacheStrategy: matchesState.cacheStrategy, cacheMaxAge: matchesState.cacheMaxAge, rp_esco: matchesState.rp_esco, fo_esco: matchesState.fo_esco, weights: matchesState.weights, thresholds: matchesState.thresholds })); }catch{}
     matchesRefreshT = setTimeout(()=>{ refreshMatches(); }, 250);
   }
 
@@ -434,6 +553,178 @@
     window.__toastT = setTimeout(()=>{ el.style.display='none'; }, ms);
   }
 
+  // ===== Score Explainer: renderer and helpers =====
+  function pct100(v){ if(v==null) return '—'; const x=Math.max(0, Math.min(1, Number(v)||0)); return (x*100).toFixed(0)+'%'; }
+  function clamp01(v){ const n=Number(v); if(!Number.isFinite(n)) return 0; return Math.max(0, Math.min(1, n)); }
+  function barHtml(value){ const p = Math.round(clamp01(value)*100); return `<div class="meter" aria-label="${p}%"><span style="width:${p}%"></span></div>`; }
+  function kv(label, value){ return `<div><div class="muted small" style="font-size:12px">${label}</div><div>${value}</div></div>`; }
+  function fmtNum(v, digits=3){ const n=Number(v); return Number.isFinite(n)? n.toFixed(digits) : '—'; }
+  function asMonospace(obj){ const s = typeof obj==='string'? obj : JSON.stringify(obj,null,2); return `<pre style="background:#0a1428;border:1px solid #1f2937;border-radius:8px;padding:10px;overflow:auto;max-height:240px">${escapeHtml(s)}</pre>`; }
+  function normalizeWeights(w){
+    const {title=0,semantic=0,embedding=0,skills=0,distance=0} = w||{}; const sum = [title,semantic,embedding,skills,distance].reduce((a,b)=>a+(Number(b)||0),0) || 1;
+    return { title: (title||0)/sum, semantic:(semantic||0)/sum, embedding:(embedding||0)/sum, skills:(skills||0)/sum, distance:(distance||0)/sum };
+  }
+  function renderGlobalExplainer(){
+    const el = document.getElementById('globalExplainer'); if(!el) return;
+    const w = normalizeWeights(matchesState.weights||{});
+    const th = matchesState.thresholds||{};
+    el.innerHTML = `
+      <div class="grid-explain cols-2">
+        <div>
+          <h4 style="margin:0 0 6px">מרכיבי ציון</h4>
+          ${kv('דמיון כותרת', pct100(null))}
+          ${barHtml(null)}
+          ${kv('דמיון סמנטי', pct100(null))}
+          ${barHtml(null)}
+          ${kv('דמיון embedding', pct100(null))}
+          ${barHtml(null)}
+          ${kv('ציון מיומנויות משוקלל', pct100(null))}
+          ${barHtml(null)}
+          ${kv('ציון מרחק', pct100(null))}
+          ${barHtml(null)}
+          <div class="muted" style="margin-top:6px">דוגמה כללית – ערכים ספציפיים יוצגו לכל התאמה בתוך הטבלה.</div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 6px">משקלים וספים</h4>
+          <div class="grid-explain">
+            ${kv('משקל כותרת', (w.title*100).toFixed(0)+'%')}
+            ${kv('משקל סמנטי', (w.semantic*100).toFixed(0)+'%')}
+            ${kv('משקל embedding', (w.embedding*100).toFixed(0)+'%')}
+            ${kv('משקל מיומנויות', (w.skills*100).toFixed(0)+'%')}
+            ${kv('משקל מרחק', (w.distance*100).toFixed(0)+'%')}
+          </div>
+          <div style="margin-top:8px" class="grid-explain">
+            ${kv('סף חובה מינימלי', th.mustMin!=null? pct100(th.mustMin):'—')}
+            ${kv('סף יתרון מינימלי', th.neededMin!=null? pct100(th.neededMin):'—')}
+            ${kv('פסילה מתחת ל-', th.disqualifyBelow!=null? pct100(th.disqualifyBelow):'—')}
+          </div>
+          <div class="muted" style="margin-top:6px">הציון הסופי הוא סכום התרומות: Σ(weight × feature), לאחר נרמול וגדרות (gates) כגון חובת חובה/מרחק.</div>
+        </div>
+      </div>`;
+  }
+
+  // Helpers for weights form
+  function clamp01Num(v){ const n=Number(v); if(!Number.isFinite(n)) return 0; return Math.max(0, Math.min(1, n)); }
+  function readWeightsForm(){
+    const g = (id)=>document.getElementById(id);
+    const v = {
+      skills: clamp01Num(g('wSkills')?.value),
+      title: clamp01Num(g('wTitle')?.value),
+      semantic: clamp01Num(g('wSemantic')?.value),
+      embedding: clamp01Num(g('wEmbedding')?.value),
+      distance: clamp01Num(g('wDistance')?.value),
+      must: clamp01Num(g('cwMust')?.value),
+      needed: clamp01Num(g('cwNeeded')?.value),
+      minSkillFloor: Math.max(0, Math.floor(Number(g('minSkillFloor')?.value||0)))
+    };
+    return v;
+  }
+  function fillWeightsForm(from){
+    const g = (id)=>document.getElementById(id);
+    if(from.skills!=null) g('wSkills').value = String(from.skills);
+    if(from.title!=null) g('wTitle').value = String(from.title);
+    if(from.semantic!=null) g('wSemantic').value = String(from.semantic);
+    if(from.embedding!=null) g('wEmbedding').value = String(from.embedding);
+    if(from.distance!=null) g('wDistance').value = String(from.distance);
+    if(from.must!=null) g('cwMust').value = String(from.must);
+    if(from.needed!=null) g('cwNeeded').value = String(from.needed);
+    if(from.minSkillFloor!=null) g('minSkillFloor').value = String(from.minSkillFloor);
+  }
+  function normalizeMainWeights(obj){
+    const s = (Number(obj.skills)||0)+(Number(obj.title)||0)+(Number(obj.semantic)||0)+(Number(obj.embedding)||0)+(Number(obj.distance)||0);
+    if(s<=0) return obj; // nothing to do
+    return {
+      ...obj,
+      skills: (Number(obj.skills)||0)/s,
+      title: (Number(obj.title)||0)/s,
+      semantic: (Number(obj.semantic)||0)/s,
+      embedding: (Number(obj.embedding)||0)/s,
+      distance: (Number(obj.distance)||0)/s,
+    };
+  }
+  async function loadServerConfig(){
+    const status = document.getElementById('weightsStatus'); if(status) status.textContent='';
+    try{
+      const r = await apiFetch(`${API}/match/config`, { headers: hdrs() });
+      if(!r.ok){ if(status) status.textContent='שגיאה בטעינה'; return; }
+      const j = await r.json();
+      const vals = {
+        skills: Number(j.skill_weight ?? matchesState.weights.skills ?? 0.3),
+        title: Number(j.title_weight ?? matchesState.weights.title ?? 0.15),
+        semantic: Number(j.semantic_weight ?? matchesState.weights.semantic ?? 0.2),
+        embedding: Number(j.embedding_weight ?? matchesState.weights.embedding ?? 0.25),
+        distance: Number(j.distance_weight ?? matchesState.weights.distance ?? 0.1),
+        must: Number(j.must_category_weight ?? 0.7),
+        needed: Number(j.needed_category_weight ?? 0.3),
+        minSkillFloor: Number.isFinite(Number(j.min_skill_floor)) ? Number(j.min_skill_floor) : ''
+      };
+      fillWeightsForm(vals);
+      // Update local state weights (display only) without saving to server
+      matchesState.weights = { title: vals.title, semantic: vals.semantic, embedding: vals.embedding, skills: vals.skills, distance: vals.distance };
+      renderGlobalExplainer();
+      if(status) status.textContent='נטען מהשרת';
+    }catch(e){ if(status) status.textContent='שגיאה'; }
+  }
+  async function saveServerConfig(){
+    const status = document.getElementById('weightsStatus'); if(status) status.textContent='';
+    if(!hasAuth()){ toast('התחבר כדי לשמור בשרת','warn'); return; }
+    let v = readWeightsForm();
+    // Basic validation for category weights sum
+    const sumCat = (Number(v.must)||0) + (Number(v.needed)||0);
+    if(Math.abs(sumCat-1) > 0.01){
+      // Auto-balance needed if must provided
+      v.needed = Math.max(0, Math.min(1, 1 - (Number(v.must)||0)));
+      document.getElementById('cwNeeded').value = String(v.needed.toFixed(2));
+    }
+    // Prepare payload
+    const payload = {
+      skill_weight: Number(v.skills),
+      title_weight: Number(v.title),
+      semantic_weight: Number(v.semantic),
+      embed_weight: Number(v.embedding),
+      distance_weight: Number(v.distance),
+      must_weight: Number(v.must),
+      needed_weight: Number(v.needed),
+      min_skill_floor: Number.isFinite(Number(v.minSkillFloor)) ? Number(v.minSkillFloor) : undefined
+    };
+    try{
+      const r = await apiFetch(`${API}/match/config`, { method:'PUT', headers: { ...hdrs(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if(!r.ok){ const txt = await r.text(); toast('שמירה נכשלה: '+(txt||r.status),'error'); return; }
+      const j = await r.json();
+      // Reflect saved server values in form + state
+      const vals = {
+        skills: Number(j.skill_weight ?? v.skills),
+        title: Number(j.title_weight ?? v.title),
+        semantic: Number(j.semantic_weight ?? v.semantic),
+        embedding: Number(j.embedding_weight ?? v.embedding),
+        distance: Number(j.distance_weight ?? v.distance),
+        must: Number(j.must_category_weight ?? v.must),
+        needed: Number(j.needed_category_weight ?? v.needed),
+        minSkillFloor: Number(j.min_skill_floor ?? v.minSkillFloor)
+      };
+      fillWeightsForm(vals);
+      matchesState.weights = { title: vals.title, semantic: vals.semantic, embedding: vals.embedding, skills: vals.skills, distance: vals.distance };
+      renderGlobalExplainer();
+      try{ localStorage.setItem('matchesConfigForm', JSON.stringify(vals)); }catch{}
+      toast('נשמר בשרת ✅','ok');
+      scheduleRefreshMatches();
+    }catch(e){ toast('שגיאת רשת','error'); }
+  }
+  function applyLocalWeights(){
+    let v = readWeightsForm();
+    // Optionally normalize main weights before applying locally
+    v = normalizeMainWeights(v);
+    matchesState.weights = { title: v.title, semantic: v.semantic, embedding: v.embedding, skills: v.skills, distance: v.distance };
+    try{ localStorage.setItem('matchesConfigForm', JSON.stringify(v)); }catch{}
+    renderGlobalExplainer();
+    toast('הוחל מקומית','ok');
+  }
+  function normalizeWeightsForm(){
+    const v = normalizeMainWeights(readWeightsForm());
+    fillWeightsForm(v);
+    toast('נרמל משקלים','ok');
+  }
+
   function showUser(){
     const el = document.getElementById('userSlot');
     if(hasAuth()){
@@ -443,14 +734,24 @@
     } else {
       el.textContent = 'לא מחובר';
     }
+    // Reflect auth in weights save button
+    try{
+      const saveBtn = document.getElementById('weightsSave');
+      if(saveBtn) saveBtn.disabled = !hasAuth();
+    }catch(e){}
   }
   function activate(tab){
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
-  ['dashboard','jobs','candidates','matches','upload','imports'].forEach(id=>{
+  ['dashboard','jobs','candidates','matches','copilot','upload','imports'].forEach(id=>{
       document.getElementById(id).style.display = (id===tab)?'block':'none';
     });
     if(tab==='matches'){
+  // Prepare global explainer once visible
+  try{ renderGlobalExplainer(); }catch(e){}
       refreshMatches();
+    }
+    if(tab==='copilot'){
+      // No auto actions; UI awaits user prompt
     }
     if(tab==='jobs') refreshJobs();
     if(tab==='candidates') refreshCandidates();
@@ -468,6 +769,19 @@
     showUser();
     activate('dashboard');
   };
+
+  // Toggle global explainer panel
+  (function bindGlobalExplainerToggle(){
+    const btn = document.getElementById('toggleGlobalExplainer');
+    const el = document.getElementById('globalExplainer');
+    if(btn && el && !btn._bound){
+      btn._bound = true;
+      btn.addEventListener('click', ()=>{
+        if(el.style.display==='none' || !el.style.display){ el.style.display='block'; renderGlobalExplainer(); }
+        else { el.style.display='none'; }
+      });
+    }
+  })();
 
   // Signup
   document.getElementById('signupBtn').onclick = async () => {
@@ -814,7 +1128,8 @@
       matchesState.cityFilter? 'קרבה: פעיל' : 'קרבה: כבוי',
       `Cache: ${matchesState.cacheStrategy}${Number.isFinite(Number(matchesState.cacheMaxAge))? ' @'+matchesState.cacheMaxAge+'s':''}`,
       matchesState.rp_esco? `RP ESCO: ${matchesState.rp_esco}`:'',
-      matchesState.fo_esco? `FO ESCO: ${matchesState.fo_esco}`:''
+  matchesState.fo_esco? `FO ESCO: ${matchesState.fo_esco}`:'',
+  `Weights v1`
     ].filter(Boolean).join(' • ');
     meta.textContent = `${pageInfo}${parts.length? ' • ' + parts.join(' • ') : ''} • מיון: ${sortLabel} • ${tuneBits}`;
   }
@@ -899,33 +1214,124 @@
   function checkMark(ok){ return ok ? '✅' : '✖️'; }
   function pct(a,b){ if(!b) return '0%'; return `${Math.round((a/b)*100)}%`; }
   function renderBreakdownHtml(d){
-    if(!d || !d.requirements) return '<div class="empty-state">אין פירוט זמין</div>';
-    const must = Array.isArray(d.requirements.must)? d.requirements.must : [];
-    const needed = Array.isArray(d.requirements.needed)? d.requirements.needed : [];
-    const fitMust = must.filter(x=>x.has).length;
-    const fitNeeded = needed.filter(x=>x.has).length;
+    if(!d) return '<div class="empty-state">אין פירוט זמין</div>';
+    const req = d.requirements || {};
+    const must = Array.isArray(req.must)? req.must : [];
+    const needed = Array.isArray(req.needed)? req.needed : [];
+    const fitMust = must.filter(x=>x && x.has).length;
+    const fitNeeded = needed.filter(x=>x && x.has).length;
+    const features = d.features || d; // fallback to top-level fields if server is older
+    const weights = normalizeWeights(d.weights || matchesState.weights || {});
+    const agg = d.aggregation || {};
+    const gates = Array.isArray(agg.gates_applied)? agg.gates_applied : [];
+    const cityGate = d.rules?.city_filter_applied ? 'סינון עיר פעיל' : 'סינון עיר כבוי';
+    const titleSim = features.title_similarity ?? d.title_similarity;
+    // Prefer raw similarity for display when weight is zero (so users still see real similarity)
+    const semSim = (weights.semantic===0 && (features.semantic_similarity_raw ?? d.semantic_similarity_raw) != null)
+      ? (features.semantic_similarity_raw ?? d.semantic_similarity_raw)
+      : (features.semantic_similarity ?? d.semantic_similarity);
+    const embSim = (weights.embedding===0 && (features.embedding_similarity_raw ?? d.embedding_similarity_raw) != null)
+      ? (features.embedding_similarity_raw ?? d.embedding_similarity_raw)
+      : (features.embedding_similarity ?? d.embedding_similarity);
+    const skillsScore = features.weighted_skill_score ?? d.weighted_skill_score;
+    const distScore = features.distance_score ?? (Number.isFinite(features.distance_km)? Math.max(0, Math.min(1, 1/(1+(features.distance_km/10)))) : undefined);
+    const contrib = agg.contributions || {
+      title: (weights.title||0) * (clamp01(titleSim)),
+      semantic: (weights.semantic||0) * (clamp01(semSim)),
+      embedding: (weights.embedding||0) * (clamp01(embSim)),
+      skills: (weights.skills||0) * (clamp01(skillsScore)),
+      distance: (weights.distance||0) * (clamp01(distScore)),
+    };
+    const total = agg.normalized_total ?? agg.pre_normalized_total ?? Object.values(contrib).reduce((a,b)=>a+(Number(b)||0),0);
     function tip(i){
       const reason = (i && i.match_reason) ? String(i.match_reason) : (i && i.has ? 'direct' : 'missing');
       const matched = (i && (i.matched_label || i.matched_candidate_skill)) ? String(i.matched_label || i.matched_candidate_skill) : '';
-      if(i && i.has){
-        return `נמצא (${reason}${matched?`: ${escapeHtml(matched)}`:''})`;
-      }
+      if(i && i.has){ return `נמצא (${reason}${matched?`: ${escapeHtml(matched)}`:''})`; }
       return 'חסר';
     }
-    const rows = [
-      `<div class="muted" style="margin-bottom:6px">חובה: ${fitMust}/${must.length} (${pct(fitMust, must.length)}) • יתרון: ${fitNeeded}/${needed.length} (${pct(fitNeeded, needed.length)}) • עודפים אצל מועמד: ${(d.candidate_extra_skills||[]).length}</div>`,
-      must.length ? `<div style="margin:6px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">חובה</div><div class="chips">${must.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : '',
-      needed.length ? `<div style="margin:6px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">יתרון</div><div class="chips">${needed.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : '',
+    const head = `
+      <div class="grid-explain cols-2" style="margin-bottom:6px">
+        <div>
+          ${kv('ציון כולל', pct100(total))}
+          <div class="muted" style="font-size:12px">${cityGate}${gates.length? ' • Gates: '+gates.map(escapeHtml).join(', '):''}</div>
+        </div>
+        <div class="grid-explain">
+          ${kv('חובה', `${fitMust}/${must.length} (${pct(fitMust, must.length)})`)}
+          ${kv('יתרון', `${fitNeeded}/${needed.length} (${pct(fitNeeded, needed.length)})`)}
+        </div>
+      </div>`;
+    const featHtml = `
+      <div class="grid-explain">
+        <div>${kv('דמיון כותרת', pct100(titleSim))}${barHtml(titleSim)}</div>
+        <div>${kv('דמיון סמנטי', pct100(semSim))}${barHtml(semSim)}</div>
+        <div>${kv('דמיון embedding', pct100(embSim))}${barHtml(embSim)}</div>
+        <div>${kv('מיומנויות', pct100(skillsScore))}${barHtml(skillsScore)}</div>
+        <div>${kv('מרחק', pct100(distScore))}${barHtml(distScore)}</div>
+      </div>`;
+    const weightsHtml = `
+      <div class="grid-explain cols-2" style="margin-top:8px">
+        <div class="grid-explain">
+          ${kv('w(title)', (weights.title*100).toFixed(0)+'%')}
+          ${kv('w(semantic)', (weights.semantic*100).toFixed(0)+'%')}
+          ${kv('w(embedding)', (weights.embedding*100).toFixed(0)+'%')}
+          ${kv('w(skills)', (weights.skills*100).toFixed(0)+'%')}
+          ${kv('w(distance)', (weights.distance*100).toFixed(0)+'%')}
+        </div>
+        <div>
+          <div class="muted" style="font-size:12px">תרומות: weight × feature</div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr><th style="text-align:right">רכיב</th><th style="text-align:right">תרומה</th></tr></thead>
+            <tbody>
+              ${['title','semantic','embedding','skills','distance'].map(k=>`<tr><td style="border-bottom:1px solid #1f2937;padding:4px">${k}</td><td style="border-bottom:1px solid #1f2937;padding:4px">${fmtNum(contrib[k],3)}</td></tr>`).join('')}
+              <tr><td style="padding:4px"><strong>סה"כ</strong></td><td style="padding:4px"><strong>${fmtNum(total,3)}</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    const reqHtml = [
+      must.length ? `<div style="margin:10px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">חובה</div><div class="chips">${must.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : '',
+      needed.length ? `<div style="margin:10px 0"><div style="font-weight:600;color:#a5b4fc;margin-bottom:4px">יתרון</div><div class="chips">${needed.map(i=>`<span class="chip" title="${tip(i)}">${checkMark(!!i.has)} ${escapeHtml(i.label||i.name||'')}</span>`).join(' ')}</div></div>` : ''
     ].join('');
-    return `<div>${rows}</div>`;
+    const rawBtnId = `raw_${Math.random().toString(36).slice(2)}`;
+    const rawHtml = `
+      <div style="margin-top:8px">
+        <button class="btn-small" id="${rawBtnId}">הצג JSON</button>
+        <div id="${rawBtnId}_slot" style="display:none;margin-top:6px">${asMonospace(d)}</div>
+      </div>`;
+    setTimeout(()=>{
+      const btn=document.getElementById(rawBtnId); const slot=document.getElementById(`${rawBtnId}_slot`);
+      if(btn && slot && !btn._bound){ btn._bound=true; btn.addEventListener('click', ()=>{ slot.style.display = (slot.style.display==='none'||!slot.style.display)?'block':'none'; }); }
+    },0);
+    return `<div class="explain-card">${head}${featHtml}${weightsHtml}${reqHtml}${rawHtml}</div>`;
   }
   async function fetchBreakdown(candId, jobId){
     const key = cacheKey(candId, jobId);
     if(breakdownCache[key]) return breakdownCache[key];
-    const url = `${API}/match/breakdown/${encodeURIComponent(candId)}/${encodeURIComponent(jobId)}`;
-    const r = await apiFetch(url, { headers: hdrs() });
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const j = await r.json(); breakdownCache[key] = j; return j;
+    const bUrl = `${API}/match/breakdown/${encodeURIComponent(candId)}/${encodeURIComponent(jobId)}`;
+    const eUrl = `${API}/match/explain/${encodeURIComponent(candId)}/${encodeURIComponent(jobId)}`;
+    // Fetch breakdown first (requirements), then best-effort enrich with explain
+    const r1 = await apiFetch(bUrl, { headers: hdrs() });
+    if(!r1.ok) throw new Error(`HTTP ${r1.status}`);
+    const base = await r1.json();
+    try{
+      const r2 = await apiFetch(eUrl, { headers: hdrs() });
+      if(r2.ok){
+        const ex = await r2.json();
+        const merged = { ...base, ...ex, features: {
+          title_similarity: ex.title_similarity,
+          semantic_similarity: ex.semantic_similarity,
+          embedding_similarity: ex.embedding_similarity,
+          // raw, weight-independent values (may be identical if weights > 0)
+          semantic_similarity_raw: ex.semantic_similarity_raw,
+          embedding_similarity_raw: ex.embedding_similarity_raw,
+          weighted_skill_score: ex.weighted_skill_score,
+          distance_km: ex.distance_km,
+          distance_score: ex.distance_score
+        }, weights: ex.weights || base.weights };
+        breakdownCache[key] = merged; return merged;
+      }
+    }catch(_e){ /* non-fatal; fall back */ }
+    breakdownCache[key] = base; return base;
   }
   function isObjectId(s){ return /^[0-9a-f]{24}$/i.test(String(s||'').trim()); }
   let searchAbort;
@@ -1134,6 +1540,40 @@
       } else if(a.type==='setESCO'){
         const p=a.payload||{}; if(p.rp!=null){ matchesState.rp_esco = String(p.rp||''); changed=true; const el=document.getElementById('mRpESCO'); if(el) el.value=matchesState.rp_esco; }
         if(p.fo!=null){ matchesState.fo_esco = String(p.fo||''); changed=true; const el=document.getElementById('mFoESCO'); if(el) el.value=matchesState.fo_esco; }
+      } else if(a.type==='setWeights'){
+        const p=a.payload||{}; const w={...matchesState.weights};
+        const clamp=(x)=>{ const v=Number(x); return Number.isFinite(v)? Math.max(0, Math.min(1, v)) : undefined; };
+        let touched=false; ['title','semantic','embedding','skills','distance'].forEach(k=>{ const v=clamp(p[k]); if(v!=null){ w[k]=v; touched=true; } });
+        if(touched){ matchesState.weights = w; changed=true; renderGlobalExplainer(); }
+      } else if(a.type==='setThresholds'){
+        const p=a.payload||{}; const t={...matchesState.thresholds};
+        const clamp=(x)=>{ if(x==null) return null; const v=Number(x); return Number.isFinite(v)? Math.max(0, Math.min(1, v)) : null; };
+        let touched=false;
+        if(p.mustMin!=null){ t.mustMin = clamp(p.mustMin); touched=true; }
+        if(p.neededMin!=null){ t.neededMin = clamp(p.neededMin); touched=true; }
+        if(p.disqualifyBelow!=null){ t.disqualifyBelow = clamp(p.disqualifyBelow); touched=true; }
+        if(touched){ matchesState.thresholds=t; changed=true; renderGlobalExplainer(); }
+      } else if(a.type==='saveTuning'){
+        // Persist locally first
+        try{ localStorage.setItem('matchesTuning', JSON.stringify({ k: matchesState.k, cityFilter: matchesState.cityFilter, cacheStrategy: matchesState.cacheStrategy, cacheMaxAge: matchesState.cacheMaxAge, rp_esco: matchesState.rp_esco, fo_esco: matchesState.fo_esco, weights: matchesState.weights, thresholds: matchesState.thresholds })); }catch{}
+        // Best-effort server persistence if API key present
+        (async()=>{
+          if(!hasAuth()) { toast('נשמר מקומית (התחבר לשמירה בשרת)','warn'); return; }
+          try{
+            const w = normalizeWeights(matchesState.weights||{});
+            const payload = {
+              skill_weight: w.skills,
+              title_weight: w.title,
+              semantic_weight: w.semantic,
+              embed_weight: w.embedding,
+              distance_weight: w.distance
+            };
+            const r = await apiFetch(`${API}/match/config`, { method:'PUT', headers: { ...hdrs(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if(r.ok){ toast('הגדרות נשמרו בשרת','ok'); }
+            else { toast('שמירת שרת נכשלה (נשמר מקומית)','warn'); }
+          }catch(e){ toast('שמירת שרת נכשלה (נשמר מקומית)','warn'); }
+        })();
+        changed=false; // saving does not force refresh by itself
       } else if(a.type==='refresh'){
         changed=true;
       }
@@ -1155,6 +1595,26 @@
     const age = document.getElementById('mCacheAge'); if(age){ const v=Number(matchesState.cacheMaxAge); if(Number.isFinite(v)) age.value=String(v); age.addEventListener('input', ()=>{ let x = Number(age.value); if(!Number.isFinite(x)) x = 0; x = Math.max(0, Math.min(604800, Math.floor(x))); if(x!==matchesState.cacheMaxAge){ pushHistory(); matchesState.cacheMaxAge = x; scheduleRefreshMatches(); } }); }
     const rp = document.getElementById('mRpESCO'); if(rp){ rp.value = matchesState.rp_esco||''; rp.addEventListener('change', ()=>{ pushHistory(); matchesState.rp_esco = rp.value.trim(); scheduleRefreshMatches(); }); }
     const fo = document.getElementById('mFoESCO'); if(fo){ fo.value = matchesState.fo_esco||''; fo.addEventListener('change', ()=>{ pushHistory(); matchesState.fo_esco = fo.value.trim(); scheduleRefreshMatches(); }); }
+  })();
+
+  // Initialize weights/config controls
+  (function initWeightsControls(){
+    const loadBtn = document.getElementById('weightsLoad');
+    const saveBtn = document.getElementById('weightsSave');
+    const localBtn = document.getElementById('weightsLocal');
+    const normBtn = document.getElementById('weightsNormalize');
+    // Restore from localStorage if available
+    try{
+      const saved = JSON.parse(localStorage.getItem('matchesConfigForm')||'null');
+      if(saved && typeof saved==='object') fillWeightsForm(saved);
+      else fillWeightsForm({ skills: matchesState.weights.skills, title: matchesState.weights.title, semantic: matchesState.weights.semantic, embedding: matchesState.weights.embedding, distance: matchesState.weights.distance, must: 0.7, needed: 0.3, minSkillFloor: '' });
+    }catch{ fillWeightsForm({ skills: matchesState.weights.skills, title: matchesState.weights.title, semantic: matchesState.weights.semantic, embedding: matchesState.weights.embedding, distance: matchesState.weights.distance, must: 0.7, needed: 0.3, minSkillFloor: '' }); }
+    if(loadBtn && !loadBtn._bound){ loadBtn._bound=true; loadBtn.addEventListener('click', loadServerConfig); }
+    if(saveBtn && !saveBtn._bound){ saveBtn._bound=true; saveBtn.addEventListener('click', saveServerConfig); saveBtn.disabled = !hasAuth(); }
+    if(localBtn && !localBtn._bound){ localBtn._bound=true; localBtn.addEventListener('click', applyLocalWeights); }
+    if(normBtn && !normBtn._bound){ normBtn._bound=true; normBtn.addEventListener('click', normalizeWeightsForm); }
+    // Auto-load from server once when tab opens
+    setTimeout(()=>{ loadServerConfig(); }, 50);
   })();
 
   async function sendChat(){
@@ -1196,6 +1656,204 @@
   const chatSendBtn = document.getElementById('chatSend');
   if(chatSendBtn) chatSendBtn.onclick = sendChat;
 
+  // ===== Copilot: streaming chat client and UI renderer =====
+  const COPILOT_STREAM_TIMEOUT_MS = 30000;
+  let copilotAbort;
+
+  function pushCopilot(role, text){
+    const log = document.getElementById('copilotLog');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function sanitizeRichHtml(html){
+    // Strict allowlist: basic tags only; strip scripts/events
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html || '';
+    const allowed = new Set(['B','I','EM','STRONG','U','P','BR','UL','OL','LI','DIV','SPAN','SMALL','CODE','PRE','A','H1','H2','H3','H4','H5','H6']);
+    const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_ELEMENT, null);
+    const toRemove = [];
+    while(walker.nextNode()){
+      const el = walker.currentNode;
+      if(!allowed.has(el.tagName)) { toRemove.push(el); continue; }
+      // Remove event handler attributes and forbid javascript: URLs
+  for(const attr of Array.from(el.attributes)){
+        const n = attr.name.toLowerCase();
+        if(n.startsWith('on')) el.removeAttribute(attr.name);
+        if(n==='href' || n==='src'){
+          const v = String(attr.value||'');
+          if(/^\s*javascript:/i.test(v)) el.removeAttribute(attr.name);
+        }
+        if(n==='style'){ el.removeAttribute('style'); }
+      }
+      if(el.tagName==='A'){
+        el.setAttribute('rel','noopener noreferrer');
+        if(!el.getAttribute('target')) el.setAttribute('target','_blank');
+      }
+    }
+    toRemove.forEach(node=> node.replaceWith(document.createTextNode(node.textContent||'')));
+    return tpl.innerHTML;
+  }
+
+  function renderCopilotTable(component){
+    const mount = document.getElementById('copilotUi');
+    if(!mount) return;
+    const { id, columns = [], rows = [], primaryKey } = component;
+    const card = document.createElement('div');
+    card.className = 'panel';
+    const safeCols = columns.filter(c=>c && c.key && c.title);
+    const head = safeCols.map(c=>`<th>${escapeHtml(String(c.title))}</th>`).join('');
+    const body = rows.map(r=>{
+      return '<tr>' + safeCols.map(c=>`<td>${escapeHtml(String(r[c.key] ?? ''))}</td>`).join('') + '</tr>';
+    }).join('');
+  const title = id==='matches' ? 'תצוגת טבלה (התאמות)' : 'תצוגת טבלה';
+    card.innerHTML = `
+      <h3 style="margin-top:0">${title}</h3>
+      <div style="overflow:auto;max-height:50vh">
+        <table>
+          <thead><tr>${head}</tr></thead>
+          <tbody>${body || '<tr><td class="muted" colspan="'+Math.max(safeCols.length,1)+'">אין שורות</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+    mount.appendChild(card);
+  }
+
+  function renderCopilotRichText(component){
+    const { html = '' } = component;
+    const mount = document.getElementById('copilotUi');
+    if(!mount) return;
+    const card = document.createElement('div');
+    card.className = 'panel';
+    card.innerHTML = `<div class="muted" style="margin-bottom:6px">הסבר</div><div>${sanitizeRichHtml(html)}</div>`;
+    mount.appendChild(card);
+  }
+
+  function renderCopilotMetric(component){
+    const strip = document.getElementById('copilotKpis');
+    if(!strip) return;
+    const { label, value, tone='info' } = component;
+    const span = document.createElement('span');
+    const toneClass = tone==='success' ? 'success' : tone==='warn' ? 'warning' : tone==='danger' ? 'warning' : 'neutral';
+    span.className = `badge ${toneClass}`;
+    span.textContent = `${label}: ${value}`;
+    strip.appendChild(span);
+  }
+
+  function renderEnvelope(env){
+    if(!env || env.type !== 'assistant_ui') return;
+    // Run actions first for deterministic state
+    try{ if(Array.isArray(env.actions) && env.actions.length){ applyChatActions(env.actions); } }catch(e){}
+    const ui = Array.isArray(env.ui) ? env.ui : [];
+    for(const c of ui){
+      if(!c || typeof c !== 'object' || !c.kind) continue;
+      if(c.kind==='Table') renderCopilotTable(c);
+      else if(c.kind==='RichText') renderCopilotRichText(c);
+      else if(c.kind==='Metric') renderCopilotMetric(c);
+      // Unknown kinds ignored safely
+    }
+  }
+
+  async function sendCopilotChat(){
+    if(!hasAuth()) { toast('התחבר תחילה', 'warning'); return; }
+    const inp = document.getElementById('copilotQ');
+    const q = (inp.value||'').trim();
+    if(!q) return;
+    const btn = document.getElementById('copilotSend');
+    const ui = document.getElementById('copilotUi');
+    const kpi = document.getElementById('copilotKpis');
+    try{ ui.innerHTML=''; kpi.innerHTML=''; }catch{}
+    const user = pushCopilot('user', q);
+    inp.value='';
+    const bot = pushCopilot('bot', 'חושב...');
+    if(btn) btn.disabled = true; if(inp) inp.disabled = true;
+    if(copilotAbort){ try{ copilotAbort.abort(); }catch{} }
+    copilotAbort = new AbortController();
+    let done = false;
+    let timeout = setTimeout(()=>{
+      if(done) return; try{ copilotAbort.abort(); }catch{}; bot.textContent = 'תם הזמן לביצוע. נסה לנסח מחדש או לצמצם את הבקשה.'; if(btn) btn.disabled=false; if(inp) inp.disabled=false;
+    }, COPILOT_STREAM_TIMEOUT_MS);
+    try{
+      // Try streaming first
+      const res = await apiFetch(`${API}/chat/query?stream=1`, {
+        method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
+        body: JSON.stringify({ question: q }), signal: copilotAbort.signal
+      });
+      if(res.ok && res.body){
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let sawEvent = false;
+        while(true){
+          const {value, done:rdone} = await reader.read();
+          if(rdone) break;
+          buffer += decoder.decode(value, {stream:true});
+          let idx;
+          while((idx = buffer.indexOf('\n')) >= 0){
+            const line = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx+1);
+            if(!line) continue;
+            let evt; try{ evt = JSON.parse(line); }catch(e){ continue; }
+            sawEvent = true;
+            if(evt.type === 'text_delta'){
+              bot.textContent = String(evt.text||'');
+            } else if(evt.type === 'assistant_ui'){
+              renderEnvelope(evt);
+              bot.textContent = evt.narration || 'בוצע';
+            } else if(evt.type === 'error'){
+              bot.textContent = `שגיאה: ${evt.detail||'אירעה תקלה'}`;
+            } else if(evt.type === 'done'){
+              // no-op
+            }
+          }
+        }
+        // If server returned a single JSON (non-NDJSON), try to parse leftover buffer
+        if(!sawEvent){
+          const left = (buffer||'').trim();
+          if(left){
+            try{
+              const j = JSON.parse(left);
+              if(Array.isArray(j.actions) && j.actions.length){ try{ applyChatActions(j.actions); }catch(e){} }
+              if(j.type === 'assistant_ui'){ renderEnvelope(j); }
+              bot.textContent = j.answer || j.message || j.narration || 'בוצע';
+            }catch(e){ /* ignore */ }
+          }
+        }
+        done = true;
+        clearTimeout(timeout);
+        if(btn) btn.disabled=false; if(inp) inp.disabled=false;
+        return;
+      }
+      // Fallback to non-stream JSON
+      const r2 = await apiFetch(`${API}/chat/query`, {
+        method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
+        body: JSON.stringify({ question: q }), signal: copilotAbort.signal
+      });
+      if(!r2.ok){ bot.textContent = 'שגיאה בתשובת השרת'; return; }
+      const j = await r2.json();
+      if(Array.isArray(j.actions) && j.actions.length){ try{ applyChatActions(j.actions); }catch(e){} }
+      bot.textContent = j.answer || j.message || 'בוצע';
+    }catch(e){
+      if(e?.name==='AbortError') return;
+      bot.textContent = 'שגיאה ברשת או בזמן העיבוד';
+    } finally {
+      done = true; clearTimeout(timeout);
+      if(btn) btn.disabled=false; if(inp) inp.disabled=false;
+    }
+  }
+
+  // Wire Copilot send
+  (function initCopilot(){
+    const btn = document.getElementById('copilotSend');
+    const inp = document.getElementById('copilotQ');
+    if(btn && !btn._bound){ btn._bound=true; btn.addEventListener('click', sendCopilotChat); }
+    if(inp && !inp._bound){ inp._bound=true; inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendCopilotChat(); } }); }
+  })();
+
   // Auto-restore session on load and activate last tab
   (async function initSession(){
     if(hasAuth()){
@@ -1209,6 +1867,7 @@
       let tab = 'jobs';
       try{ tab = localStorage.getItem('activeTab') || 'jobs'; }catch(e){}
       activate(tab);
+  try{ renderGlobalExplainer(); }catch(e){}
       try{ await Promise.allSettled([refreshJobs(), refreshCandidates()]); }catch(e){}
     } else {
       showUser();
