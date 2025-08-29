@@ -1657,7 +1657,7 @@
   if(chatSendBtn) chatSendBtn.onclick = sendChat;
 
   // ===== Copilot: streaming chat client and UI renderer =====
-  const COPILOT_STREAM_TIMEOUT_MS = 30000;
+  const COPILOT_STREAM_TIMEOUT_MS = 600000; // 10 minutes per user request
   let copilotAbort;
 
   function pushCopilot(role, text){

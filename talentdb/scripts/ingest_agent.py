@@ -562,15 +562,16 @@ def _persist_cache():
 
 # --- Optional OpenAI client ---
 USE_OPENAI = bool(os.getenv("OPENAI_API_KEY"))
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-nano")  # default for non-ingestion features
-# Specific model for CV/job ingestion (user request)
+# Use GPT-4o by default for Copilot/chat flows (stable, multi-modal, supports structured outputs)
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # default for non-ingestion features (Copilot)
+# Specific model for CV/job ingestion (user request). No automatic fallback will be applied.
 INGEST_OPENAI_MODEL = os.getenv("OPENAI_MODEL_INGEST", "gpt-4o-mini")
 _OPENAI_AVAILABLE = False
 LAST_LLM_ERROR: str | None = None
 LLM_CALLS = 0
 LLM_SUCCESSES = 0
-OPENAI_REQUEST_TIMEOUT = float(os.getenv("OPENAI_REQUEST_TIMEOUT", "300"))  # per-request seconds (raised per user request)
-OPENAI_OVERALL_TIMEOUT = float(os.getenv("OPENAI_OVERALL_TIMEOUT", "320"))  # total seconds budget per document
+OPENAI_REQUEST_TIMEOUT = float(os.getenv("OPENAI_REQUEST_TIMEOUT", "600"))  # per-request seconds
+OPENAI_OVERALL_TIMEOUT = float(os.getenv("OPENAI_OVERALL_TIMEOUT", "600"))  # total seconds budget per document
 try:
     if USE_OPENAI:
         from openai import OpenAI
@@ -1092,7 +1093,8 @@ def _materialize_skill_set(struct: Dict[str,Any]) -> list:
 def llm_status() -> Dict[str, Any]:
     return {
         "openai_available": _OPENAI_AVAILABLE,
-        "model": OPENAI_MODEL if _OPENAI_AVAILABLE else None,
+    "model": OPENAI_MODEL if _OPENAI_AVAILABLE else None,
+    "ingest_model": INGEST_OPENAI_MODEL if _OPENAI_AVAILABLE else None,
         "last_error": LAST_LLM_ERROR,
         "cache_items": len(_EXTRACTION_CACHE),
         "calls": LLM_CALLS,

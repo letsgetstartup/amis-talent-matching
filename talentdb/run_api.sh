@@ -68,14 +68,14 @@ PY
 done
 
 # --- Environment summary ---
-echo "[run_api] OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-nano} (override with export OPENAI_MODEL=...)"
+echo "[run_api] OPENAI_MODEL=${OPENAI_MODEL:-gpt-5-mini} (override with export OPENAI_MODEL=...)"
 echo "[run_api] OPENAI_MODEL_INGEST=${OPENAI_MODEL_INGEST:-gpt-4o-mini} (set to change CV/job ingestion model)"
 echo "[run_api] PYTHONPATH will include: $SCRIPT_DIR"
 export PYTHONPATH="$SCRIPT_DIR:${PYTHONPATH:-}"
 
-# Allow long LLM operations (default 300s already handled in code)
-export OPENAI_REQUEST_TIMEOUT="${OPENAI_REQUEST_TIMEOUT:-300}"
-export OPENAI_OVERALL_TIMEOUT="${OPENAI_OVERALL_TIMEOUT:-320}"
+# Allow long LLM operations (default 600s handled in code/env)
+export OPENAI_REQUEST_TIMEOUT="${OPENAI_REQUEST_TIMEOUT:-600}"
+export OPENAI_OVERALL_TIMEOUT="${OPENAI_OVERALL_TIMEOUT:-600}"
 
 RELOAD_FLAG=""
 if [ "${DEV_RELOAD:-}" = "1" ]; then

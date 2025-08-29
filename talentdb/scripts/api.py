@@ -18,10 +18,12 @@ import json
 import logging
 import os
 import time
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, StreamingResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, StreamingResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from pathlib import Path
+import uuid
 
 # Configure logging for LLM interactions
 logging.basicConfig(
@@ -60,6 +62,78 @@ from .ingest_agent import (
     set_llm_required_on_upload,
     is_llm_required_on_upload,
 )
+
+# --- Chat logging utilities (Copilot chat tracing) ---
+def _safe_trunc(s: str | None, n: int = 400) -> str:
+    try:
+        t = (s or "")
+        return (t[:n] + ("…" if len(t) > n else ""))
+    except Exception:
+        return ""
+
+def _server_log_path() -> Path:
+    # Prefer explicit env; else repo-root/server.out; else module-local server.out
+    p = os.getenv("SERVER_LOG_FILE") or os.getenv("LOG_FILE")
+    if p:
+        return Path(p)
+    try:
+        # api.py -> scripts -> talentdb -> repo root
+        root = Path(__file__).resolve().parents[2]
+        fallback = root / "server.out"
+        if fallback.exists():
+            return fallback
+    except Exception:
+        pass
+    # Local fallback
+    return Path(__file__).resolve().parent.parent / "server.out"
+
+def _scrub_chat_text(txt: str | None) -> str:
+    # Reuse ingest_agent PII scrub to avoid leaking emails/phones into logs
+    try:
+        from .ingest_agent import _scrub_pii as _pii
+        return _pii(txt or "")
+    except Exception:
+        return txt or ""
+
+def _log_chat_event(kind: str, correlation_id: str, **kwargs):
+    # Emit structured one-line JSON for easy grep/ELK ingest
+    try:
+        payload = {"event": f"chat.{kind}", "cid": correlation_id}
+        payload.update(kwargs)
+        logging.info("CHAT %s", json.dumps(payload, ensure_ascii=False))
+    except Exception:
+        # Best-effort fallback
+        logging.info("CHAT %s | %s", kind, kwargs)
+
+def _read_last_lines(path: Path, n: int = 200) -> str:
+    try:
+        if not path.exists():
+            return f"[log] file not found: {path}\n"
+        data = path.read_text(errors="ignore").splitlines()[-n:]
+        return "\n".join(data) + ("\n" if data else "")
+    except Exception as e:
+        return f"[log] error reading {path}: {e}\n"
+
+def _follow_file(path: Path, delay: float = 0.5):
+    try:
+        if not path.exists():
+            yield f"[log] file not found: {path}\n"
+            return
+        with path.open("r", errors="ignore") as f:
+            # Seek to end
+            f.seek(0, os.SEEK_END)
+            while True:
+                line = f.readline()
+                if not line:
+                    time.sleep(delay)
+                    continue
+                yield line
+    except GeneratorExit:
+        return
+    except Exception as e:
+        yield f"[log] stream error: {e}\n"
+
+# (endpoints for logs are defined after `app` is created)
 from pathlib import Path
 import tempfile, os, uuid, hashlib, re
 import html  # needed for html.escape in share page generation
@@ -342,6 +416,28 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=300,
 )
+
+# ---- Server log endpoints (plain + streaming) ----
+@app.get("/logs/server", response_class=PlainTextResponse)
+def get_server_logs(tail: int = 200):
+    """Return the last N lines of the server log as plain text."""
+    try:
+        n = max(1, min(int(tail or 200), 5000))
+    except Exception:
+        n = 200
+    p = _server_log_path()
+    return _read_last_lines(p, n)
+
+@app.get("/logs/stream")
+def stream_server_logs():
+    """Stream the server log (like tail -f)."""
+    p = _server_log_path()
+    def _gen():
+        yield f"== Streaming {p} ==\n"
+        yield _read_last_lines(p, 50)
+        for chunk in _follow_file(p):
+            yield chunk
+    return StreamingResponse(_gen(), media_type="text/plain")
 
 API_KEY = os.getenv("API_KEY")  # optional simple shared key
 
@@ -1336,7 +1432,7 @@ def _build_outreach_prompt_strict(candidate_data: dict, jobs_data: list[dict]) -
         "CANDIDATE_DATA:" + cand_json + "\n\n"
         "JOBS_DATA:" + jobs_json + "\n\n"
         "Example output (use EXACT keys and types):\n"
-        '{"selected_jobs":[{"job_id":"<id>","job_number":"<num>","title":"<title>","city":"<city>","description_snippet":"<short>","why_fit":"<why>","mandatory_requirements":["r1","r2"],"candidate_alignment":["evidence1"],"whatsapp":"<final message>"}],"model_info":{"model":"gpt-5-nano"}}'
+    '{"selected_jobs":[{"job_id":"<id>","job_number":"<num>","title":"<title>","city":"<city>","description_snippet":"<short>","why_fit":"<why>","mandatory_requirements":["r1","r2"],"candidate_alignment":["evidence1"],"whatsapp":"<final message>"}],"model_info":{"model":"gpt-5-mini"}}'
     )
     return inst
 
@@ -1575,7 +1671,7 @@ def generate_outreach(req: OutreachRequest, tenant_id: str | None = Depends(opti
                             'verbosity': 'low'
                         }
                     }
-                    local_timeout = float(os.getenv('OPENAI_REQUEST_TIMEOUT', '300'))
+                    local_timeout = float(os.getenv('OPENAI_REQUEST_TIMEOUT', '600'))
                     try:
                         r = requests.post(url, headers=headers, json=payload, timeout=local_timeout)
                         r.raise_for_status()
@@ -1650,6 +1746,16 @@ def generate_outreach(req: OutreachRequest, tenant_id: str | None = Depends(opti
         # Log the general exception failure
         log_outreach_failure(req.candidate_id, [j.get('job_id') for j in job_docs] if 'job_docs' in locals() else [], 'general_exception', str(e))
         raise HTTPException(status_code=502, detail=f"llm_error: {e}")
+
+    # Ensure model_info exists in the JSON (model cannot reliably know its own name)
+    try:
+        if isinstance(js, dict):
+            mi = js.get('model_info') or {}
+            if not isinstance(mi, dict) or not mi.get('model'):
+                js['model_info'] = {"model": OPENAI_MODEL if 'OPENAI_MODEL' in globals() else None}
+    except Exception:
+        # Non-fatal; continue
+        pass
 
     # Persist to candidate_outreach collection as draft
     now = time.time()
@@ -2181,7 +2287,7 @@ def generate_personal_letter(req: PersonalLetterRequest, tenant_id: str | None =
                     "type": "json_schema",
                     "json_schema": {"name": "personal_letter_schema", "schema": letter_schema}
                 },
-                timeout=300,
+                timeout=600,
             )
             result_raw = resp.choices[0].message.content.strip()
             js_out = json.loads(result_raw) if result_raw else {}
@@ -2193,7 +2299,7 @@ def generate_personal_letter(req: PersonalLetterRequest, tenant_id: str | None =
                     {"role": "system", "content": "Return ONLY valid minified JSON in Hebrew."},
                     {"role": "user", "content": prompt}
                 ],
-                timeout=300,
+                timeout=600,
             )
             result_raw = resp.choices[0].message.content.strip()
             if result_raw.startswith("```json"):
@@ -3230,6 +3336,15 @@ def chat_matches(req: ChatMatchesRequest, tenant_id: str | None = Depends(option
     import time
     import json as _json
     t0 = time.time()
+    cid = uuid.uuid4().hex[:12]
+    _log_chat_event(
+        "matches.start",
+        cid,
+        tenant=tenant_id,
+        question=_safe_trunc(_scrub_chat_text(getattr(req, "question", "")), 500),
+        limit_candidates=getattr(req, "limit_candidates", None),
+        k=getattr(req, "k", None),
+    )
     # basic per-tenant rate limit (60/min window)
     try:
         key = f"chat:{tenant_id or 'public'}"
@@ -3285,6 +3400,13 @@ def chat_matches(req: ChatMatchesRequest, tenant_id: str | None = Depends(option
                 txt = comp.choices[0].message.content.strip()
                 if txt:
                     answer = txt
+                _log_chat_event(
+                    "matches.llm",
+                    cid,
+                    model=OPENAI_MODEL,
+                    finish_reason=str(getattr(getattr(comp, "choices", [{}])[0], "finish_reason", None)),
+                    took_ms=int((time.time()-t0)*1000),
+                )
             except Exception:
                 pass
     except Exception:
@@ -3297,6 +3419,13 @@ def chat_matches(req: ChatMatchesRequest, tenant_id: str | None = Depends(option
         actions = []
 
     dt = round((time.time()-t0)*1000)
+    _log_chat_event(
+        "matches.done",
+        cid,
+        took_ms=dt,
+        intent=intent,
+        facts_summary={"cands": facts.get("candidates_sampled", 0), "total": facts.get("total_matches", 0)},
+    )
     return {
         "answer": answer,
         "facts": facts,
@@ -3634,6 +3763,14 @@ def _build_gpt_dsl(question: str, tenant_id: str | None) -> dict | None:
 def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_tenant_id), request: Request = None):
     import time
     t0 = time.time()
+    cid = uuid.uuid4().hex[:12]
+    _log_chat_event(
+        "query.start",
+        cid,
+        tenant=tenant_id,
+        question=_safe_trunc(_scrub_chat_text(getattr(req, "question", "")), 500),
+        view=getattr(req, "currentView", None),
+    )
     # Lightweight per-tenant limiter (30/min)
     try:
         key = f"chatq:{tenant_id or 'public'}"
@@ -3646,7 +3783,132 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
     except Exception:
         pass
 
+    # EARLY SHORT-CIRCUIT: bare ObjectId (24-hex) → classify and respond deterministically (before any DSL/LLM)
+    try:
+        import re as _re
+        from bson import ObjectId as _ObjectId
+        q0 = str(req.question or '')
+        m0 = _re.search(r"\b([0-9a-fA-F]{24})\b", q0) or _re.search(r"\b([0-9a-fA-F]{2})\s*([0-9a-fA-F]{22})\b", q0)
+        if m0:
+            oid0 = (m0.group(1) + m0.group(2)) if (hasattr(m0, 'groups') and len(m0.groups())==2) else m0.group(1)
+            # classify by existence (scoped→unscoped)
+            is_job0 = False ; is_cand0 = False
+            try:
+                q_sc = {"_id": _ObjectId(oid0), **({"tenant_id": tenant_id} if tenant_id else {})}
+                if db["jobs"].find_one(q_sc, {"_id":1}):
+                    is_job0 = True
+                elif db["candidates"].find_one(q_sc, {"_id":1}):
+                    is_cand0 = True
+                else:
+                    if db["jobs"].find_one({"_id": _ObjectId(oid0)}, {"_id":1}):
+                        is_job0 = True
+                    elif db["candidates"].find_one({"_id": _ObjectId(oid0)}, {"_id":1}):
+                        is_cand0 = True
+            except Exception:
+                pass
+            # derive top_k
+            top_k0 = 5
+            try:
+                mnum0 = _re.search(r"\b(\d{1,2})\b", q0)
+                if mnum0:
+                    vi0 = int(mnum0.group(1))
+                    if 1 <= vi0 <= 50:
+                        top_k0 = vi0
+            except Exception:
+                pass
+            if is_job0:
+                if request and request.query_params.get("stream") in ("1","true","yes"):
+                    def _gen_job_early():
+                        import json as _json
+                        _log_chat_event("query.stream", cid, job_id=oid0, top_k=top_k0)
+                        yield _json.dumps({"type":"text_delta","text":"שולף מועמדים למשרה..."}, ensure_ascii=False) + "\n"
+                        ui=[]
+                        try:
+                            matches = get_or_compute_candidates_for_job(oid0, top_k=top_k0, city_filter=True, tenant_id=tenant_id)
+                            rows=[]
+                            for r in (matches or [])[:top_k0]:
+                                try:
+                                    sc=float(r.get('score') or r.get('best_score') or 0.0)
+                                except Exception:
+                                    sc=0.0
+                                rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
+                            if rows:
+                                ui.append({"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"})
+                            else:
+                                ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        except Exception:
+                            ui=[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
+                        env={"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        yield _json.dumps(env, ensure_ascii=False) + "\n"
+                        yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    return StreamingResponse(_gen_job_early(), media_type="application/x-ndjson")
+                else:
+                    try:
+                        matches = get_or_compute_candidates_for_job(oid0, top_k=top_k0, city_filter=True, tenant_id=tenant_id)
+                        rows=[]
+                        for r in (matches or [])[:top_k0]:
+                            try:
+                                sc=float(r.get('score') or r.get('best_score') or 0.0)
+                            except Exception:
+                                sc=0.0
+                            rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
+                        ui=[{"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                    except Exception:
+                        return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
+            if is_cand0:
+                if request and request.query_params.get("stream") in ("1","true","yes"):
+                    def _gen_cand_early():
+                        import json as _json
+                        _log_chat_event("query.stream", cid, candidate_id=oid0, top_k=top_k0)
+                        yield _json.dumps({"type":"text_delta","text":"שולף משרות למועמד..."}, ensure_ascii=False) + "\n"
+                        ui=[]
+                        try:
+                            ms = jobs_for_candidate(oid0, top_k=top_k0, max_distance_km=30, tenant_id=tenant_id)
+                            rows=[]
+                            for r in (ms or [])[:top_k0]:
+                                try:
+                                    sc=float(r.get('score') or r.get('best_score') or 0.0)
+                                except Exception:
+                                    sc=0.0
+                                rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
+                            if rows:
+                                ui.append({"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"})
+                            else:
+                                ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        except Exception:
+                            ui=[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
+                        env={"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        yield _json.dumps(env, ensure_ascii=False) + "\n"
+                        yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    return StreamingResponse(_gen_cand_early(), media_type="application/x-ndjson")
+                else:
+                    try:
+                        ms = jobs_for_candidate(oid0, top_k=top_k0, max_distance_km=30, tenant_id=tenant_id)
+                        rows=[]
+                        for r in (ms or [])[:top_k0]:
+                            try:
+                                sc=float(r.get('score') or r.get('best_score') or 0.0)
+                            except Exception:
+                                sc=0.0
+                            rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
+                        ui=[{"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                    except Exception:
+                        return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
+    except Exception:
+        pass
+
     dsl_raw = _build_gpt_dsl(req.question, tenant_id)
+    if dsl_raw:
+        try:
+            _log_chat_event("query.dsl", cid, dsl=_safe_trunc(json.dumps(dsl_raw, ensure_ascii=False), 800))
+        except Exception:
+            pass
     # Quick path: detect explicit "candidates for job <id>" requests (Heb/Eng) and return strict-only results
     try:
         import re as _re
@@ -3678,6 +3940,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
             if request and request.query_params.get("stream") in ("1","true","yes"):
                 def _gen_job():
                     import json as _json
+                    _log_chat_event("query.stream", cid, job_id=job_oid, top_k=top_k)
                     yield _json.dumps({"type":"text_delta","text":"מאתר מועמדים למשרה..."}, ensure_ascii=False) + "\n"
                     ui: list[dict] = []
                     try:
@@ -3724,6 +3987,157 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                 return StreamingResponse(_gen_job(), media_type="application/x-ndjson")
+    except Exception:
+        pass
+
+    # Quick path: bare ObjectId in message → detect candidate/job by existence and respond deterministically
+    try:
+        import re as _re
+        from bson import ObjectId as _ObjectId
+        q = str(req.question or '')
+        m = _re.search(r"\b([0-9a-fA-F]{24})\b", q) or _re.search(r"\b([0-9a-fA-F]{2})\s*([0-9a-fA-F]{22})\b", q)
+        if m:
+            oid = (m.group(1) + m.group(2)) if (hasattr(m, 'groups') and len(m.groups())==2) else m.group(1)
+            # classify by existence: try tenant-scoped, then unscoped (classification only; fetches remain tenant-scoped)
+            is_job = False
+            is_cand = False
+            try:
+                q_scoped = {"_id": _ObjectId(oid), **({"tenant_id": tenant_id} if tenant_id else {})}
+                if db["jobs"].find_one(q_scoped, {"_id":1}):
+                    is_job = True
+                elif db["candidates"].find_one(q_scoped, {"_id":1}):
+                    is_cand = True
+                else:
+                    # unscoped check for type hint (no data returned here)
+                    if db["jobs"].find_one({"_id": _ObjectId(oid)}, {"_id":1}):
+                        is_job = True
+                    elif db["candidates"].find_one({"_id": _ObjectId(oid)}, {"_id":1}):
+                        is_cand = True
+            except Exception:
+                pass
+            # Determine top_k (default 5) optionally from message
+            top_k = 5
+            try:
+                mnum = _re.search(r"\b(\d{1,2})\b", q)
+                if mnum:
+                    vi = int(mnum.group(1))
+                    if 1 <= vi <= 50:
+                        top_k = vi
+            except Exception:
+                pass
+            if is_job:
+                # Stream or non-stream candidates for job
+                if request and request.query_params.get("stream") in ("1","true","yes"):
+                    def _gen_job2():
+                        import json as _json
+                        _log_chat_event("query.stream", cid, job_id=oid, top_k=top_k)
+                        yield _json.dumps({"type":"text_delta","text":"שולף מועמדים למשרה..."}, ensure_ascii=False) + "\n"
+                        ui = []
+                        try:
+                            matches = get_or_compute_candidates_for_job(oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                            rows = []
+                            for r in (matches or [])[:top_k]:
+                                try:
+                                    sc = float(r.get('score') or r.get('best_score') or 0.0)
+                                except Exception:
+                                    sc = 0.0
+                                rows.append({
+                                    "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
+                                    "title": r.get('title') or r.get('candidate_title') or '',
+                                    "score": round(sc, 3)
+                                })
+                            if rows:
+                                ui.append({
+                                    "kind":"Table","id":"job-candidates",
+                                    "columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],
+                                    "rows": rows, "primaryKey":"candidate_id"
+                                })
+                            else:
+                                ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        except Exception:
+                            ui = [{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
+                        env = {"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        yield _json.dumps(env, ensure_ascii=False) + "\n"
+                        yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    return StreamingResponse(_gen_job2(), media_type="application/x-ndjson")
+                else:
+                    try:
+                        matches = get_or_compute_candidates_for_job(oid, top_k=top_k, city_filter=True, tenant_id=tenant_id)
+                        rows = []
+                        for r in (matches or [])[:top_k]:
+                            try:
+                                sc = float(r.get('score') or r.get('best_score') or 0.0)
+                            except Exception:
+                                sc = 0.0
+                            rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
+                        ui = [{"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                    except Exception:
+                        return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
+            if is_cand:
+                # Stream or non-stream jobs for candidate
+                if request and request.query_params.get("stream") in ("1","true","yes"):
+                    def _gen_cand():
+                        import json as _json
+                        _log_chat_event("query.stream", cid, candidate_id=oid, top_k=top_k)
+                        yield _json.dumps({"type":"text_delta","text":"שולף משרות למועמד..."}, ensure_ascii=False) + "\n"
+                        ui = []
+                        try:
+                            ms = jobs_for_candidate(oid, top_k=top_k, max_distance_km=30, tenant_id=tenant_id)
+                            rows = []
+                            for r in (ms or [])[:top_k]:
+                                try:
+                                    sc = float(r.get('score') or r.get('best_score') or 0.0)
+                                except Exception:
+                                    sc = 0.0
+                                rows.append({
+                                    "job_id": str(r.get('job_id') or r.get('_id') or ''),
+                                    "title": r.get('title') or r.get('job_title') or '',
+                                    "score": round(sc, 3)
+                                })
+                            if rows:
+                                ui.append({
+                                    "kind":"Table","id":"candidate-jobs",
+                                    "columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],
+                                    "rows": rows, "primaryKey":"job_id"
+                                })
+                            else:
+                                ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        except Exception:
+                            ui = [{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
+                        env = {"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        yield _json.dumps(env, ensure_ascii=False) + "\n"
+                        yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    return StreamingResponse(_gen_cand(), media_type="application/x-ndjson")
+                else:
+                    try:
+                        ms = jobs_for_candidate(oid, top_k=top_k, max_distance_km=30, tenant_id=tenant_id)
+                        rows = []
+                        for r in (ms or [])[:top_k]:
+                            try:
+                                sc = float(r.get('score') or r.get('best_score') or 0.0)
+                            except Exception:
+                                sc = 0.0
+                            rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
+                        ui = [{"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                    except Exception:
+                        return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
+            # Not found
+            if request and request.query_params.get("stream") in ("1","true","yes"):
+                def _gen_not_found():
+                    import json as _json
+                    yield _json.dumps({"type":"text_delta","text":"בודק מזהה..."}, ensure_ascii=False) + "\n"
+                    env = {"type":"assistant_ui","narration":"לא נמצא","actions":[],"ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."}]}
+                    yield _json.dumps(env, ensure_ascii=False) + "\n"
+                    yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                return StreamingResponse(_gen_not_found(), media_type="application/x-ndjson")
+            else:
+                return {"answer":"לא נמצא","type":"assistant_ui","ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."}], "took_ms": int((time.time()-t0)*1000)}
     except Exception:
         pass
 
@@ -4002,6 +4416,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    # finish discussions stream
+                    dt_local = round((time.time()-t0)*1000)
+                    _log_chat_event("query.done", cid, took_ms=dt_local, view=getattr(req, "currentView", None))
                     return
                 try:
                     # Derive MatchQuery from DSL
@@ -4014,8 +4431,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         candidate_id=getattr(filt, 'candidate_id', None),
                         city_in=getattr(filt, 'city_in', None),
                         score=getattr(filt, 'score', None),
-                        sort_by=sorts[0].by if (isinstance(sorts, list) and sorts) else 'score',
-                        sort_dir=sorts[0].dir if (isinstance(sorts, list) and sorts) else 'desc',
+                        sort_by=(sorts[0].by if (isinstance(sorts, list) and sorts) else 'score'),
+                        sort_dir=(sorts[0].dir if (isinstance(sorts, list) and sorts) else 'desc'),
                     )
                     mr = match_report_query(mq, tenant_id)
                     rows = []
@@ -4065,6 +4482,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
                 yield _json.dumps(env, ensure_ascii=False) + "\n"
                 yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                # mark done for non-discussions stream
+                dt_local2 = round((time.time()-t0)*1000)
+                _log_chat_event("query.done", cid, took_ms=dt_local2, view=getattr(req, "currentView", None))
             return StreamingResponse(_gen(), media_type="application/x-ndjson")
     except Exception:
         pass
