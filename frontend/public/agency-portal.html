@@ -1754,8 +1754,35 @@
       if(c.kind==='Table') renderCopilotTable(c);
       else if(c.kind==='RichText') renderCopilotRichText(c);
       else if(c.kind==='Metric') renderCopilotMetric(c);
+      else if(c.kind==='DiscussionThread') renderCopilotDiscussion(c);
       // Unknown kinds ignored safely
     }
+  }
+
+  function renderCopilotDiscussion(component){
+    const mount = document.getElementById('copilotUi');
+    if(!mount) return;
+    const items = Array.isArray(component.items) ? component.items : [];
+    const card = document.createElement('div');
+    card.className = 'panel';
+    const rows = items.map(it=>{
+      const actor = escapeHtml(String(it.actor||''));
+      const text = escapeHtml(String(it.text||''));
+      const ts = Number(it.created_at||0) * 1000;
+      let when = '';
+      try{ when = new Date(ts).toLocaleString('he-IL'); }catch(e){ when = '' }
+      const tags = Array.isArray(it.tags)? it.tags.slice(0,5).map(t=>`<span class="chip">${escapeHtml(String(t))}</span>`).join(' ') : '';
+      return `<div class="panel" style="padding:8px;margin:6px 0">
+        <div class="small muted">${actor}${when? ' · '+escapeHtml(when): ''}</div>
+        <div style="margin:6px 0">${text}</div>
+        <div>${tags}</div>
+      </div>`;
+    }).join('');
+    card.innerHTML = `
+      <h3 style="margin-top:0">דיונים / הערות</h3>
+      <div>${rows || '<div class="empty-state">אין הערות עדיין</div>'}</div>
+    `;
+    mount.appendChild(card);
   }
 
   async function sendCopilotChat(){

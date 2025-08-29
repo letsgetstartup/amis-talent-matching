@@ -85,3 +85,4 @@ htmlcov/
 
 # Mac
 .DS_Store
+.uvicorn.pid

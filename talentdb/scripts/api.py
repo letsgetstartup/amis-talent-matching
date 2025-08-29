@@ -74,6 +74,7 @@ from .routers_tenant_jobs import router as tenant_jobs_router
 from .routers_mobile import router as mobile_router
 from .auth import require_tenant, optional_tenant_id
 from .security_audit import audit_log, log_data_access, get_security_events, get_violation_summary
+from .routers_discussions import router as discussions_router
 
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
@@ -166,6 +167,7 @@ app.include_router(candidates_router)
 app.include_router(tenant_jobs_router)
 app.include_router(mobile_router)
 app.include_router(mapping_router)
+app.include_router(discussions_router)
 
 """Static / Frontend mounting.
 We historically had two possible locations for the frontend:
@@ -3318,6 +3320,11 @@ class DSLFilter(BaseModel):
     candidate_id: Optional[str] = None
     city_in: Optional[list[str]] = None
     score: Optional[dict] = None  # {"$gte":0.5, "$lte":0.9}
+    # Discussions-specific (optional)
+    d_target_type: Optional[str] = None  # candidate|job|match
+    d_target_id: Optional[str] = None
+    d_since_days: Optional[int] = None
+    d_text_contains: Optional[str] = None
 
 class ChatQueryRequest(BaseModel):
     question: str
@@ -3333,12 +3340,34 @@ def _validate_and_normalize_dsl(d: dict) -> tuple[str, DSLFilter, list[DSLSort],
     view = (d.get("view") or "matches").lower()
     # filter
     f = d.get("filter") or {}
+    # Base filter
     filt = DSLFilter(
         title_contains=f.get("title_contains"),
         candidate_id=f.get("candidate_id"),
         city_in=f.get("city_in") if isinstance(f.get("city_in"), list) else None,
         score=f.get("score") if isinstance(f.get("score"), dict) else None,
     )
+    # Discussions view extras
+    try:
+        if (d.get("view") or "").lower() == "discussions":
+            tt = (f.get("target_type") or f.get("d_target_type") or "").lower()
+            if tt in {"candidate","job","match"}:
+                filt.d_target_type = tt
+            tid = f.get("target_id") or f.get("d_target_id")
+            if isinstance(tid, str) and len(tid.strip()) >= 24:
+                filt.d_target_id = tid.strip()
+            sd = f.get("since_days") or f.get("d_since_days")
+            try:
+                sd_i = int(sd)
+                if 0 <= sd_i <= 3650:
+                    filt.d_since_days = sd_i
+            except Exception:
+                pass
+            tc = f.get("text_contains") or f.get("d_text_contains")
+            if isinstance(tc, str) and tc.strip():
+                filt.d_text_contains = tc.strip()[:200]
+    except Exception:
+        pass
     # sorts
     sorts_raw = d.get("sort") or []
     sorts: list[DSLSort] = []
@@ -3370,6 +3399,10 @@ def _validate_and_normalize_dsl(d: dict) -> tuple[str, DSLFilter, list[DSLSort],
 
 def _dsl_to_actions(view: str, filt: DSLFilter, sorts: list[DSLSort], page: DSLPage) -> list[dict]:
     actions: list[dict] = []
+    if (view or '').lower() == 'discussions':
+        # For discussions we don't mutate matches state; just trigger a refresh
+        actions.append({"type":"refresh","payload":{}})
+        return actions
     f_payload: dict = {}
     if filt.title_contains is not None:
         f_payload["titleContains"] = filt.title_contains
@@ -3574,9 +3607,11 @@ def _build_gpt_dsl(question: str, tenant_id: str | None) -> dict | None:
         if not _OPENAI_AVAILABLE:
             return None
         sys_prompt = (
-            "You translate Hebrew/English queries about a matches table into a strict JSON DSL. "
-            "Allowed view: 'matches'. Allowed filter keys: title_contains (string), candidate_id (string), city_in (array of strings), score (object with $gte/$lte floats 0..1). "
+            "You translate Hebrew/English recruiter queries into a strict JSON DSL. "
+            "Allowed views: 'matches', 'discussions'. "
+            "For view='matches': Allowed filter keys: title_contains (string), candidate_id (string), city_in (array of strings), score (object with $gte/$lte floats 0..1). "
             "Allowed sort: by in [score,date,title], dir in [asc,desc]. Page has number (1..), size (1..100). "
+            "For view='discussions': filter keys: target_type in [candidate,job,match], target_id (24-hex), since_days (int 0..3650), text_contains (string <= 200). "
             "Output ONLY valid JSON with keys: view, filter, sort(array), page, and a short explain. No extra text."
         )
         messages = [
@@ -3689,6 +3724,98 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                 return StreamingResponse(_gen_job(), media_type="application/x-ndjson")
+    except Exception:
+        pass
+
+    # Quick path: discussions intents (show/add notes)
+    try:
+        import re as _re
+        q = str(req.question or '')
+        ql = q.lower()
+        # Target type inference
+        tgt_type = None
+        if ('מועמד' in q) or ('candidate' in ql):
+            tgt_type = 'candidate'
+        elif ('משרה' in q) or ('job' in ql):
+            tgt_type = 'job'
+        elif ('התאמה' in q) or ('match' in ql):
+            tgt_type = 'match'
+        # Extract ObjectId
+        m_oid = _re.search(r"\b([0-9a-fA-F]{24})\b", q)
+        if not m_oid:
+            m2 = _re.search(r"\b([0-9a-fA-F]{2})\s*([0-9a-fA-F]{22})\b", q)
+            m_oid = m2
+        oid = None
+        if m_oid:
+            if m_oid.groups() and len(m_oid.groups()) == 2:
+                oid = (m_oid.group(1) + m_oid.group(2))
+            else:
+                oid = m_oid.group(1)
+        # Classify intent
+        wants_show = any(k in ql for k in ["show discussions","list discussions","notes","discussions","הצג דיונים","רשימת דיונים","הערות"])
+        wants_add = any(k in ql for k in ["add note","add discussion","add comment","הוסף הערה","הוסף דיון","הוסף תגובה"]) or ("הוסף" in q and ("הערה" in q or "דיון" in q))
+        if tgt_type and oid and (wants_show or wants_add):
+            # Prepare helpers
+            def _stream_discussion(add_text: str | None):
+                import json as _json
+                from bson import ObjectId as _ObjectId
+                coll = db["discussions"]
+                yield _json.dumps({"type":"text_delta","text":"מעבד דיונים..."}, ensure_ascii=False) + "\n"
+                ui: list[dict] = []
+                # Optional insert
+                try:
+                    if add_text:
+                        doc = {
+                            "tenant_id": tenant_id,
+                            "target_type": tgt_type,
+                            "target_id": str(_ObjectId(oid)),
+                            "text": (add_text[:4000] if add_text else ""),
+                            "tags": [],
+                            "actor_name": "Copilot",
+                            "created_at": time.time(),
+                            "updated_at": time.time(),
+                        }
+                        coll.insert_one(doc)
+                        ui.append({"kind":"RichText","id":"note-added","html":"הערה נוספה בהצלחה."})
+                except Exception:
+                    ui.append({"kind":"RichText","id":"note-error","html":"אירעה שגיאה בהוספת ההערה."})
+                # Fetch list
+                items = []
+                try:
+                    qdoc = {"target_type": tgt_type, "target_id": str(_ObjectId(oid))}
+                    if tenant_id:
+                        qdoc["tenant_id"] = tenant_id
+                    for d in coll.find(qdoc).sort("created_at", -1).limit(50):
+                        items.append({
+                            "id": str(d.get("_id")),
+                            "actor": d.get("actor_name") or "",
+                            "text": d.get("text") or "",
+                            "tags": d.get("tags") or [],
+                            "created_at": float(d.get("created_at") or 0.0),
+                        })
+                except Exception:
+                    items = []
+                if items:
+                    ui.append({"kind":"DiscussionThread","id":"discussions","items": items})
+                    ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": len(items)})
+                else:
+                    ui.append({"kind":"RichText","id":"no-discussions","html":"אין דיונים לפריט זה."})
+                    ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": 0})
+                env = {"type":"assistant_ui","narration":"בוצע","actions": [{"type":"refresh","payload":{}}], "ui": ui}
+                yield _json.dumps(env, ensure_ascii=False) + "\n"
+                yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+            # Extract note text if add
+            add_text = None
+            if wants_add:
+                # Heuristics: take substring after colon or quotes
+                m_txt = _re.search(r":\s*(.+)$", q)
+                if m_txt:
+                    add_text = m_txt.group(1).strip()
+                if not add_text:
+                    m_q = _re.search(r"[""']([^""']{3,})[""']", q)
+                    if m_q:
+                        add_text = m_q.group(1).strip()
+            return StreamingResponse(_stream_discussion(add_text), media_type="application/x-ndjson")
     except Exception:
         pass
     if not dsl_raw:
@@ -3839,6 +3966,43 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 yield _json.dumps({"type":"text_delta","text":"מיישם סינון..."}, ensure_ascii=False) + "\n"
                 # Build a small UI table using current DSL → match report (limited)
                 ui: list[dict] = []
+                # Discussions view streaming
+                if (view or '').lower() == 'discussions':
+                    try:
+                        from bson import ObjectId as _ObjectId
+                        coll = db["discussions"]
+                        items = []
+                        qdoc = {}
+                        tt = getattr(filt, 'd_target_type', None)
+                        tid = getattr(filt, 'd_target_id', None)
+                        if tt and tid:
+                            qdoc = {"target_type": tt, "target_id": str(_ObjectId(tid))}
+                            if tenant_id:
+                                qdoc["tenant_id"] = tenant_id
+                            # Optional filters
+                            if getattr(filt, 'd_text_contains', None):
+                                qdoc["text"] = {"$regex": filt.d_text_contains, "$options": "i"}
+                            cur = coll.find(qdoc).sort("created_at", -1).limit(min(100, page.size))
+                            for ddd in cur:
+                                items.append({
+                                    "id": str(ddd.get("_id")),
+                                    "actor": ddd.get("actor_name") or "",
+                                    "text": ddd.get("text") or "",
+                                    "tags": ddd.get("tags") or [],
+                                    "created_at": float(ddd.get("created_at") or 0.0),
+                                })
+                        if items:
+                            ui.append({"kind":"DiscussionThread","id":"discussions","items": items})
+                            ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": len(items)})
+                        else:
+                            ui.append({"kind":"RichText","id":"no-discussions","html":"אין דיונים לפריט זה או שלא צוין מזהה תקין."})
+                            ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": 0})
+                    except Exception:
+                        ui.append({"kind":"RichText","id":"error","html":"אירעה תקלה בעת שליפת דיונים."})
+                    env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
+                    yield _json.dumps(env, ensure_ascii=False) + "\n"
+                    yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                    return
                 try:
                     # Derive MatchQuery from DSL
                     mq = MatchQuery(
