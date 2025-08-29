@@ -149,6 +149,11 @@ from .routers_mobile import router as mobile_router
 from .auth import require_tenant, optional_tenant_id
 from .security_audit import audit_log, log_data_access, get_security_events, get_violation_summary
 from .routers_discussions import router as discussions_router
+from datetime import datetime
+from bson import ObjectId as _ObjectId
+
+# --- Optional Assistants integration (feature-flag) ---
+ASSISTANTS_ENABLED = os.getenv("OPENAI_ASSISTANTS_ENABLED", "0").lower() in {"1", "true", "yes"}
 
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
@@ -3459,6 +3464,8 @@ class ChatQueryRequest(BaseModel):
     question: str
     currentView: str = "matches"
     currentState: Optional[dict] = None
+    # Optional conversation thread ID for persisting chat history
+    threadId: Optional[str] = None
 
 _DSL_ALLOWED_SORT = {"score","date","title"}
 _DSL_ALLOWED_DIR = {"asc","desc"}
@@ -3632,6 +3639,89 @@ def _normalize_city_list(cities: Optional[List[str]]) -> list[str]:
     # deduplicate
     return list(dict.fromkeys(out))
 
+# ==== Conversation Threads & Messages (Mongo persistence) ====
+def _ensure_thread(tenant_id: Optional[str], user_key: Optional[str], thread_id: Optional[str]) -> str:
+    """Find or create a thread for this tenant+user. If thread_id provided, validate it belongs to user.
+    user_key can be API key or derived subject. Persist in 'copilot_threads'.
+    """
+    try:
+        coll = db["copilot_threads"]
+        now = time.time()
+        # If explicit thread_id, return if exists (and tenant matches if provided)
+        if thread_id:
+            doc = coll.find_one({"_id": thread_id})
+            if doc and ((not tenant_id) or doc.get("tenant_id") == tenant_id):
+                return thread_id
+        # Else find last active by user
+        q = {"user_key": user_key or "anon"}
+        if tenant_id:
+            q["tenant_id"] = tenant_id
+        doc = coll.find_one(q, sort=[("updated_at", -1)])
+        if doc:
+            coll.update_one({"_id": doc["_id"]}, {"$set": {"updated_at": now}})
+            return str(doc["_id"])
+        # Create new thread
+        tid = uuid.uuid4().hex
+        coll.insert_one({
+            "_id": tid,
+            "tenant_id": tenant_id,
+            "user_key": user_key or "anon",
+            "created_at": now,
+            "updated_at": now,
+        })
+        return tid
+    except Exception:
+        # Fallback ephemeral id
+        return thread_id or uuid.uuid4().hex
+
+def _persist_message(thread_id: str, role: str, content: dict | str, meta: Optional[dict] = None):
+    try:
+        coll = db["copilot_messages"]
+        coll.insert_one({
+            "thread_id": thread_id,
+            "ts": time.time(),
+            "role": role,
+            "content": content,
+            "meta": meta or {}
+        })
+    except Exception:
+        pass
+
+def _list_thread_history(thread_id: str, limit: int = 100) -> list[dict]:
+    try:
+        coll = db["copilot_messages"]
+        out = []
+        cur = coll.find({"thread_id": thread_id}).sort("ts", 1).limit(limit)
+        for d in cur:
+            out.append({
+                "role": d.get("role"),
+                "content": d.get("content"),
+                "ts": float(d.get("ts") or 0)
+            })
+        return out
+    except Exception:
+        return []
+
+def _build_quick_replies(question: str | None, context: Optional[dict] = None) -> list[dict]:
+    """Heuristic quick replies that help users continue the flow."""
+    q = (question or "").lower()
+    replies: list[dict] = []
+    # Common follow-ups
+    replies.append({"label": "הצג פירוט להתאמה הראשונה", "prompt": "פירוט"})
+    replies.append({"label": "הרחב ל-10 תוצאות", "prompt": "טופ 10"})
+    # If an ObjectId was mentioned, offer details
+    try:
+        import re as _re
+        m = _re.search(r"([0-9a-fA-F]{24})", question or "")
+        if m:
+            oid = m.group(1)
+            replies.append({"label": "פירוט לזיהוי שצוין", "prompt": f"פירוט {oid}"})
+    except Exception:
+        pass
+    # English variants
+    replies.append({"label": "Show discussions", "prompt": "הצג דיונים"})
+    return replies[:6]
+
 @app.post("/match/report/query")
 def match_report_query(body: MatchQuery, tenant_id: str | None = Depends(optional_tenant_id)):
     """Structured variant of match/report with support for multi-city OR and JSON body.
@@ -3729,6 +3819,95 @@ def match_report_query(body: MatchQuery, tenant_id: str | None = Depends(optiona
         "fo_esco": body.fo_esco
     }
 
+# ==== Assistant threads API ====
+class ThreadCreateRequest(BaseModel):
+    threadId: Optional[str] = None
+
+@app.get("/assistant/thread/current")
+def get_or_create_thread(tenant_id: str | None = Depends(optional_tenant_id), api_key: Optional[str] = Header(default=None)):
+    user_key = api_key or "anon"
+    tid = _ensure_thread(tenant_id, user_key, None)
+    return {"threadId": tid}
+
+@app.post("/assistant/thread")
+def create_thread(body: ThreadCreateRequest, tenant_id: str | None = Depends(optional_tenant_id), api_key: Optional[str] = Header(default=None)):
+    """Create or return a Copilot thread. If Assistants integration is enabled, also
+    create an OpenAI Assistant (once) and an OpenAI thread, and persist their IDs.
+    Returns JSON: {threadId, assistantId?, openaiThreadId?}
+    """
+    user_key = api_key or "anon"
+    # Ensure an internal thread first
+    tid = _ensure_thread(tenant_id, user_key, getattr(body, "threadId", None))
+    result = {"threadId": tid}
+    try:
+        if ASSISTANTS_ENABLED:
+            from .ingest_agent import _openai_client, _OPENAI_AVAILABLE
+            if _OPENAI_AVAILABLE and _openai_client is not None:
+                coll = db["copilot_threads"]
+                doc = coll.find_one({"_id": tid}) or {}
+                assistant_id = doc.get("assistant_id")
+                openai_thread_id = doc.get("openai_thread_id")
+                # Create assistant once per tenant (reuse across threads) or per thread if no tenant
+                if not assistant_id:
+                    try:
+                        # Build simple instruction; can be extended per-tenant later
+                        instructions = (
+                            "You are a recruiter copilot. Answer briefly. When the user asks for matches, "
+                            "focus on the internal matching APIs; do not hallucinate IDs."
+                        )
+                        a = _openai_client.assistants.create(
+                            name="Recruiter Copilot",
+                            model=os.getenv("OPENAI_ASSISTANT_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o")),
+                            instructions=instructions,
+                        )
+                        assistant_id = a.id
+                    except Exception:
+                        assistant_id = None
+                if not openai_thread_id:
+                    try:
+                        th = _openai_client.beta.threads.create()
+                        openai_thread_id = th.id
+                    except Exception:
+                        openai_thread_id = None
+                # Persist any newly created IDs
+                update: dict[str, dict] = {}
+                set_fields: dict[str, Any] = {"updated_at": time.time()}
+                if assistant_id and not doc.get("assistant_id"):
+                    set_fields["assistant_id"] = assistant_id
+                if openai_thread_id and not doc.get("openai_thread_id"):
+                    set_fields["openai_thread_id"] = openai_thread_id
+                if set_fields:
+                    coll.update_one({"_id": tid}, {"$set": set_fields}, upsert=True)
+                if assistant_id:
+                    result["assistantId"] = assistant_id
+                if openai_thread_id:
+                    result["openaiThreadId"] = openai_thread_id
+    except Exception:
+        # Best-effort; still return threadId
+        pass
+    return result
+
+@app.get("/assistant/history")
+def get_thread_history(thread_id: str, tenant_id: str | None = Depends(optional_tenant_id)):
+    if not thread_id:
+        raise HTTPException(status_code=400, detail="missing_thread_id")
+    hist = _list_thread_history(thread_id, limit=200)
+    return {"threadId": thread_id, "messages": hist}
+
+@app.post("/assistant/reset")
+def reset_thread(body: ThreadCreateRequest, tenant_id: str | None = Depends(optional_tenant_id), api_key: Optional[str] = Header(default=None)):
+    tid = body.threadId
+    if not tid:
+        return {"ok": True}
+    try:
+        db["copilot_messages"].delete_many({"thread_id": tid})
+        db["copilot_threads"].delete_one({"_id": tid})
+    except Exception:
+        pass
+    # Create a fresh thread
+    new_tid = _ensure_thread(tenant_id, api_key or "anon", None)
+    return {"ok": True, "threadId": new_tid}
+
 def _build_gpt_dsl(question: str, tenant_id: str | None) -> dict | None:
     """Ask OpenAI to output a JSON DSL. Returns dict or None on failure."""
     try:
@@ -3771,6 +3950,19 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         question=_safe_trunc(_scrub_chat_text(getattr(req, "question", "")), 500),
         view=getattr(req, "currentView", None),
     )
+    # Determine thread and persist the user message
+    user_key = None
+    try:
+        # Prefer API key as user identity when available
+        if request:
+            user_key = request.headers.get("X-API-Key") or None
+    except Exception:
+        user_key = None
+    thread_id = _ensure_thread(tenant_id, user_key, getattr(req, "threadId", None))
+    try:
+        _persist_message(thread_id, "user", {"text": req.question})
+    except Exception:
+        pass
     # Lightweight per-tenant limiter (30/min)
     try:
         key = f"chatq:{tenant_id or 'public'}"
@@ -3782,6 +3974,80 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         bucket.append(now)
     except Exception:
         pass
+
+    # Helper: detect whether user asked for more details/breakdown
+    def _wants_details(qtxt: str) -> tuple[bool, str | None]:
+        try:
+            import re as _re
+            qt = (qtxt or '').strip()
+            if not qt:
+                return (False, None)
+            pat = _re.compile(r"(פירוט|פרטים|למה|הסבר|עוד\s*מידע|תראה\s*עוד|תציג\s*עוד|details?|more\s*info|explain|why|breakdown)", _re.IGNORECASE)
+            has = bool(pat.search(qt))
+            idm = _re.search(r"([0-9a-fA-F]{24})", qt)
+            return (has, idm.group(1) if idm else None)
+        except Exception:
+            return (False, None)
+
+    def _clamp01(x):
+        try:
+            f = float(x)
+            if f < 0: return 0.0
+            if f > 1: return 1.0
+            return f
+        except Exception:
+            return 0.0
+
+    def _to_pct(x):
+        return int(round(_clamp01(x) * 100))
+
+    def _as_int(x, default=0):
+        try:
+            return int(x)
+        except Exception:
+            return default
+
+    # Builder for details UI blocks (skills badges + breakdown bars)
+    def _build_match_details_ui(match_row: dict) -> list[dict]:
+        ui_blocks: list[dict] = []
+        r = match_row or {}
+        total = r.get('score') if (r.get('score') is not None) else r.get('best_score')
+        # breakdown parts (show only if present)
+        parts_map = [
+            ('דמיון כותרת', r.get('title_score')),
+            ('דמיון סמנטי', r.get('semantic_score')),
+            ('דמיון embedding', r.get('embedding_score')),
+            ('מיומנויות', r.get('skills_score')),
+            ('מרחק', r.get('distance_score')),
+        ]
+        parts = [{"label": k, "pct": _to_pct(v)} for (k, v) in parts_map if isinstance(v, (int, float))]
+        counters = {
+            "must": {"have": _as_int(r.get('skills_matched_must')), "total": _as_int(r.get('skills_total_must'))},
+            "nice": {"have": _as_int(r.get('skills_matched_nice')), "total": _as_int(r.get('skills_total_nice'))},
+        }
+        distance_pct = None
+        if isinstance(r.get('distance_score'), (int, float)):
+            distance_pct = _to_pct(r.get('distance_score'))
+        # Emit SkillsBadges (lists optional; counters always present)
+        skills_block = {
+            "kind": "SkillsBadges",
+            "id": "skills",
+            "must": r.get('must_skills') or r.get('skills_must_list') or [],
+            "nice": r.get('nice_skills') or r.get('skills_nice_list') or [],
+            "counters": counters,
+        }
+        ui_blocks.append(skills_block)
+        # Emit MatchBreakdown
+        ui_blocks.append({
+            "kind": "MatchBreakdown",
+            "id": "breakdown",
+            "title": r.get('title') or r.get('job_title') or r.get('candidate_title') or '',
+            "scorePct": _to_pct(total) if isinstance(total, (int, float)) else None,
+            "parts": parts,
+            "counters": counters,
+            "distancePct": distance_pct,
+        })
+        return ui_blocks
 
     # EARLY SHORT-CIRCUIT: bare ObjectId (24-hex) → classify and respond deterministically (before any DSL/LLM)
     try:
@@ -3816,6 +4082,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         top_k0 = vi0
             except Exception:
                 pass
+            wants_details0, details_id0 = _wants_details(q0)
             if is_job0:
                 if request and request.query_params.get("stream") in ("1","true","yes"):
                     def _gen_job_early():
@@ -3834,12 +4101,31 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
                             if rows:
                                 ui.append({"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"})
+                                if wants_details0:
+                                    # Pick specific or top row to detail
+                                    target_id = details_id0 or (rows[0].get('candidate_id') if rows else None)
+                                    target = None
+                                    if target_id:
+                                        for rfull in (matches or [])[:top_k0]:
+                                            if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                                target = rfull
+                                                break
+                                    if not target and matches:
+                                        target = matches[0]
+                                    if target:
+                                        ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            # Quick replies
+                            ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         except Exception:
                             ui=[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
                         env={"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        try:
+                            _persist_message(thread_id, "assistant", env)
+                        except Exception:
+                            pass
                         yield _json.dumps(env, ensure_ascii=False) + "\n"
                         yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                     return StreamingResponse(_gen_job_early(), media_type="application/x-ndjson")
@@ -3854,8 +4140,26 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 sc=0.0
                             rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
                         ui=[{"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                        if rows and wants_details0:
+                            target_id = details_id0 or rows[0].get('candidate_id')
+                            target = None
+                            if target_id:
+                                for rfull in (matches or [])[:top_k0]:
+                                    if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                        target = rfull
+                                        break
+                            if not target and matches:
+                                target = matches[0]
+                            if target:
+                                ui.extend(_build_match_details_ui(target))
                         ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
-                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                        ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
+                        resp = {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                        try:
+                            _persist_message(thread_id, "assistant", resp)
+                        except Exception:
+                            pass
+                        return resp
                     except Exception:
                         return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
             if is_cand0:
@@ -3876,12 +4180,29 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
                             if rows:
                                 ui.append({"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"})
+                                if wants_details0:
+                                    target_id = details_id0 or (rows[0].get('job_id') if rows else None)
+                                    target = None
+                                    if target_id:
+                                        for rfull in (ms or [])[:top_k0]:
+                                            if str(rfull.get('job_id') or rfull.get('_id') or '') == str(target_id):
+                                                target = rfull
+                                                break
+                                    if not target and ms:
+                                        target = ms[0]
+                                    if target:
+                                        ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         except Exception:
                             ui=[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
                         env={"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
+                        try:
+                            _persist_message(thread_id, "assistant", env)
+                        except Exception:
+                            pass
                         yield _json.dumps(env, ensure_ascii=False) + "\n"
                         yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                     return StreamingResponse(_gen_cand_early(), media_type="application/x-ndjson")
@@ -3896,8 +4217,26 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 sc=0.0
                             rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
                         ui=[{"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        if rows and wants_details0:
+                            target_id = details_id0 or rows[0].get('job_id')
+                            target = None
+                            if target_id:
+                                for rfull in (ms or [])[:top_k0]:
+                                    if str(rfull.get('job_id') or rfull.get('_id') or '') == str(target_id):
+                                        target = rfull
+                                        break
+                            if not target and ms:
+                                target = ms[0]
+                            if target:
+                                ui.extend(_build_match_details_ui(target))
                         ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
-                        return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                        ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
+                        resp = {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
+                        try:
+                            _persist_message(thread_id, "assistant", resp)
+                        except Exception:
+                            pass
+                        return resp
                     except Exception:
                         return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
     except Exception:
@@ -4132,12 +4471,21 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 def _gen_not_found():
                     import json as _json
                     yield _json.dumps({"type":"text_delta","text":"בודק מזהה..."}, ensure_ascii=False) + "\n"
-                    env = {"type":"assistant_ui","narration":"לא נמצא","actions":[],"ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."}]}
+                    env = {"type":"assistant_ui","narration":"לא נמצא","actions":[],"ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."},{"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)}]}
+                    try:
+                        _persist_message(thread_id, "assistant", env)
+                    except Exception:
+                        pass
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                 return StreamingResponse(_gen_not_found(), media_type="application/x-ndjson")
             else:
-                return {"answer":"לא נמצא","type":"assistant_ui","ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."}], "took_ms": int((time.time()-t0)*1000)}
+                resp = {"answer":"לא נמצא","type":"assistant_ui","ui":[{"kind":"RichText","id":"not-found","html":"לא נמצאה משרה או מועמד עם מזהה זה."},{"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)}], "took_ms": int((time.time()-t0)*1000)}
+                try:
+                    _persist_message(thread_id, "assistant", resp)
+                except Exception:
+                    pass
+                return resp
     except Exception:
         pass
 
@@ -4215,7 +4563,12 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 else:
                     ui.append({"kind":"RichText","id":"no-discussions","html":"אין דיונים לפריט זה."})
                     ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": 0})
+                ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                 env = {"type":"assistant_ui","narration":"בוצע","actions": [{"type":"refresh","payload":{}}], "ui": ui}
+                try:
+                    _persist_message(thread_id, "assistant", env)
+                except Exception:
+                    pass
                 yield _json.dumps(env, ensure_ascii=False) + "\n"
                 yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
             # Extract note text if add
@@ -4337,7 +4690,12 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                             pass
                     except Exception:
                         pass
+                    ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                     env = {"type":"assistant_ui","narration":"הוחל סינון בסיסי","actions": actions, "ui": ui}
+                    try:
+                        _persist_message(thread_id, "assistant", env)
+                    except Exception:
+                        pass
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                 return StreamingResponse(_gen(), media_type="application/x-ndjson")
@@ -4413,7 +4771,12 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                             ui.append({"kind":"Metric","id":"discussions-kpi","label":"סה\"כ הערות","value": 0})
                     except Exception:
                         ui.append({"kind":"RichText","id":"error","html":"אירעה תקלה בעת שליפת דיונים."})
+                    ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                     env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
+                    try:
+                        _persist_message(thread_id, "assistant", env)
+                    except Exception:
+                        pass
                     yield _json.dumps(env, ensure_ascii=False) + "\n"
                     yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                     # finish discussions stream
@@ -4479,7 +4842,12 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         pass
                 except Exception:
                     pass
+                ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                 env = {"type":"assistant_ui","narration": answer, "actions": actions, "ui": ui}
+                try:
+                    _persist_message(thread_id, "assistant", env)
+                except Exception:
+                    pass
                 yield _json.dumps(env, ensure_ascii=False) + "\n"
                 yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
                 # mark done for non-discussions stream
@@ -4489,7 +4857,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
     except Exception:
         pass
 
-    return {
+    resp = {
         "answer": answer,
         "actions": actions,
         "dsl": {
@@ -4500,6 +4868,11 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         },
         "took_ms": int((time.time()-t0)*1000)
     }
+    try:
+        _persist_message(thread_id, "assistant", resp)
+    except Exception:
+        pass
+    return resp
 
 # Advanced report: POST with JSON filters (supports multi-city OR)
 ## (removed older JSON-DSL flavored /match/report/query; using unified MatchQuery endpoint)

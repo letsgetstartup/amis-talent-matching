@@ -74,8 +74,17 @@ start() {
   # Use --app-dir to include talentdb on sys.path
   # If RELOAD=1, use reload watcher (single worker); else allow multiple workers
   if [ "$RELOAD" = "1" ]; then
-    nohup "$UVICORN_BIN" --app-dir "$ROOT_DIR/talentdb" scripts.api:app \
-      --host "$HOST" --port "$PORT" --reload >> "$LOG_FILE" 2>&1 &
+      nohup "$UVICORN_BIN" --app-dir "$ROOT_DIR/talentdb" scripts.api:app \
+        --host "$HOST" --port "$PORT" --reload \
+        --reload-dir "$ROOT_DIR/talentdb" \
+        --reload-exclude 'server.out' \
+        --reload-exclude '*.log' \
+        --reload-exclude 'mongo_backups' \
+        --reload-exclude 'frontend' \
+        --reload-exclude 'docs' \
+        --reload-exclude 'backup' \
+        --reload-exclude '*.csv' \
+        --reload-exclude '*.json' >> "$LOG_FILE" 2>&1 &
   else
     nohup "$UVICORN_BIN" --app-dir "$ROOT_DIR/talentdb" scripts.api:app \
       --host "$HOST" --port "$PORT" --workers "$WORKERS" >> "$LOG_FILE" 2>&1 &

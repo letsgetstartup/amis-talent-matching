@@ -1659,8 +1659,11 @@
   // ===== Copilot: streaming chat client and UI renderer =====
   const COPILOT_STREAM_TIMEOUT_MS = 600000; // 10 minutes per user request
   let copilotAbort;
+  // Track the currently active bot bubble during a stream
+  let currentCopilotBubble = null; // { bubbleEl, textEl, attachEl, kpiEl }
 
   function pushCopilot(role, text){
+    // Simple user bubble (bot bubbles should use createBotBubble for richer content)
     const log = document.getElementById('copilotLog');
     const div = document.createElement('div');
     div.className = `chat-msg ${role}`;
@@ -1668,6 +1671,32 @@
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
     return div;
+  }
+
+  function createBotBubble(initialText){
+    const log = document.getElementById('copilotLog');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-msg bot';
+    const textEl = document.createElement('div');
+    textEl.className = 'msg-text';
+    textEl.textContent = initialText || '';
+    const attachEl = document.createElement('div');
+    attachEl.className = 'msg-attachments';
+    const kpiEl = document.createElement('div');
+    kpiEl.className = 'msg-kpis';
+    bubble.appendChild(textEl);
+    bubble.appendChild(kpiEl);
+    bubble.appendChild(attachEl);
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
+    return { bubbleEl: bubble, textEl, attachEl, kpiEl };
+  }
+
+  function setBotText(botTarget, text){
+    try{
+      if(botTarget && botTarget.textEl){ botTarget.textEl.textContent = String(text||''); }
+      else if(botTarget){ botTarget.textContent = String(text||''); }
+    }catch{}
   }
 
   function sanitizeRichHtml(html){
@@ -1699,15 +1728,19 @@
     return tpl.innerHTML;
   }
 
-  function renderCopilotTable(component){
-    const mount = document.getElementById('copilotUi');
+  function renderCopilotTable(component, mount){
+    mount = mount || document.getElementById('copilotUi');
     if(!mount) return;
     const { id, columns = [], rows = [], primaryKey } = component;
     const card = document.createElement('div');
     card.className = 'panel';
     const safeCols = columns.filter(c=>c && c.key && c.title);
     const head = safeCols.map(c=>`<th>${escapeHtml(String(c.title))}</th>`).join('');
-    const body = rows.map(r=>{
+    // Show up to 10 rows by default with an expander for the rest
+    const MAX_ROWS = 10;
+    const initialRows = Array.isArray(rows) ? rows.slice(0, MAX_ROWS) : [];
+    const moreCount = Math.max(0, (Array.isArray(rows)? rows.length:0) - initialRows.length);
+    const bodyHtml = (list)=> list.map(r=>{
       return '<tr>' + safeCols.map(c=>`<td>${escapeHtml(String(r[c.key] ?? ''))}</td>`).join('') + '</tr>';
     }).join('');
   const title = id==='matches' ? 'תצוגת טבלה (התאמות)' : 'תצוגת טבלה';
@@ -1716,16 +1749,23 @@
       <div style="overflow:auto;max-height:50vh">
         <table>
           <thead><tr>${head}</tr></thead>
-          <tbody>${body || '<tr><td class="muted" colspan="'+Math.max(safeCols.length,1)+'">אין שורות</td></tr>'}</tbody>
+          <tbody>${bodyHtml(initialRows) || '<tr><td class="muted" colspan="'+Math.max(safeCols.length,1)+'">אין שורות</td></tr>'}</tbody>
         </table>
       </div>
+      ${moreCount>0? `<button class="btn small" data-role="expand">הצג עוד (${moreCount})</button>`:''}
     `;
+    if(moreCount>0){
+      const btn = card.querySelector('button[data-role="expand"]');
+      btn.addEventListener('click', ()=>{
+        const tb = card.querySelector('tbody');
+        try{ tb.innerHTML = bodyHtml(rows); btn.remove(); }catch{}
+      });
+    }
     mount.appendChild(card);
   }
 
-  function renderCopilotRichText(component){
+  function renderCopilotRichText(component, mount){
     const { html = '' } = component;
-    const mount = document.getElementById('copilotUi');
     if(!mount) return;
     const card = document.createElement('div');
     card.className = 'panel';
@@ -1733,8 +1773,8 @@
     mount.appendChild(card);
   }
 
-  function renderCopilotMetric(component){
-    const strip = document.getElementById('copilotKpis');
+  function renderCopilotMetric(component, strip){
+    strip = strip || document.getElementById('copilotKpis');
     if(!strip) return;
     const { label, value, tone='info' } = component;
     const span = document.createElement('span');
@@ -1749,18 +1789,23 @@
     // Run actions first for deterministic state
     try{ if(Array.isArray(env.actions) && env.actions.length){ applyChatActions(env.actions); } }catch(e){}
     const ui = Array.isArray(env.ui) ? env.ui : [];
+    // Determine target mounts: prefer current bot bubble, else global panels
+    const targets = currentCopilotBubble || { attachEl: document.getElementById('copilotUi'), kpiEl: document.getElementById('copilotKpis') };
     for(const c of ui){
       if(!c || typeof c !== 'object' || !c.kind) continue;
-      if(c.kind==='Table') renderCopilotTable(c);
-      else if(c.kind==='RichText') renderCopilotRichText(c);
-      else if(c.kind==='Metric') renderCopilotMetric(c);
-      else if(c.kind==='DiscussionThread') renderCopilotDiscussion(c);
+    if(c.kind==='Table') renderCopilotTable(c, targets.attachEl);
+      else if(c.kind==='RichText') renderCopilotRichText(c, targets.attachEl);
+      else if(c.kind==='Metric') renderCopilotMetric(c, targets.kpiEl);
+  else if(c.kind==='DiscussionThread') renderCopilotDiscussion(c, targets.attachEl);
+  else if(c.kind==='SkillsBadges') renderCopilotSkillsBadges(c, targets.attachEl);
+  else if(c.kind==='MatchBreakdown') renderCopilotMatchBreakdown(c, targets.attachEl);
+  else if(c.kind==='QuickReplies') renderCopilotQuickReplies(c, targets.attachEl);
       // Unknown kinds ignored safely
     }
   }
 
-  function renderCopilotDiscussion(component){
-    const mount = document.getElementById('copilotUi');
+  function renderCopilotDiscussion(component, mount){
+    mount = mount || document.getElementById('copilotUi');
     if(!mount) return;
     const items = Array.isArray(component.items) ? component.items : [];
     const card = document.createElement('div');
@@ -1791,24 +1836,23 @@
     const q = (inp.value||'').trim();
     if(!q) return;
     const btn = document.getElementById('copilotSend');
-    const ui = document.getElementById('copilotUi');
-    const kpi = document.getElementById('copilotKpis');
-    try{ ui.innerHTML=''; kpi.innerHTML=''; }catch{}
+    // Do not clear previous UI; keep history in the chat log
     const user = pushCopilot('user', q);
     inp.value='';
-    const bot = pushCopilot('bot', 'חושב...');
+    // Create a rich bot bubble we can update as stream events arrive
+    currentCopilotBubble = createBotBubble('חושב...');
     if(btn) btn.disabled = true; if(inp) inp.disabled = true;
     if(copilotAbort){ try{ copilotAbort.abort(); }catch{} }
     copilotAbort = new AbortController();
     let done = false;
     let timeout = setTimeout(()=>{
-      if(done) return; try{ copilotAbort.abort(); }catch{}; bot.textContent = 'תם הזמן לביצוע. נסה לנסח מחדש או לצמצם את הבקשה.'; if(btn) btn.disabled=false; if(inp) inp.disabled=false;
+      if(done) return; try{ copilotAbort.abort(); }catch{}; setBotText(currentCopilotBubble, 'תם הזמן לביצוע. נסה לנסח מחדש או לצמצם את הבקשה.'); if(btn) btn.disabled=false; if(inp) inp.disabled=false;
     }, COPILOT_STREAM_TIMEOUT_MS);
     try{
       // Try streaming first
       const res = await apiFetch(`${API}/chat/query?stream=1`, {
         method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
-        body: JSON.stringify({ question: q }), signal: copilotAbort.signal
+        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null }), signal: copilotAbort.signal
       });
       if(res.ok && res.body){
         const reader = res.body.getReader();
@@ -1827,12 +1871,12 @@
             let evt; try{ evt = JSON.parse(line); }catch(e){ continue; }
             sawEvent = true;
             if(evt.type === 'text_delta'){
-              bot.textContent = String(evt.text||'');
+              setBotText(currentCopilotBubble, String(evt.text||''));
             } else if(evt.type === 'assistant_ui'){
               renderEnvelope(evt);
-              bot.textContent = evt.narration || 'בוצע';
+              setBotText(currentCopilotBubble, evt.narration || 'בוצע');
             } else if(evt.type === 'error'){
-              bot.textContent = `שגיאה: ${evt.detail||'אירעה תקלה'}`;
+              setBotText(currentCopilotBubble, `שגיאה: ${evt.detail||'אירעה תקלה'}`);
             } else if(evt.type === 'done'){
               // no-op
             }
@@ -1846,31 +1890,127 @@
               const j = JSON.parse(left);
               if(Array.isArray(j.actions) && j.actions.length){ try{ applyChatActions(j.actions); }catch(e){} }
               if(j.type === 'assistant_ui'){ renderEnvelope(j); }
-              bot.textContent = j.answer || j.message || j.narration || 'בוצע';
+              setBotText(currentCopilotBubble, j.answer || j.message || j.narration || 'בוצע');
             }catch(e){ /* ignore */ }
           }
         }
         done = true;
         clearTimeout(timeout);
+        currentCopilotBubble = null;
         if(btn) btn.disabled=false; if(inp) inp.disabled=false;
         return;
       }
       // Fallback to non-stream JSON
       const r2 = await apiFetch(`${API}/chat/query`, {
         method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
-        body: JSON.stringify({ question: q }), signal: copilotAbort.signal
+        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null }), signal: copilotAbort.signal
       });
-      if(!r2.ok){ bot.textContent = 'שגיאה בתשובת השרת'; return; }
+  if(!r2.ok){ setBotText(currentCopilotBubble, 'שגיאה בתשובת השרת'); return; }
       const j = await r2.json();
       if(Array.isArray(j.actions) && j.actions.length){ try{ applyChatActions(j.actions); }catch(e){} }
-      bot.textContent = j.answer || j.message || 'בוצע';
+      if(j.type === 'assistant_ui'){ renderEnvelope(j); }
+      setBotText(currentCopilotBubble, j.answer || j.message || j.narration || 'בוצע');
     }catch(e){
       if(e?.name==='AbortError') return;
-      bot.textContent = 'שגיאה ברשת או בזמן העיבוד';
+      setBotText(currentCopilotBubble, 'שגיאה ברשת או בזמן העיבוד');
     } finally {
       done = true; clearTimeout(timeout);
+      currentCopilotBubble = null;
       if(btn) btn.disabled=false; if(inp) inp.disabled=false;
     }
+  }
+
+  function renderCopilotQuickReplies(component, mount){
+    mount = mount || document.getElementById('copilotUi');
+    if(!mount) return;
+    const items = Array.isArray(component.items)? component.items: [];
+    if(!items.length) return;
+    const card = document.createElement('div');
+    card.className = 'panel';
+    const btns = items.slice(0,8).map((it,i)=>{
+      const label = escapeHtml(String(it.label||it.prompt||''));
+      const prompt = String(it.prompt||'');
+      return `<button class="secondary" data-prompt="${escapeHtml(prompt)}" style="margin:4px">${label}</button>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="muted small" style="margin-bottom:6px">הצע המשך</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${btns}</div>
+    `;
+    mount.appendChild(card);
+    // Bind clicks
+    card.querySelectorAll('button[data-prompt]').forEach(btn=>{
+      if(btn._bound) return; btn._bound = true;
+      btn.addEventListener('click', ()=>{
+        const q = String(btn.getAttribute('data-prompt')||'');
+        const inp = document.getElementById('copilotQ');
+        if(inp) inp.value = q;
+        sendCopilotChat();
+      });
+    });
+  }
+
+  function renderCopilotSkillsBadges(component, mount){
+    mount = mount || document.getElementById('copilotUi');
+    if(!mount) return;
+    const must = Array.isArray(component.must)? component.must: [];
+    const nice = Array.isArray(component.nice)? component.nice: [];
+    const counters = (component.counters && typeof component.counters==='object')? component.counters: {must:{have:0,total:0}, nice:{have:0,total:0}};
+    const card = document.createElement('div');
+    card.className = 'panel';
+    const chipRow = (label, list)=>{
+      const chips = list.slice(0,50).map(s=>{
+        const name = typeof s==='string'? s: String(s?.name||'');
+        const matched = typeof s==='object' ? !!s.matched : undefined;
+        const status = matched===true ? '✅' : matched===false ? '✖️' : '';
+        return `<span class="chip">${escapeHtml(name)} ${status}</span>`;
+      }).join(' ');
+      return `<div style="margin:8px 0"><div class="muted small" style="margin-bottom:6px">${escapeHtml(label)}</div><div style="display:flex;flex-wrap:wrap;gap:6px">${chips || '<span class="muted">—</span>'}</div></div>`;
+    };
+    const mustCnt = counters.must||{have:0,total:0};
+    const niceCnt = counters.nice||{have:0,total:0};
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div class="muted small">מיומנויות</div>
+        <div class="small">חובה ${Number(mustCnt.have)||0}/${Number(mustCnt.total)||0} · יתרון ${Number(niceCnt.have)||0}/${Number(niceCnt.total)||0}</div>
+      </div>
+      ${chipRow('חובה', must)}
+      ${chipRow('יתרון', nice)}
+    `;
+    mount.appendChild(card);
+  }
+
+  function renderCopilotMatchBreakdown(component, mount){
+    mount = mount || document.getElementById('copilotUi');
+    if(!mount) return;
+    const title = String(component.title||'');
+    const scorePct = Number(component.scorePct||0);
+    const parts = Array.isArray(component.parts)? component.parts: [];
+    const counters = (component.counters && typeof component.counters==='object')? component.counters: {must:{have:0,total:0}, nice:{have:0,total:0}};
+    const distancePct = component.distancePct!=null? Number(component.distancePct): null;
+    const bar = (label, pct)=>{
+      const p = Math.max(0, Math.min(100, Number(pct)||0));
+      return `<div style="margin:10px 0"><div class="small muted" style="margin-bottom:4px">${escapeHtml(String(label||''))}</div><div class="meter"><span style="width:${p}%"></span></div></div>`;
+    };
+    const card = document.createElement('div');
+    card.className = 'panel';
+    const mustCnt = counters.must||{have:0,total:0};
+    const niceCnt = counters.nice||{have:0,total:0};
+    const partsHtml = parts.slice(0,10).map(p=>bar(p.label, p.pct)).join('');
+    const distHtml = distancePct!=null ? bar('מרחק', distancePct) : '';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small muted">${escapeHtml(title||'')}</div>
+          <div class="badge neutral">${Math.max(0,Math.min(100,scorePct))}%</div>
+        </div>
+        <div class="small muted" style="text-align:right">
+          <div>חובה ${Number(mustCnt.have)||0}/${Number(mustCnt.total)||0}</div>
+          <div>יתרון ${Number(niceCnt.have)||0}/${Number(niceCnt.total)||0}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px">${partsHtml}${distHtml}</div>
+    `;
+    mount.appendChild(card);
   }
 
   // Wire Copilot send
@@ -1896,6 +2036,35 @@
       activate(tab);
   try{ renderGlobalExplainer(); }catch(e){}
       try{ await Promise.allSettled([refreshJobs(), refreshCandidates()]); }catch(e){}
+      // Bootstrap Copilot thread and load history when Copilot tab is opened first time
+      try{
+        // get or create thread
+        const rt = await apiFetch(`${API}/assistant/thread/current`, { headers: { ...hdrs() } });
+        if(rt.ok){ const j = await rt.json(); state.copilotThreadId = j.threadId; }
+        // load history
+        if(state.copilotThreadId){
+          const rh = await apiFetch(`${API}/assistant/history?thread_id=${encodeURIComponent(state.copilotThreadId)}`, { headers: { ...hdrs() } });
+          if(rh.ok){
+            const h = await rh.json();
+            const msgs = Array.isArray(h.messages)? h.messages: [];
+            msgs.forEach(m=>{
+              if(m.role==='user'){
+                pushCopilot('user', String(m.content?.text||''));
+              } else if(m.role==='assistant'){
+                // If content is assistant_ui envelope, render; else show text
+                const env = m.content && m.content.type? m.content: null;
+                if(env && env.type==='assistant_ui'){
+                  currentCopilotBubble = createBotBubble(env.narration||'בוצע');
+                  try{ renderEnvelope(env); }catch(e){}
+                  currentCopilotBubble = null;
+                } else {
+                  createBotBubble(String(m.content?.text||'בוצע'));
+                }
+              }
+            });
+          }
+        }
+      }catch(e){}
     } else {
       showUser();
       activate('dashboard');
