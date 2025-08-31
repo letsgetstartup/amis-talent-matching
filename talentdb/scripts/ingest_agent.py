@@ -385,6 +385,7 @@ def set_cached_candidates_for_job(job_id: str, tenant_id: str | None, city_filte
 
 def get_or_compute_candidates_for_job(job_id: str, top_k: int = 5, city_filter: bool = True, tenant_id: str | None = None, strategy: str = "hybrid", max_age: int | None = None, rp_esco: str | None = None, fo_esco: str | None = None) -> list[dict]:
     """Return job->candidates matches using cache strategy similar to candidate flow."""
+    _t0 = time.time() if 'time' in globals() else __import__('time').time()
     strat = (strategy or "hybrid").lower()
     if strat not in {"off", "on", "hybrid"}:
         strat = "hybrid"
@@ -393,11 +394,19 @@ def get_or_compute_candidates_for_job(job_id: str, top_k: int = 5, city_filter: 
         if doc and isinstance(doc.get("matches"), list):
             ms = doc.get("matches") or []
             if len(ms) >= top_k or strat == "on":
+                try:
+                    logging.info(f"MATCH j2c cache_hit job={job_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                except Exception:
+                    pass
                 return ms[:top_k]
             # fallthrough to recompute for hybrid
     ms = candidates_for_job(job_id, top_k=top_k, city_filter=city_filter, tenant_id=tenant_id, rp_esco=rp_esco, fo_esco=fo_esco)
     try:
         set_cached_candidates_for_job(job_id, tenant_id, city_filter, ms, computed_k=len(ms))
+    except Exception:
+        pass
+    try:
+        logging.info(f"MATCH j2c computed job={job_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
     except Exception:
         pass
     return ms
@@ -426,6 +435,7 @@ def get_or_compute_matches(candidate_id: str, top_k: int = 5, city_filter: bool 
         eff_max_km = int(max_distance_km or 0)
         cache_city_filter = eff_max_km > 0
 
+    _t0 = time.time() if 'time' in globals() else __import__('time').time()
     # Try cache first for on/hybrid
     if strat in {"on", "hybrid"}:
         doc = get_cached_matches(candidate_id, tenant_id, city_filter=cache_city_filter, max_age=max_age)
@@ -434,6 +444,10 @@ def get_or_compute_matches(candidate_id: str, top_k: int = 5, city_filter: bool 
             comp_k = int(doc.get("computed_k") or 0)
             # If cache has fewer than requested, optionally recompute under hybrid
             if len(ms) >= top_k or strat == "on":
+                try:
+                    logging.info(f"MATCH c2j cache_hit cand={candidate_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                except Exception:
+                    pass
                 return ms[:top_k]
             # fallthrough to recompute for hybrid
     # Compute now
@@ -441,6 +455,10 @@ def get_or_compute_matches(candidate_id: str, top_k: int = 5, city_filter: bool 
     # Best-effort: update cache
     try:
         set_cached_matches(candidate_id, tenant_id, cache_city_filter, ms, computed_k=len(ms))
+    except Exception:
+        pass
+    try:
+        logging.info(f"MATCH c2j computed cand={candidate_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
     except Exception:
         pass
     return ms
@@ -1883,175 +1901,133 @@ def recompute_skill_sets():
     return changed
 
 def create_indexes():
+    """Ensure commonly used indexes exist (idempotent). Returns a list of index names created/ensured.
+
+    This function is safe to call on startup and by readiness probes. It avoids raising on individual
+    index creation failures to prevent blocking the app.
+    """
+    created: list[str] = []
     try:
-        db["candidates"].create_index("skill_set")
-        db["jobs"].create_index("skill_set")
-        db["candidates"].create_index("updated_at")
-        db["jobs"].create_index("updated_at")
         try:
-            db["candidates"].create_index("tenant_id")
+            name = db["candidates"].create_index("skill_set")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index([("tenant_id", 1), ("external_job_id", 1)], name="tenant_extid")
+            name = db["jobs"].create_index("skill_set")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["candidates"].create_index("updated_at")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index("updated_at")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["candidates"].create_index("tenant_id")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index([("tenant_id", 1), ("external_job_id", 1)], name="tenant_extid")
+            created.append(name)
         except Exception:
             pass
         # New derivative fields for fast matching
         try:
-            db["candidates"].create_index("skills_fingerprint")
+            name = db["candidates"].create_index("skills_fingerprint")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index("skills_fingerprint")
+            name = db["jobs"].create_index("skills_fingerprint")
+            created.append(name)
         except Exception:
             pass
-        # Additional query support indexes
+        # City and basic metadata
         try:
-            db["jobs"].create_index("city_canonical")
-        except Exception:
-            pass
-        try:
-            db["jobs"].create_index("created_at")
-        except Exception:
-            pass
-        try:
-            db["jobs"].create_index("title")
+            name = db["jobs"].create_index("city_canonical")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index("job_requirements")
+            name = db["candidates"].create_index("city_canonical")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index("requirement_mentions")
+            name = db["jobs"].create_index("created_at")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index("synthetic_skills")
+            name = db["candidates"].create_index("created_at")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index("title")
+            created.append(name)
+        except Exception:
+            pass
+        # Nested skills fields (multikey)
+        try:
+            name = db["candidates"].create_index("skills_detailed.name")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index("requirements.must_have_skills.name")
+            created.append(name)
+        except Exception:
+            pass
+        # Backward-compat fields used by some queries
+        try:
+            name = db["jobs"].create_index("job_requirements")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index("requirement_mentions")
+            created.append(name)
+        except Exception:
+            pass
+        try:
+            name = db["jobs"].create_index("synthetic_skills")
+            created.append(name)
         except Exception:
             pass
         # Optional direct filter indexes for raw profession fields
         try:
-            db["jobs"].create_index("profession")
+            name = db["jobs"].create_index("profession")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index("occupation_field")
+            name = db["jobs"].create_index("occupation_field")
+            created.append(name)
         except Exception:
             pass
         # New fields from Score Agents CSV format
         try:
-            db["jobs"].create_index("branch")
+            name = db["jobs"].create_index("branch")
+            created.append(name)
         except Exception:
             pass
         try:
-            db["jobs"].create_index([("job_applications_count", -1)])
-        except Exception:
-            pass
-        try:
-            db["jobs"].create_index("recruiter_name")
-        except Exception:
-            pass
-        try:
-            db["jobs"].create_index("source_created_at")
-        except Exception:
-            pass
-        # Profession/Occupation filtering support
-        try:
-            db["jobs"].create_index([("required_profession.esco_id", 1)])
-        except Exception:
-            pass
-        try:
-            db["jobs"].create_index([("field_of_occupation.esco_id", 1)])
-        except Exception:
-            pass
-        try:
-            db["candidates"].create_index([("desired_profession.esco_id", 1)])
-        except Exception:
-            pass
-        try:
-            db["candidates"].create_index([("field_of_occupation.esco_id", 1)])
-        except Exception:
-            pass
-        try:
-            db["candidates"].create_index("city_canonical")
-        except Exception:
-            pass
-        # Optional text index for flexible search (best-effort)
-        try:
-            db["jobs"].create_index([("title", "text"), ("job_description", "text"), ("job_requirements", "text")], name="jobs_text")
-        except Exception:
-            pass
-        # Ensure uniqueness of source hash to avoid duplicate ingests of identical file
-        def _fix_src_hash_index(coll_name: str, idx_name: str):
-            try:
-                coll = db[coll_name]
-                # Drop any existing unique index on _src_hash (regardless of partial), then recreate as partial unique
-                for info in coll.list_indexes():
-                    key = list(info.get("key", {}).items())
-                    uniq = bool(info.get("unique"))
-                    if key == [("_src_hash", 1)] and uniq:
-                        try:
-                            coll.drop_index(info.get("name"))
-                        except Exception:
-                            pass
-                # Create partial unique index (idempotent)
-                coll.create_index("_src_hash", unique=True, name=idx_name, partialFilterExpression={"_src_hash": {"$type": "string"}})
-            except Exception:
-                pass
-        _fix_src_hash_index("candidates", "uniq_src_hash_cand")
-        _fix_src_hash_index("jobs", "uniq_src_hash_job")
-        # Matches cache indexes (directional, partial unique)
-        try:
-            coll = db[MATCH_CACHE_COLL]
-            # Drop legacy unique index if present to avoid conflicts when adding j2c docs
-            for info in coll.list_indexes():
-                if info.get("name") == "uniq_tenant_cand_cityf":
-                    try:
-                        coll.drop_index("uniq_tenant_cand_cityf")
-                    except Exception:
-                        pass
-            # Candidate->Jobs unique index
-            try:
-                coll.create_index(
-                    [("direction", 1), ("tenant_id", 1), ("candidate_id", 1), ("city_filter", 1)],
-                    unique=True,
-                    name="uniq_cache_c2j",
-                    partialFilterExpression={"direction": "c2j", "candidate_id": {"$type": "string"}},
-                )
-            except Exception:
-                pass
-            # Job->Candidates unique index
-            try:
-                coll.create_index(
-                    [("direction", 1), ("tenant_id", 1), ("job_id", 1), ("city_filter", 1)],
-                    unique=True,
-                    name="uniq_cache_j2c",
-                    partialFilterExpression={"direction": "j2c", "job_id": {"$type": "string"}},
-                )
-            except Exception:
-                pass
-        except Exception:
-            pass
-        try:
-            db[MATCH_CACHE_COLL].create_index([("updated_at", -1)])
-        except Exception:
-            pass
-        try:
-            db[MATCH_CACHE_COLL].create_index([("computed_k", -1)])
-        except Exception:
-            pass
-        # Matches history indexes
-        try:
-            db["matches_history"].create_index([("tenant_id", 1), ("direction", 1), ("source_id", 1), ("ts", -1)], name="hist_src_ts")
-        except Exception:
-            pass
-        try:
-            db["matches_history"].create_index([("tenant_id", 1), ("direction", 1), ("target_id", 1), ("ts", -1)], name="hist_tgt_ts")
+            name = db["jobs"].create_index([("job_applications_count", -1)])
+            created.append(name)
         except Exception:
             pass
     except Exception:
+        # Never break app on index errors
         pass
+    return created
 
 # Ensure indexes are created on module import as a safety net (tests insert directly via db)
 try:
@@ -2764,9 +2740,9 @@ def candidates_for_job(job_id: str, top_k: int=5, city_filter: bool=True, tenant
             # _CITY_CACHE keys are original city names lowercased; attempt reverse lookup
             rec = _CITY_CACHE.get(str(city_can).lower())
         if not rec:
-            # Fallback: try resolving coordinates via LLM (OpenAI), then cache
+            # Optional: try resolving coordinates via LLM (OpenAI) only if explicitly enabled
             try:
-                if _OPENAI_AVAILABLE and _openai_client is not None:
+                if os.getenv('GEO_LLM_ENABLED','0').lower() in {'1','true','yes'} and _OPENAI_AVAILABLE and _openai_client is not None:
                     city_q = str(city_can)
                     messages = [
                         {"role": "system", "content": "You are a precise geocoding assistant. Given a city name (optionally with country), return strictly a JSON object with numeric keys lat and lon in decimal degrees. If unknown, return {}."},
@@ -2904,9 +2880,9 @@ def jobs_for_candidate(candidate_id: str, top_k: int=5, max_distance_km: int=30,
         if not rec:
             rec = _CITY_CACHE.get(str(city_can).lower())
         if not rec:
-            # Fallback: try resolving coordinates via LLM (OpenAI), then cache
+            # Optional: try resolving coordinates via LLM (OpenAI) only if explicitly enabled
             try:
-                if _OPENAI_AVAILABLE and _openai_client is not None:
+                if os.getenv('GEO_LLM_ENABLED','0').lower() in {'1','true','yes'} and _OPENAI_AVAILABLE and _openai_client is not None:
                     city_q = str(city_can)
                     messages = [
                         {"role": "system", "content": "You are a precise geocoding assistant. Given a city name (optionally with country), return strictly a JSON object with numeric keys lat and lon in decimal degrees. If unknown, return {}."},

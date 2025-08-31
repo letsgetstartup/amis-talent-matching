@@ -20,8 +20,17 @@ try:
 except Exception:
         pass
 
-# Feature flag for MCP integration
+# Feature flags
+# MCP integration on/off
 os.environ["MCP_ENABLED"] = os.getenv("MCP_ENABLED", "0")
+# Strict real-data mode: disable bootstraps/seeds and enforce MCP-only behavior (no native fallbacks)
+STRICT_REAL_DATA = os.getenv("STRICT_REAL_DATA", "1")  # default strict by request
+if STRICT_REAL_DATA.lower() in {"1", "true", "yes"}:
+    # prevent any auto-ingest or synthetic seeding during app lifespan
+    os.environ["SKIP_BOOTSTRAP"] = "1"
+    os.environ["AUTO_INGEST_SAMPLES"] = "0"
+    # ensure MCP-only matching paths (helpers will honor MCP_STRICT)
+    os.environ["MCP_STRICT"] = "1"
 
 ROOT_DIR = os.path.dirname(__file__)
 

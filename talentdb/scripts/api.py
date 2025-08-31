@@ -446,6 +446,8 @@ def stream_server_logs():
     return StreamingResponse(_gen(), media_type="text/plain")
 
 API_KEY = os.getenv("API_KEY")  # optional simple shared key
+# Strict MCP mode set by run_server via MCP_STRICT=1 to avoid native fallback
+STRICT_MCP = os.getenv("MCP_STRICT", "0").lower() in {"1", "true", "yes"}
 
 def require_api_key(x_api_key: str = Header(default=None, alias="X-API-Key")):
     if API_KEY and x_api_key != API_KEY:
@@ -487,9 +489,14 @@ def _mcp_or_native_candidates_for_job(job_id: str, top_k: int, tenant_id: str | 
                     })
             return rows
     except Exception:
-        # fall back to native
+        # fall back to native unless STRICT_MCP
+        if STRICT_MCP and MCP_ENABLED:
+            raise HTTPException(status_code=502, detail="mcp_unavailable")
         pass
     try:
+        if STRICT_MCP and MCP_ENABLED:
+            # no fallback in strict mode
+            raise HTTPException(status_code=502, detail="mcp_strict_no_fallback")
         return get_or_compute_candidates_for_job(job_id, top_k=int(top_k), city_filter=True, tenant_id=tenant_id)
     except Exception:
         return []
@@ -529,9 +536,14 @@ def _mcp_or_native_jobs_for_candidate(candidate_id: str, top_k: int, tenant_id: 
                     })
             return rows
     except Exception:
-        # fall back to native
+        # fall back to native unless STRICT_MCP
+        if STRICT_MCP and MCP_ENABLED:
+            raise HTTPException(status_code=502, detail="mcp_unavailable")
         pass
     try:
+        if STRICT_MCP and MCP_ENABLED:
+            # no fallback in strict mode
+            raise HTTPException(status_code=502, detail="mcp_strict_no_fallback")
         return jobs_for_candidate(candidate_id, top_k=int(top_k), max_distance_km=30, tenant_id=tenant_id)
     except Exception:
         return []
@@ -544,20 +556,21 @@ def _sample_paths(kind: str):
 
 def _auto_ingest_if_empty():
     # Only ingest if collections empty to avoid duplicates on reload
-    if db["candidates"].count_documents({}) == 0:
-        cps = _sample_paths("candidate")
-        if cps:
-            ingest_files(cps, kind="candidate")
-    if db["jobs"].count_documents({}) == 0:
-        jps = _sample_paths("job")
-        seeded = False
-        if jps:
-            try:
-                ingest_files(jps, kind="job")
-                seeded = db["jobs"].count_documents({}) > 0
-            except Exception:
-                seeded = False
-        # If still empty (e.g., no LLM for job ingestion), insert a minimal synthetic job to satisfy tests
+    if os.getenv("AUTO_INGEST_SAMPLES", "0").lower() in {"1","true","yes"}:
+        if db["candidates"].count_documents({}) == 0:
+            cps = _sample_paths("candidate")
+            if cps:
+                ingest_files(cps, kind="candidate")
+        if db["jobs"].count_documents({}) == 0:
+            jps = _sample_paths("job")
+            seeded = False
+            if jps:
+                try:
+                    ingest_files(jps, kind="job")
+                    seeded = db["jobs"].count_documents({}) > 0
+                except Exception:
+                    seeded = False
+            # If still empty (e.g., no LLM for job ingestion), insert a minimal synthetic job to satisfy tests
         if not seeded and db["jobs"].count_documents({}) == 0:
             now = int(time.time())
             try:
@@ -4171,6 +4184,71 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         })
         return ui_blocks
 
+    # Helper: normalize a match row into a richer table row (id/title/city/score/skills counters/distance)
+    def _row_for_table(r: dict, table: str) -> dict:
+        r = r or {}
+        try:
+            sc = float(r.get('score') or r.get('best_score') or 0.0)
+        except Exception:
+            sc = 0.0
+        # ids and titles per table kind
+        if table == 'job-candidates':
+            rid = str(r.get('candidate_id') or r.get('_id') or '')
+            title = r.get('title') or r.get('candidate_title') or ''
+            id_key = 'candidate_id'
+        else:
+            rid = str(r.get('job_id') or r.get('_id') or '')
+            title = r.get('title') or r.get('job_title') or ''
+            id_key = 'job_id'
+        # city and distance
+        city = r.get('city') or r.get('city_canonical') or ''
+        dist_km = r.get('distance_km')
+        try:
+            dist_km = round(float(dist_km), 1)
+        except Exception:
+            dist_km = None
+        dist_pct = None
+        try:
+            if isinstance(r.get('distance_score'), (int, float)):
+                dist_pct = _to_pct(r.get('distance_score'))
+        except Exception:
+            dist_pct = None
+        # counters
+        smh = _as_int(r.get('skills_matched_must'))
+        smt = _as_int(r.get('skills_total_must'))
+        snh = _as_int(r.get('skills_matched_nice'))
+        snt = _as_int(r.get('skills_total_nice'))
+        must_disp = f"{smh}/{smt}" if (smt or smh) else ""
+        nice_disp = f"{snh}/{snt}" if (snt or snh) else ""
+        return {
+            id_key: rid,
+            "title": title,
+            "city": city,
+            "score": round(sc, 3),
+            "must": must_disp,
+            "nice": nice_disp,
+            "distance_km": dist_km,
+            "distance_pct": dist_pct,
+        }
+
+    def _columns_for_table(table: str) -> list[dict]:
+        if table == 'job-candidates':
+            id_key = 'candidate_id'
+            id_title = 'מועמד'
+        else:
+            id_key = 'job_id'
+            id_title = 'משרה'
+        return [
+            {"key": id_key, "title": id_title},
+            {"key": "title", "title": "תפקיד"},
+            {"key": "city", "title": "עיר"},
+            {"key": "score", "title": "ציון"},
+            {"key": "must", "title": "חובה"},
+            {"key": "nice", "title": "יתרון"},
+            {"key": "distance_km", "title": "מרחק (ק""מ)"},
+            {"key": "distance_pct", "title": "ניקוד מרחק (%)"},
+        ]
+
     # EARLY SHORT-CIRCUIT: bare ObjectId (24-hex) → classify and respond deterministically (before any DSL/LLM)
     try:
         import re as _re
@@ -4214,15 +4292,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui=[]
                         try:
                             matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
-                            rows=[]
-                            for r in (matches or [])[:top_k0]:
-                                try:
-                                    sc=float(r.get('score') or r.get('best_score') or 0.0)
-                                except Exception:
-                                    sc=0.0
-                                rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
+                            rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
                             if rows:
-                                ui.append({"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"})
+                                ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
                                 if wants_details0:
                                     # Pick specific or top row to detail
                                     target_id = details_id0 or (rows[0].get('candidate_id') if rows else None)
@@ -4254,14 +4326,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 else:
                     try:
                         matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
-                        rows=[]
-                        for r in (matches or [])[:top_k0]:
-                            try:
-                                sc=float(r.get('score') or r.get('best_score') or 0.0)
-                            except Exception:
-                                sc=0.0
-                            rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
-                        ui=[{"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                        rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
+                        ui=[{"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
                         if rows and wants_details0:
                             target_id = details_id0 or rows[0].get('candidate_id')
                             target = None
@@ -4293,15 +4359,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui=[]
                         try:
                             ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
-                            rows=[]
-                            for r in (ms or [])[:top_k0]:
-                                try:
-                                    sc=float(r.get('score') or r.get('best_score') or 0.0)
-                                except Exception:
-                                    sc=0.0
-                                rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
+                            rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
                             if rows:
-                                ui.append({"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"})
+                                ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
                                 if wants_details0:
                                     target_id = details_id0 or (rows[0].get('job_id') if rows else None)
                                     target = None
@@ -4331,14 +4391,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 else:
                     try:
                         ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
-                        rows=[]
-                        for r in (ms or [])[:top_k0]:
-                            try:
-                                sc=float(r.get('score') or r.get('best_score') or 0.0)
-                            except Exception:
-                                sc=0.0
-                            rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
-                        ui=[{"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
+                        ui=[{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
                         if rows and wants_details0:
                             target_id = details_id0 or rows[0].get('job_id')
                             target = None
@@ -4375,8 +4429,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         import re as _re
         qtext = str(req.question or '')
         qlow = qtext.lower()
-        # Keywords: Hebrew (מועמד, משרה) or English (candidate, job)
-        wants_candidates = ('מועמד' in qtext) or ('candidate' in qlow)
+        # Keywords: Hebrew (מועמד, משרה, התאמה) or English (candidate, job, match)
+        wants_candidates = (('מועמד' in qtext) or ('candidate' in qlow) or ('התאמה' in qtext) or ('התאמות' in qtext) or ('match' in qlow))
         mentions_job = ('משרה' in qtext) or ('job' in qlow)
         # Accept ObjectId with an optional space after first two hex chars (e.g., "68 ae..."), or a clean 24-hex
         m = _re.search(r"\b([0-9a-fA-F]{24})\b", qtext)
@@ -4398,6 +4452,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
             pass
         if wants_candidates and mentions_job and job_oid:
             top_k = int(k or 5)
+            # detect whether user asked for details in the same query
+            wants_details, details_id = _wants_details(qtext)
             if request and request.query_params.get("stream") in ("1","true","yes"):
                 def _gen_job():
                     import json as _json
@@ -4406,29 +4462,22 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     ui: list[dict] = []
                     try:
                         matches = _mcp_or_native_candidates_for_job(job_oid, top_k, tenant_id)
-                        rows = []
-                        for r in (matches or [])[:top_k]:
-                            try:
-                                sc = float(r.get('score') or r.get('best_score') or 0.0)
-                            except Exception:
-                                sc = 0.0
-                            rows.append({
-                                "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
-                                "title": r.get('title') or r.get('candidate_title') or '',
-                                "score": round(sc, 3)
-                            })
+                        rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
                         if rows:
-                            ui.append({
-                                "kind": "Table",
-                                "id": "job-candidates",
-                                "columns": [
-                                    {"key":"candidate_id","title":"מועמד"},
-                                    {"key":"title","title":"תפקיד"},
-                                    {"key":"score","title":"ציון"}
-                                ],
-                                "rows": rows,
-                                "primaryKey": "candidate_id"
-                            })
+                            ui.append({"kind": "Table","id": "job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows,"primaryKey": "candidate_id"})
+                            # If user explicitly asked for details, append the detailed MatchBreakdown for the specific candidate (or top result)
+                            if wants_details:
+                                target_id = details_id or (rows[0].get('candidate_id') if rows else None)
+                                target = None
+                                if target_id:
+                                    for rfull in (matches or [])[:top_k]:
+                                        if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                            target = rfull
+                                            break
+                                if not target and matches:
+                                    target = matches[0]
+                                if target:
+                                    ui.extend(_build_match_details_ui(target))
                         else:
                             ui.append({
                                 "kind": "RichText",
@@ -4496,23 +4545,22 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui = []
                         try:
                             matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
-                            rows = []
-                            for r in (matches or [])[:top_k]:
-                                try:
-                                    sc = float(r.get('score') or r.get('best_score') or 0.0)
-                                except Exception:
-                                    sc = 0.0
-                                rows.append({
-                                    "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
-                                    "title": r.get('title') or r.get('candidate_title') or '',
-                                    "score": round(sc, 3)
-                                })
+                            rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
                             if rows:
-                                ui.append({
-                                    "kind":"Table","id":"job-candidates",
-                                    "columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],
-                                    "rows": rows, "primaryKey":"candidate_id"
-                                })
+                                ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
+                                # append detailed breakdown when requested
+                                if wants_details:
+                                    target_id = details_id or (rows[0].get('candidate_id') if rows else None)
+                                    target = None
+                                    if target_id:
+                                        for rfull in (matches or [])[:top_k]:
+                                            if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                                target = rfull
+                                                break
+                                    if not target and matches:
+                                        target = matches[0]
+                                    if target:
+                                        ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4525,14 +4573,29 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 else:
                     try:
                         matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
-                        rows = []
-                        for r in (matches or [])[:top_k]:
+                        rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
+                        ui: list[dict] = []
+                        if rows:
+                            ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
+                            # If the user asked for details/breakdown, append SkillsBadges + MatchBreakdown
                             try:
-                                sc = float(r.get('score') or r.get('best_score') or 0.0)
+                                wants_details, details_id = _wants_details(req.question or '')
                             except Exception:
-                                sc = 0.0
-                            rows.append({"candidate_id": str(r.get('candidate_id') or r.get('_id') or ''), "title": r.get('title') or r.get('candidate_title') or '', "score": round(sc,3)})
-                        ui = [{"kind":"Table","id":"job-candidates","columns":[{"key":"candidate_id","title":"מועמד"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                                wants_details, details_id = (False, None)
+                            if wants_details:
+                                target_id = details_id or (rows[0].get('candidate_id') if rows else None)
+                                target = None
+                                if target_id:
+                                    for rfull in (matches or [])[:top_k]:
+                                        if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                            target = rfull
+                                            break
+                                if not target and matches:
+                                    target = matches[0]
+                                if target:
+                                    ui.extend(_build_match_details_ui(target))
+                        else:
+                            ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו. ודאו שמזהה המשרה תקין ונסו לשנות סינונים."})
                         ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
                         return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                     except Exception:
@@ -4547,23 +4610,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui = []
                         try:
                             ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
-                            rows = []
-                            for r in (ms or [])[:top_k]:
-                                try:
-                                    sc = float(r.get('score') or r.get('best_score') or 0.0)
-                                except Exception:
-                                    sc = 0.0
-                                rows.append({
-                                    "job_id": str(r.get('job_id') or r.get('_id') or ''),
-                                    "title": r.get('title') or r.get('job_title') or '',
-                                    "score": round(sc, 3)
-                                })
+                            rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k]]
                             if rows:
-                                ui.append({
-                                    "kind":"Table","id":"candidate-jobs",
-                                    "columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],
-                                    "rows": rows, "primaryKey":"job_id"
-                                })
+                                ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4576,14 +4625,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                 else:
                     try:
                         ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
-                        rows = []
-                        for r in (ms or [])[:top_k]:
-                            try:
-                                sc = float(r.get('score') or r.get('best_score') or 0.0)
-                            except Exception:
-                                sc = 0.0
-                            rows.append({"job_id": str(r.get('job_id') or r.get('_id') or ''), "title": r.get('title') or r.get('job_title') or '', "score": round(sc,3)})
-                        ui = [{"kind":"Table","id":"candidate-jobs","columns":[{"key":"job_id","title":"משרה"},{"key":"title","title":"תפקיד"},{"key":"score","title":"ציון"}],"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k]]
+                        ui = [{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
                         ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
                         return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                     except Exception:
@@ -5001,7 +5044,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
 
 @app.post("/bootstrap")
 def manual_bootstrap():
-    """Force ingestion of sample cvs & jobs (idempotent)."""
+    """Force ingestion of sample cvs & jobs (idempotent). Disabled in strict mode."""
+    if os.getenv("STRICT_REAL_DATA", "0").lower() in {"1","true","yes"}:
+        return {"before": {"candidates": db["candidates"].count_documents({}), "jobs": db["jobs"].count_documents({})}, "after": "disabled_strict_mode"}
     before = {
         "candidates": db["candidates"].count_documents({}),
         "jobs": db["jobs"].count_documents({})
