@@ -155,6 +155,10 @@ from bson import ObjectId as _ObjectId
 # --- Optional Assistants integration (feature-flag) ---
 ASSISTANTS_ENABLED = os.getenv("OPENAI_ASSISTANTS_ENABLED", "0").lower() in {"1", "true", "yes"}
 MCP_ENABLED = os.getenv("MCP_ENABLED", "0").lower() in {"1", "true", "yes"}
+# When enabled, Copilot chat will include rich match details (SkillsBadges + MatchBreakdown)
+# by default for job→candidates and candidate→jobs results, without requiring the user to type
+# explicit keywords like "פירוט". Safe no-op if components cannot be built.
+CHAT_MATCH_UI = os.getenv("CHAT_MATCH_UI", "0").lower() in {"1", "true", "yes"}
 
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
@@ -4295,7 +4299,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                             rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
                             if rows:
                                 ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
-                                if wants_details0:
+                                if wants_details0 or CHAT_MATCH_UI:
                                     # Pick specific or top row to detail
                                     target_id = details_id0 or (rows[0].get('candidate_id') if rows else None)
                                     target = None
@@ -4328,7 +4332,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
                         rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
                         ui=[{"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
-                        if rows and wants_details0:
+                        if rows and (wants_details0 or CHAT_MATCH_UI):
                             target_id = details_id0 or rows[0].get('candidate_id')
                             target = None
                             if target_id:
@@ -4362,7 +4366,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                             rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
                             if rows:
                                 ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
-                                if wants_details0:
+                                if wants_details0 or CHAT_MATCH_UI:
                                     target_id = details_id0 or (rows[0].get('job_id') if rows else None)
                                     target = None
                                     if target_id:
@@ -4393,7 +4397,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
                         rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
                         ui=[{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
-                        if rows and wants_details0:
+                        if rows and (wants_details0 or CHAT_MATCH_UI):
                             target_id = details_id0 or rows[0].get('job_id')
                             target = None
                             if target_id:
