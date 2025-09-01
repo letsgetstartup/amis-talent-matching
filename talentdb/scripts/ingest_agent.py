@@ -21,6 +21,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Strict real-data mode: disable any LLM usage and heuristic/text fallbacks.
+# When enabled, this module will not attempt to extract/ingest from raw text files
+# and will rely solely on already-existing MongoDB documents.
+STRICT_REAL_DATA = os.getenv("STRICT_REAL_DATA", "0").lower() in {"1", "true", "yes"}
+
 DB_NAME = "talent_match"
 
 _REAL_DB = get_db()
@@ -38,8 +43,8 @@ class _CollectionProxy:
             # Autoseed when explicitly requested via env, or when running under pytest to ensure baseline data
             # Triggers on first read access if jobs collection is empty.
             autoseed_enabled = (
-                os.getenv('AUTOSEED_JOBS_ON_EMPTY','').lower() in {'1','true','yes'}
-                or 'PYTEST_CURRENT_TEST' in os.environ
+                (os.getenv('AUTOSEED_JOBS_ON_EMPTY','').lower() in {'1','true','yes'} or 'PYTEST_CURRENT_TEST' in os.environ)
+                and not STRICT_REAL_DATA
             )
             if not autoseed_enabled:
                 return
@@ -383,6 +388,26 @@ def set_cached_candidates_for_job(job_id: str, tenant_id: str | None, city_filte
     except Exception:
         return False
 
+# Determine if cached matches lack the detailed UI fields and require recomputation
+def _needs_details_upgrade(ms: list[dict]) -> bool:
+    try:
+        if not isinstance(ms, list) or not ms:
+            return False
+        # Inspect up to first 3 rows for required fields
+        for r in ms[:3]:
+            if not isinstance(r, dict):
+                return True
+            # Counters and lists
+            has_lists = (('skills_must_list' in r) or ('must_skills' in r)) and (('skills_nice_list' in r) or ('nice_skills' in r))
+            has_counters = ('skills_total_must' in r) and ('skills_total_nice' in r) and ('skills_matched_must' in r) and ('skills_matched_nice' in r)
+            # Breakdown parts
+            has_breakdown = any(k in r for k in ('title_score','semantic_score','embedding_score','skills_score','distance_score'))
+            if not (has_lists and has_counters and has_breakdown):
+                return True
+        return False
+    except Exception:
+        return True
+
 def get_or_compute_candidates_for_job(job_id: str, top_k: int = 5, city_filter: bool = True, tenant_id: str | None = None, strategy: str = "hybrid", max_age: int | None = None, rp_esco: str | None = None, fo_esco: str | None = None) -> list[dict]:
     """Return job->candidates matches using cache strategy similar to candidate flow."""
     _t0 = time.time() if 'time' in globals() else __import__('time').time()
@@ -393,13 +418,20 @@ def get_or_compute_candidates_for_job(job_id: str, top_k: int = 5, city_filter: 
         doc = get_cached_candidates_for_job(job_id, tenant_id, city_filter=city_filter, max_age=max_age)
         if doc and isinstance(doc.get("matches"), list):
             ms = doc.get("matches") or []
-            if len(ms) >= top_k or strat == "on":
+            # If cached lacks detailed fields, force recompute/upgrade
+            if _needs_details_upgrade(ms):
                 try:
-                    logging.info(f"MATCH j2c cache_hit job={job_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                    logging.info(f"MATCH j2c cache_upgrade_needed job={job_id} size={len(ms)}")
                 except Exception:
                     pass
-                return ms[:top_k]
-            # fallthrough to recompute for hybrid
+            else:
+                if len(ms) >= top_k or strat == "on":
+                    try:
+                        logging.info(f"MATCH j2c cache_hit job={job_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                    except Exception:
+                        pass
+                    return ms[:top_k]
+            # fallthrough to recompute for hybrid or when upgrade needed
     ms = candidates_for_job(job_id, top_k=top_k, city_filter=city_filter, tenant_id=tenant_id, rp_esco=rp_esco, fo_esco=fo_esco)
     try:
         set_cached_candidates_for_job(job_id, tenant_id, city_filter, ms, computed_k=len(ms))
@@ -441,15 +473,22 @@ def get_or_compute_matches(candidate_id: str, top_k: int = 5, city_filter: bool 
         doc = get_cached_matches(candidate_id, tenant_id, city_filter=cache_city_filter, max_age=max_age)
         if doc and isinstance(doc.get("matches"), list):
             ms = doc.get("matches") or []
-            comp_k = int(doc.get("computed_k") or 0)
-            # If cache has fewer than requested, optionally recompute under hybrid
-            if len(ms) >= top_k or strat == "on":
+            # If cached lacks detailed fields, force recompute/upgrade
+            if _needs_details_upgrade(ms):
                 try:
-                    logging.info(f"MATCH c2j cache_hit cand={candidate_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                    logging.info(f"MATCH c2j cache_upgrade_needed cand={candidate_id} size={len(ms)}")
                 except Exception:
                     pass
-                return ms[:top_k]
-            # fallthrough to recompute for hybrid
+            else:
+                comp_k = int(doc.get("computed_k") or 0)
+                # If cache has fewer than requested, optionally recompute under hybrid
+                if len(ms) >= top_k or strat == "on":
+                    try:
+                        logging.info(f"MATCH c2j cache_hit cand={candidate_id} k={top_k} took_ms={int((__import__('time').time()-_t0)*1000)} size={len(ms)}")
+                    except Exception:
+                        pass
+                    return ms[:top_k]
+            # fallthrough to recompute for hybrid or when upgrade needed
     # Compute now
     ms = jobs_for_candidate(candidate_id, top_k=top_k, max_distance_km=eff_max_km, tenant_id=tenant_id, rp_esco=rp_esco, fo_esco=fo_esco)
     # Best-effort: update cache
@@ -494,8 +533,11 @@ def backfill_matches(tenant_id: str | None = None, k: int = 10, city_filter: boo
         if not force:
             doc = get_cached_matches(cid, tenant_id, city_filter=cache_city_filter, max_age=max_age)
             if doc:
-                skipped += 1
-                continue
+                # If cache exists but lacks detailed fields, allow recompute/upgrade
+                ms = doc.get("matches") or []
+                if not _needs_details_upgrade(ms):
+                    skipped += 1
+                    continue
         try:
             ms = jobs_for_candidate(cid, top_k=k, max_distance_km=eff_max_km, tenant_id=tenant_id)
             set_cached_matches(cid, tenant_id, cache_city_filter, ms, computed_k=len(ms))
@@ -519,8 +561,11 @@ def backfill_job_matches(tenant_id: str | None = None, k: int = 10, city_filter:
         if not force:
             doc = get_cached_candidates_for_job(jid, tenant_id, city_filter=city_filter, max_age=max_age)
             if doc:
-                skipped += 1
-                continue
+                # If cache exists but lacks detailed fields, allow recompute/upgrade
+                ms = doc.get("matches") or []
+                if not _needs_details_upgrade(ms):
+                    skipped += 1
+                    continue
         try:
             ms = candidates_for_job(jid, top_k=k, city_filter=city_filter, tenant_id=tenant_id)
             set_cached_candidates_for_job(jid, tenant_id, city_filter, ms, computed_k=len(ms))
@@ -596,6 +641,10 @@ try:
         _openai_client = OpenAI()
         _OPENAI_AVAILABLE = True
 except Exception:
+    _OPENAI_AVAILABLE = False
+
+# Force-disable OpenAI in strict real-data mode
+if STRICT_REAL_DATA:
     _OPENAI_AVAILABLE = False
 
 # In test runs, disable LLM to ensure deterministic behavior and avoid network calls
@@ -777,7 +826,7 @@ def _fallback_candidate(text: str) -> Dict[str,Any]:
     city_match = re.search(r"(?im)^(?:city|location|עיר|מיקום)[:\-]\s*([A-Za-zא-ת _]+)$", text)
     if city_match:
         city_found = city_match.group(1).strip()
-    else:
+    elif not STRICT_REAL_DATA:
         # scan for known city names from _CITY_CACHE (if loaded)
         for cname in list(_CITY_CACHE.keys())[:500]:  # limit scan
             pat = re.compile(rf"\b{re.escape(cname.replace('_',' '))}\b", re.I)
@@ -912,6 +961,9 @@ def _openai_extract(kind: str, text: str) -> Dict[str, Any]:
     return {}
 
 def extract_candidate(text: str) -> Dict[str,Any]:
+    # In strict real-data mode, do not extract from text at all
+    if STRICT_REAL_DATA:
+        raise RuntimeError("STRICT_REAL_DATA is enabled: candidate extraction is disabled; use only DB data")
     data = _openai_extract("candidate", text) if _OPENAI_AVAILABLE else {}
     if not data:
         data = _fallback_candidate(text)
@@ -971,6 +1023,9 @@ def extract_candidate(text: str) -> Dict[str,Any]:
 
 def extract_job(text: str) -> Dict[str,Any]:
     """Job extraction with LLM preferred, but safe fallback allowed if STRICT_JOB_LLM != '1'."""
+    # In strict real-data mode, do not extract from text at all
+    if STRICT_REAL_DATA:
+        raise RuntimeError("STRICT_REAL_DATA is enabled: job extraction is disabled; use only DB data")
     if not _OPENAI_AVAILABLE and os.getenv('STRICT_JOB_LLM','0') in {'1','true','True'}:
         raise RuntimeError("LLM extraction required but OpenAI client unavailable for job ingestion")
     # Lightweight fallback parser
@@ -1017,7 +1072,7 @@ def extract_job(text: str) -> Dict[str,Any]:
     data = _openai_extract("job", text)
     if not data or not isinstance(data, dict):
         # Fallback if allowed
-        if not _OPENAI_AVAILABLE and os.getenv('STRICT_JOB_LLM','0') not in {'1','true','True'}:
+        if not STRICT_REAL_DATA and (not _OPENAI_AVAILABLE and os.getenv('STRICT_JOB_LLM','0') not in {'1','true','True'}):
             data = _fallback_job(text)
         else:
             # Include last known LLM error context if present
@@ -1121,6 +1176,9 @@ def llm_status() -> Dict[str, Any]:
     }
 
 def ingest_file(path: str, kind: str, force_llm: bool=False):
+    # In strict real-data mode, refuse ingestion from files entirely
+    if STRICT_REAL_DATA:
+        raise RuntimeError("STRICT_REAL_DATA is enabled: file ingestion is disabled; rely on existing MongoDB records only")
     global LLM_CALLS, LLM_SUCCESSES
     text=_read_file(path)
     coll = db["candidates" if kind=="candidate" else "jobs"]
@@ -2849,20 +2907,54 @@ def candidates_for_job(job_id: str, top_k: int=5, city_filter: bool=True, tenant
             denom=max(len((c_must|c_needed) | (j_must|j_needed)),1)
             must_ratio=inter_must/denom; needed_ratio=inter_needed/denom
             skill_weighted=MUST_CATEGORY_WEIGHT*must_ratio+NEEDED_CATEGORY_WEIGHT*needed_ratio
+
+        # Compute skills counters and lists for UI (fallback to generic skill_set when skills_detailed missing)
+        def _split_names(doc):
+            try:
+                must={d.get('name') for d in (doc.get('skills_detailed') or []) if d.get('category')=='must' and d.get('name')}
+                nice={d.get('name') for d in (doc.get('skills_detailed') or []) if d.get('category')!='must' and d.get('name')}
+                return must, nice
+            except Exception:
+                return set(), set()
+        job_must, job_nice = _split_names(job)
+        if not job_must and not job_nice:
+            # no categorization available; treat all job skills as "nice"
+            job_must, job_nice = set(), set(job_sk)
+        cand_all = set(sc)
+        must_list = sorted(job_must)
+        nice_list = sorted(job_nice)
+        skills_must_list = [{"name": n, "matched": (n in cand_all)} for n in must_list]
+        skills_nice_list = [{"name": n, "matched": (n in cand_all)} for n in nice_list]
+        skills_total_must = len(must_list)
+        skills_total_nice = len(nice_list)
+        skills_matched_must = sum(1 for n in must_list if n in cand_all)
+        skills_matched_nice = sum(1 for n in nice_list if n in cand_all)
         composite = (WEIGHT_SKILLS * skill_weighted + WEIGHT_TITLE_SIM * title_sim + WEIGHT_SEMANTIC * sem_sim + WEIGHT_EMBEDDING * emb_sim + WEIGHT_DISTANCE * dist_score)
         if composite>0:
             res.append({
                 "candidate_id": str(c["_id"]),
+                "candidate_title": c.get("title") or "",
+                "city": c.get("city") or c.get("city_canonical") or "",
                 "score": round(composite,4),
+                # expose breakdown parts with names expected by UI
+                "title_score": round(title_sim,4),
+                "semantic_score": round(sem_sim,4),
+                "embedding_score": round(emb_sim,4),
+                "skills_score": round(skill_weighted,4),
+                "distance_km": dist_km,
+                "distance_score": round(dist_score,4) if dist_km is not None else None,
+                # additional data for compatibility/other views
                 "person": c.get("canonical",{}),
                 "skills_overlap": list(sc & job_sk),
                 "skill_score": round(base,4),
                 "skill_score_weighted": round(skill_weighted,4),
-                "title_similarity": round(title_sim,4),
-                "semantic_similarity": round(sem_sim,4),
-                "embedding_similarity": round(emb_sim,4),
-                "distance_km": dist_km,
-                "distance_score": round(dist_score,4) if dist_km is not None else None
+                # skills counters and badge lists
+                "skills_must_list": skills_must_list,
+                "skills_nice_list": skills_nice_list,
+                "skills_total_must": skills_total_must,
+                "skills_total_nice": skills_total_nice,
+                "skills_matched_must": skills_matched_must,
+                "skills_matched_nice": skills_matched_nice,
             })
     return sorted(res, key=lambda x: x["score"], reverse=True)[:top_k]
 
@@ -2985,23 +3077,55 @@ def jobs_for_candidate(candidate_id: str, top_k: int=5, max_distance_km: int=30,
             denom=max(len((j_must|j_needed) | (c_must|c_needed)),1)
             must_ratio=inter_must/denom; needed_ratio=inter_needed/denom
             skill_weighted=MUST_CATEGORY_WEIGHT*must_ratio+NEEDED_CATEGORY_WEIGHT*needed_ratio
+
+        # Compute skills counters and lists for UI relative to candidate
+        def _split_names(doc):
+            try:
+                must={d.get('name') for d in (doc.get('skills_detailed') or []) if d.get('category')=='must' and d.get('name')}
+                nice={d.get('name') for d in (doc.get('skills_detailed') or []) if d.get('category')!='must' and d.get('name')}
+                return must, nice
+            except Exception:
+                return set(), set()
+        job_must, job_nice = _split_names(j)
+        if not job_must and not job_nice:
+            job_must, job_nice = set(), set(sc)
+        cand_all = set(cand_sk)
+        must_list = sorted(job_must)
+        nice_list = sorted(job_nice)
+        skills_must_list = [{"name": n, "matched": (n in cand_all)} for n in must_list]
+        skills_nice_list = [{"name": n, "matched": (n in cand_all)} for n in nice_list]
+        skills_total_must = len(must_list)
+        skills_total_nice = len(nice_list)
+        skills_matched_must = sum(1 for n in must_list if n in cand_all)
+        skills_matched_nice = sum(1 for n in nice_list if n in cand_all)
         composite = (WEIGHT_SKILLS * skill_weighted + WEIGHT_TITLE_SIM * title_sim + WEIGHT_SEMANTIC * sem_sim + WEIGHT_EMBEDDING * emb_sim + WEIGHT_DISTANCE * dist_score)
         if composite>0:
             res.append({
                 "job_id": str(j["_id"]),
+                "job_title": j.get("title") or "",
+                "city": j.get("city") or j.get("city_canonical") or "",
                 "score": round(composite,4),
-                "title": j.get("title"),
+                # breakdown fields expected by UI
+                "title_score": round(title_sim,4),
+                "semantic_score": round(sem_sim,4),
+                "embedding_score": round(emb_sim,4),
+                "skills_score": round(skill_weighted,4),
+                "distance_km": dist_km,
+                "distance_score": round(dist_score,4) if dist_km is not None else None,
+                # additional/debug
                 "skills_overlap": list(sc & cand_sk),
                 "skill_score": round(base,4),
                 "skill_score_weighted": round(skill_weighted,4),
-                "title_similarity": round(title_sim,4),
-                "semantic_similarity": round(sem_sim,4),
-                "embedding_similarity": round(emb_sim,4),
-                "distance_km": dist_km,
-                "distance_score": round(dist_score,4) if dist_km is not None else None
+                # skills counters and lists
+                "skills_must_list": skills_must_list,
+                "skills_nice_list": skills_nice_list,
+                "skills_total_must": skills_total_must,
+                "skills_total_nice": skills_total_nice,
+                "skills_matched_must": skills_matched_must,
+                "skills_matched_nice": skills_matched_nice,
             })
-    # If no matches found, provide a deterministic fallback in tests/offline to satisfy baseline expectations
-    if not res and ("PYTEST_CURRENT_TEST" in os.environ or os.getenv("ALLOW_FALLBACK_MATCH","1") in {"1","true","True"}):
+    # If no matches found, optional deterministic fallback for tests/offline
+    if not res and not STRICT_REAL_DATA and ("PYTEST_CURRENT_TEST" in os.environ or os.getenv("ALLOW_FALLBACK_MATCH","1") in {"1","true","True"}):
         try:
             any_job = db["jobs"].find(job_query).limit(1)
             for j in any_job:

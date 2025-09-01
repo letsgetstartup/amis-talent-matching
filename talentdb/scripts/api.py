@@ -159,14 +159,43 @@ MCP_ENABLED = os.getenv("MCP_ENABLED", "0").lower() in {"1", "true", "yes"}
 # by default for job→candidates and candidate→jobs results, without requiring the user to type
 # explicit keywords like "פירוט". Safe no-op if components cannot be built.
 CHAT_MATCH_UI = os.getenv("CHAT_MATCH_UI", "0").lower() in {"1", "true", "yes"}
+# When enabled (or when a request asks for it), Copilot returns only details UI blocks
+CHAT_DETAILS_ONLY = os.getenv("CHAT_DETAILS_ONLY", "0").lower() in {"1", "true", "yes"}
 
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
 # Global IP rate limit. Default raised to 300/min to accommodate dashboard fan-out
 # while still allowing per-endpoint guards where needed. Can be tuned via env.
 RATE_LIMIT_PER_MIN = int(os.getenv("RATE_LIMIT_PER_MIN", "300"))
+# Allow disabling the global limiter entirely (e.g., local dev): RATE_LIMIT_DISABLED=1
+RATE_LIMIT_DISABLED = os.getenv("RATE_LIMIT_DISABLED", "0").lower() in {"1","true","yes"}
+# Comma-separated list of URL path prefixes to exempt from the global limiter.
+# Defaults cover static assets and agency portal HTML.
+_exempt_default = "/health,/favicon.ico,/static/,/assets/,/public/,/agency-portal.html,/agency-portal.json"
+RATE_LIMIT_EXEMPT_PREFIXES = tuple(
+    p.strip() if p.strip().startswith("/") else f"/{p.strip()}"
+    for p in os.getenv("RATE_LIMIT_EXEMPT_PREFIXES", _exempt_default).split(",")
+    if p.strip()
+)
 _RATE_BUCKET: dict[str, list[int]] = {}
 _RATE_RESET: int = 60  # window seconds
+
+_STATIC_EXTS = (".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".map", ".woff", ".woff2", ".ttf", ".html")
+
+def _is_rate_limit_exempt(path: str, method: str | None = None) -> bool:
+    try:
+        # Always bypass for OPTIONS and HEAD
+        if method in {"OPTIONS", "HEAD"}:
+            return True
+        # Prefix exemptions
+        if any(path.startswith(pref) for pref in RATE_LIMIT_EXEMPT_PREFIXES):
+            return True
+        # Static file extensions
+        if any(path.endswith(ext) for ext in _STATIC_EXTS):
+            return True
+    except Exception:
+        pass
+    return False
 
 # --- Outreach failure logger ---
 def log_outreach_failure(candidate_id, job_ids, stage, error, raw_response=None, prompt=None, extra=None):
@@ -490,6 +519,9 @@ def _mcp_or_native_candidates_for_job(job_id: str, top_k: int, tenant_id: str | 
                         "skills_total_must": ((cnt.get("must") or {}).get("total")),
                         "skills_matched_nice": ((cnt.get("nice") or {}).get("have")),
                         "skills_total_nice": ((cnt.get("nice") or {}).get("total")),
+                        # propagate skills lists for SkillsBadges component
+                        "skills_must_list": r.get("skills_must_list") or r.get("must_skills") or [],
+                        "skills_nice_list": r.get("skills_nice_list") or r.get("nice_skills") or [],
                     })
             return rows
     except Exception:
@@ -537,6 +569,9 @@ def _mcp_or_native_jobs_for_candidate(candidate_id: str, top_k: int, tenant_id: 
                         "skills_total_must": ((cnt.get("must") or {}).get("total")),
                         "skills_matched_nice": ((cnt.get("nice") or {}).get("have")),
                         "skills_total_nice": ((cnt.get("nice") or {}).get("total")),
+                        # propagate skills lists for SkillsBadges component
+                        "skills_must_list": r.get("skills_must_list") or r.get("must_skills") or [],
+                        "skills_nice_list": r.get("skills_nice_list") or r.get("nice_skills") or [],
                     })
             return rows
     except Exception:
@@ -591,6 +626,9 @@ def _auto_ingest_if_empty():
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):  # pragma: no cover
+    # Global kill-switch or exempted paths
+    if RATE_LIMIT_DISABLED or _is_rate_limit_exempt(request.url.path, request.method):
+        return await call_next(request)
     ip = request.client.host if request.client else "anon"
     now = int(time.time())
     bucket = _RATE_BUCKET.setdefault(ip, [])
@@ -3605,6 +3643,8 @@ class ChatQueryRequest(BaseModel):
     currentState: Optional[dict] = None
     # Optional conversation thread ID for persisting chat history
     threadId: Optional[str] = None
+    # Optional: request-scoped override to hide tables and show only details (chips+bars)
+    detailsOnly: Optional[bool] = None
 
 _DSL_ALLOWED_SORT = {"score","date","title"}
 _DSL_ALLOWED_DIR = {"asc","desc"}
@@ -4188,6 +4228,51 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         })
         return ui_blocks
 
+    # Builder: a compact item representing one match for a MatchList block
+    def _build_match_item(r: dict, table: str) -> dict:
+        r = r or {}
+        total = r.get('score') if (r.get('score') is not None) else r.get('best_score')
+        parts_map = [
+            ('דמיון כותרת', r.get('title_score')),
+            ('דמיון סמנטי', r.get('semantic_score')),
+            ('דמיון embedding', r.get('embedding_score')),
+            ('מיומנויות', r.get('skills_score')),
+            ('מרחק', r.get('distance_score')),
+        ]
+        parts = [{"label": k, "pct": _to_pct(v)} for (k, v) in parts_map if isinstance(v, (int, float))]
+        counters = {
+            "must": {"have": _as_int(r.get('skills_matched_must')), "total": _as_int(r.get('skills_total_must'))},
+            "nice": {"have": _as_int(r.get('skills_matched_nice')), "total": _as_int(r.get('skills_total_nice'))},
+        }
+        distance_pct = None
+        if isinstance(r.get('distance_score'), (int, float)):
+            distance_pct = _to_pct(r.get('distance_score'))
+        title = r.get('title') or r.get('job_title') or r.get('candidate_title') or ''
+        city = r.get('city') or r.get('city_canonical') or ''
+        item = {
+            "id": f"{str(r.get('candidate_id') or r.get('_id') or '')}@{str(r.get('job_id') or '')}",
+            "title": title,
+            "city": city,
+            "scorePct": _to_pct(total) if isinstance(total, (int, float)) else None,
+            "counters": counters,
+            "must": r.get('must_skills') or r.get('skills_must_list') or [],
+            "nice": r.get('nice_skills') or r.get('skills_nice_list') or [],
+            "parts": parts,
+            "distancePct": distance_pct,
+            "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
+            "job_id": str(r.get('job_id') or ''),
+            # Compact summary for collapsed view: "חובה X/Y · יתרון A/B"
+            "summary": {
+                "must": f"{_as_int(r.get('skills_matched_must'))}/{_as_int(r.get('skills_total_must'))}",
+                "nice": f"{_as_int(r.get('skills_matched_nice'))}/{_as_int(r.get('skills_total_nice'))}"
+            }
+        }
+        return item
+
+    def _build_match_list_ui(rows: list[dict], table: str) -> dict:
+        items = [_build_match_item(r, table) for r in rows or []]
+        return {"kind": "MatchList", "id": "matches", "items": items}
+
     # Helper: normalize a match row into a richer table row (id/title/city/score/skills counters/distance)
     def _row_for_table(r: dict, table: str) -> dict:
         r = r or {}
@@ -4297,21 +4382,27 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         try:
                             matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
                             rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
+                            details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                             if rows:
-                                ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
-                                if wants_details0 or CHAT_MATCH_UI:
-                                    # Pick specific or top row to detail
-                                    target_id = details_id0 or (rows[0].get('candidate_id') if rows else None)
-                                    target = None
-                                    if target_id:
-                                        for rfull in (matches or [])[:top_k0]:
-                                            if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
-                                                target = rfull
-                                                break
-                                    if not target and matches:
-                                        target = matches[0]
-                                    if target:
-                                        ui.extend(_build_match_details_ui(target))
+                                if details_only_active or CHAT_MATCH_UI:
+                                    # In details-only or CHAT_MATCH_UI mode, present all K results as a MatchList
+                                    ui.append(_build_match_list_ui((matches or [])[:top_k0], 'job-candidates'))
+                                else:
+                                    # Table + optional single details (only when explicitly requested)
+                                    ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
+                                    if wants_details0:
+                                        # Pick specific or top row to detail
+                                        target_id = details_id0 or (rows[0].get('candidate_id') if rows else None)
+                                        target = None
+                                        if target_id:
+                                            for rfull in (matches or [])[:top_k0]:
+                                                if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                                    target = rfull
+                                                    break
+                                        if not target and matches:
+                                            target = matches[0]
+                                        if target:
+                                            ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4331,8 +4422,15 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     try:
                         matches = _mcp_or_native_candidates_for_job(oid0, top_k0, tenant_id)
                         rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k0]]
-                        ui=[{"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
-                        if rows and (wants_details0 or CHAT_MATCH_UI):
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
+                        if rows:
+                            if details_only_active or CHAT_MATCH_UI:
+                                ui = [_build_match_list_ui((matches or [])[:top_k0], 'job-candidates')]
+                            else:
+                                ui = [{"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"}]
+                        else:
+                            ui = [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."}]
+                        if rows and wants_details0 and not details_only_active and not CHAT_MATCH_UI:
                             target_id = details_id0 or rows[0].get('candidate_id')
                             target = None
                             if target_id:
@@ -4364,20 +4462,24 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         try:
                             ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
                             rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
+                            details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                             if rows:
-                                ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
-                                if wants_details0 or CHAT_MATCH_UI:
-                                    target_id = details_id0 or (rows[0].get('job_id') if rows else None)
-                                    target = None
-                                    if target_id:
-                                        for rfull in (ms or [])[:top_k0]:
-                                            if str(rfull.get('job_id') or rfull.get('_id') or '') == str(target_id):
-                                                target = rfull
-                                                break
-                                    if not target and ms:
-                                        target = ms[0]
-                                    if target:
-                                        ui.extend(_build_match_details_ui(target))
+                                if details_only_active or CHAT_MATCH_UI:
+                                    ui.append(_build_match_list_ui((ms or [])[:top_k0], 'candidate-jobs'))
+                                else:
+                                    ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
+                                    if wants_details0:
+                                        target_id = details_id0 or (rows[0].get('job_id') if rows else None)
+                                        target = None
+                                        if target_id:
+                                            for rfull in (ms or [])[:top_k0]:
+                                                if str(rfull.get('job_id') or rfull.get('_id') or '') == str(target_id):
+                                                    target = rfull
+                                                    break
+                                        if not target and ms:
+                                            target = ms[0]
+                                        if target:
+                                            ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4396,8 +4498,15 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     try:
                         ms = _mcp_or_native_jobs_for_candidate(oid0, top_k0, tenant_id)
                         rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k0]]
-                        ui=[{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
-                        if rows and (wants_details0 or CHAT_MATCH_UI):
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
+                        if rows:
+                            if details_only_active or CHAT_MATCH_UI:
+                                ui = [_build_match_list_ui((ms or [])[:top_k0], 'candidate-jobs')]
+                            else:
+                                ui = [{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}]
+                        else:
+                            ui = [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        if rows and wants_details0 and not details_only_active and not CHAT_MATCH_UI:
                             target_id = details_id0 or rows[0].get('job_id')
                             target = None
                             if target_id:
@@ -4467,21 +4576,24 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     try:
                         matches = _mcp_or_native_candidates_for_job(job_oid, top_k, tenant_id)
                         rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                         if rows:
-                            ui.append({"kind": "Table","id": "job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows,"primaryKey": "candidate_id"})
-                            # If user explicitly asked for details, append the detailed MatchBreakdown for the specific candidate (or top result)
-                            if wants_details:
-                                target_id = details_id or (rows[0].get('candidate_id') if rows else None)
-                                target = None
-                                if target_id:
-                                    for rfull in (matches or [])[:top_k]:
-                                        if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
-                                            target = rfull
-                                            break
-                                if not target and matches:
-                                    target = matches[0]
-                                if target:
-                                    ui.extend(_build_match_details_ui(target))
+                            if details_only_active or CHAT_MATCH_UI:
+                                ui.append(_build_match_list_ui((matches or [])[:top_k], 'job-candidates'))
+                            else:
+                                ui.append({"kind": "Table","id": "job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows,"primaryKey": "candidate_id"})
+                                if wants_details:
+                                    target_id = details_id or (rows[0].get('candidate_id') if rows else None)
+                                    target = None
+                                    if target_id:
+                                        for rfull in (matches or [])[:top_k]:
+                                            if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                                target = rfull
+                                                break
+                                    if not target and matches:
+                                        target = matches[0]
+                                    if target:
+                                        ui.extend(_build_match_details_ui(target))
                         else:
                             ui.append({
                                 "kind": "RichText",
@@ -4550,21 +4662,25 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         try:
                             matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
                             rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
+                            details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                             if rows:
-                                ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
-                                # append detailed breakdown when requested
-                                if wants_details:
-                                    target_id = details_id or (rows[0].get('candidate_id') if rows else None)
-                                    target = None
-                                    if target_id:
-                                        for rfull in (matches or [])[:top_k]:
-                                            if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
-                                                target = rfull
-                                                break
-                                    if not target and matches:
-                                        target = matches[0]
-                                    if target:
-                                        ui.extend(_build_match_details_ui(target))
+                                if details_only_active or CHAT_MATCH_UI:
+                                    ui.append(_build_match_list_ui((matches or [])[:top_k], 'job-candidates'))
+                                else:
+                                    ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
+                                    # append detailed breakdown when requested (and not in CHAT_MATCH_UI mode)
+                                    if wants_details:
+                                        target_id = details_id or (rows[0].get('candidate_id') if rows else None)
+                                        target = None
+                                        if target_id:
+                                            for rfull in (matches or [])[:top_k]:
+                                                if str(rfull.get('candidate_id') or rfull.get('_id') or '') == str(target_id):
+                                                    target = rfull
+                                                    break
+                                        if not target and matches:
+                                            target = matches[0]
+                                        if target:
+                                            ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4579,14 +4695,18 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         matches = _mcp_or_native_candidates_for_job(oid, top_k, tenant_id)
                         rows = [_row_for_table(r, 'job-candidates') for r in (matches or [])[:top_k]]
                         ui: list[dict] = []
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                         if rows:
-                            ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
-                            # If the user asked for details/breakdown, append SkillsBadges + MatchBreakdown
+                            if details_only_active or CHAT_MATCH_UI:
+                                ui.append(_build_match_list_ui((matches or [])[:top_k], 'job-candidates'))
+                            else:
+                                ui.append({"kind":"Table","id":"job-candidates","columns": _columns_for_table('job-candidates'),"rows": rows, "primaryKey":"candidate_id"})
+                            # If the user explicitly asked for details and not in details-only/CHAT_MATCH_UI, append single breakdown
                             try:
                                 wants_details, details_id = _wants_details(req.question or '')
                             except Exception:
                                 wants_details, details_id = (False, None)
-                            if wants_details:
+                            if wants_details and not details_only_active and not CHAT_MATCH_UI:
                                 target_id = details_id or (rows[0].get('candidate_id') if rows else None)
                                 target = None
                                 if target_id:
@@ -4615,8 +4735,12 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         try:
                             ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
                             rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k]]
+                            details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                             if rows:
-                                ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
+                                if details_only_active or CHAT_MATCH_UI:
+                                    ui.append(_build_match_list_ui((ms or [])[:top_k], 'candidate-jobs'))
+                                else:
+                                    ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
                             ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
@@ -4630,7 +4754,8 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     try:
                         ms = _mcp_or_native_jobs_for_candidate(oid, top_k, tenant_id)
                         rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k]]
-                        ui = [{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
+                        ui = ([] if (rows and details_only_active) else ([{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]))
                         ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
                         return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                     except Exception:
@@ -4980,17 +5105,19 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         })
                     # Strict-only: no relaxed fallback; if empty, send guidance only
                     if rows:
-                        ui.append({
-                            "kind": "Table",
-                            "id": "matches",
-                            "columns": [
-                                {"key":"candidate_id","title":"מועמד"},
-                                {"key":"title","title":"תפקיד"},
-                                {"key":"score","title":"ציון"}
-                            ],
-                            "rows": rows,
-                            "primaryKey": "candidate_id"
-                        })
+                        details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
+                        if not details_only_active:
+                            ui.append({
+                                "kind": "Table",
+                                "id": "matches",
+                                "columns": [
+                                    {"key":"candidate_id","title":"מועמד"},
+                                    {"key":"title","title":"תפקיד"},
+                                    {"key":"score","title":"ציון"}
+                                ],
+                                "rows": rows,
+                                "primaryKey": "candidate_id"
+                            })
                     else:
                         # No rows for strict filters: add user guidance (no sample data)
                         ui.append({

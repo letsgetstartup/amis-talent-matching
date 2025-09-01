@@ -1799,6 +1799,7 @@
   else if(c.kind==='DiscussionThread') renderCopilotDiscussion(c, targets.attachEl);
   else if(c.kind==='SkillsBadges') renderCopilotSkillsBadges(c, targets.attachEl);
   else if(c.kind==='MatchBreakdown') renderCopilotMatchBreakdown(c, targets.attachEl);
+  else if(c.kind==='MatchList') renderCopilotMatchList(c, targets.attachEl);
   else if(c.kind==='QuickReplies') renderCopilotQuickReplies(c, targets.attachEl);
       // Unknown kinds ignored safely
     }
@@ -1852,7 +1853,7 @@
       // Try streaming first
       const res = await apiFetch(`${API}/chat/query?stream=1`, {
         method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
-        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null }), signal: copilotAbort.signal
+        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null, detailsOnly: true }), signal: copilotAbort.signal
       });
       if(res.ok && res.body){
         const reader = res.body.getReader();
@@ -1903,7 +1904,7 @@
       // Fallback to non-stream JSON
       const r2 = await apiFetch(`${API}/chat/query`, {
         method:'POST', headers: { ...hdrs(), 'Content-Type':'application/json' },
-        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null }), signal: copilotAbort.signal
+        body: JSON.stringify({ question: q, threadId: state.copilotThreadId||null, detailsOnly: true }), signal: copilotAbort.signal
       });
   if(!r2.ok){ setBotText(currentCopilotBubble, 'שגיאה בתשובת השרת'); return; }
       const j = await r2.json();
@@ -2011,6 +2012,62 @@
       <div style="margin-top:10px">${partsHtml}${distHtml}</div>
     `;
     mount.appendChild(card);
+  }
+
+  function renderCopilotMatchList(component, mount){
+    mount = mount || document.getElementById('copilotUi');
+    if(!mount) return;
+    const items = Array.isArray(component.items)? component.items: [];
+    const container = document.createElement('div');
+    container.className = 'panel';
+    container.innerHTML = `<h3 style="margin:0 0 8px">התאמות</h3>`;
+    const frag = document.createDocumentFragment();
+    items.slice(0, 10).forEach((it, idx)=>{
+      const id = String(it.id||`${idx}`);
+      const title = String(it.title||'');
+      const city = String(it.city||'');
+      const score = Math.max(0, Math.min(100, Number(it.scorePct||0)));
+      const mustCnt = (it.counters && it.counters.must) ? it.counters.must : {have:0,total:0};
+      const niceCnt = (it.counters && it.counters.nice) ? it.counters.nice : {have:0,total:0};
+      const card = document.createElement('div');
+      card.className = 'panel';
+      const detailsId = `ml_${Date.now()}_${idx}`;
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div>
+            <div class="small muted">${escapeHtml(city)}</div>
+            <div style="font-weight:600">${escapeHtml(title)}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="badge neutral" title="ציון">${score}%</div>
+            <div class="small muted">חובה ${Number(mustCnt.have)||0}/${Number(mustCnt.total)||0} · יתרון ${Number(niceCnt.have)||0}/${Number(niceCnt.total)||0}</div>
+          </div>
+        </div>
+        <div style="margin-top:8px"><button class="secondary" aria-expanded="false" aria-controls="${detailsId}">הצג פירוט</button></div>
+        <div id="${detailsId}" style="display:none;margin-top:10px"></div>
+      `;
+      frag.appendChild(card);
+      // Bind toggle to render details lazily once
+      const btn = card.querySelector('button[aria-controls]');
+      const slot = card.querySelector(`#${detailsId}`);
+      if(btn && slot && !btn._bound){
+        btn._bound = true;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          if(expanded){ btn.setAttribute('aria-expanded','false'); slot.style.display='none'; return; }
+          btn.setAttribute('aria-expanded','true'); slot.style.display='block';
+          // Render SkillsBadges and MatchBreakdown using existing helpers
+          try{
+            renderCopilotSkillsBadges({ kind:'SkillsBadges', must: (Array.isArray(it.must)? it.must: []), nice:(Array.isArray(it.nice)? it.nice: []), counters: it.counters||{} }, slot);
+            renderCopilotMatchBreakdown({ kind:'MatchBreakdown', title: it.title||'', scorePct: it.scorePct||0, parts: (Array.isArray(it.parts)? it.parts: []), counters: it.counters||{}, distancePct: it.distancePct }, slot);
+          }catch(e){
+            slot.innerHTML = '<div class="empty-state">שגיאה בהצגת הפירוט</div>';
+          }
+        });
+      }
+    });
+    container.appendChild(frag);
+    mount.appendChild(container);
   }
 
   // Wire Copilot send

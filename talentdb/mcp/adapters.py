@@ -111,6 +111,9 @@ def match_job_to_candidates_adapter(tenant_id: Optional[str], job_id: str, k: in
             "city": r.get("city") or r.get("city_canonical"),
             "breakdown": breakdown,
             "counters": counters,
+            # pass through detailed skills lists for UI chips when available
+            "skills_must_list": r.get("skills_must_list") or r.get("must_skills") or [],
+            "skills_nice_list": r.get("skills_nice_list") or r.get("nice_skills") or [],
         })
     return out
 
@@ -147,6 +150,9 @@ def match_candidate_to_jobs_adapter(tenant_id: Optional[str], candidate_id: str,
             "city": r.get("city") or r.get("city_canonical"),
             "breakdown": breakdown,
             "counters": counters,
+            # pass through detailed skills lists for UI chips when available
+            "skills_must_list": r.get("skills_must_list") or r.get("must_skills") or [],
+            "skills_nice_list": r.get("skills_nice_list") or r.get("nice_skills") or [],
         })
     return out
 
