@@ -3930,19 +3930,20 @@ def _build_quick_replies(question: str | None, context: Optional[dict] = None) -
     q = (question or "").lower()
     replies: list[dict] = []
     # Common follow-ups
-    replies.append({"label": "הצג פירוט להתאמה הראשונה", "prompt": "פירוט"})
-    replies.append({"label": "הרחב ל-10 תוצאות", "prompt": "טופ 10"})
+    # Labels in English for UI; prompts can remain short/heuristic-friendly
+    replies.append({"label": "Show details for the top match", "prompt": "details"})
+    replies.append({"label": "Expand to 10 results", "prompt": "top 10"})
     # If an ObjectId was mentioned, offer details
     try:
         import re as _re
         m = _re.search(r"([0-9a-fA-F]{24})", question or "")
         if m:
             oid = m.group(1)
-            replies.append({"label": "פירוט לזיהוי שצוין", "prompt": f"פירוט {oid}"})
+            replies.append({"label": "Show details for the specified ID", "prompt": f"details {oid}"})
     except Exception:
         pass
     # English variants
-    replies.append({"label": "Show discussions", "prompt": "הצג דיונים"})
+    replies.append({"label": "Show discussions", "prompt": "show discussions"})
     return replies[:6]
 
 @app.post("/match/report/query")
@@ -4451,7 +4452,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                             ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
-                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                             # Quick replies
                             ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         except Exception:
@@ -4488,7 +4489,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 target = matches[0]
                             if target:
                                 ui.extend(_build_match_details_ui(target))
-                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         resp = {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                         try:
@@ -4528,7 +4529,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                             ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
-                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                             ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         except Exception:
                             ui=[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
@@ -4564,7 +4565,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                 target = ms[0]
                             if target:
                                 ui.extend(_build_match_details_ui(target))
-                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         ui.append({"kind":"QuickReplies","id":"qr","items": _build_quick_replies(req.question)})
                         resp = {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                         try:
@@ -4736,7 +4737,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui.append({
                             "kind": "Metric",
                             "id": "matches-kpi",
-                            "label": "מספר תוצאות",
+                            "label": "Results",
                             "value": int(len(rows))
                         })
                     except Exception:
@@ -4815,7 +4816,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                             ui.extend(_build_match_details_ui(target))
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו."})
-                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         except Exception:
                             ui = [{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
                         env = {"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
@@ -4852,7 +4853,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                     ui.extend(_build_match_details_ui(target))
                         else:
                             ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו מועמדים למשרה זו. ודאו שמזהה המשרה תקין ונסו לשנות סינונים."})
-                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                     except Exception:
                         return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
@@ -4875,7 +4876,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                                     ui.append({"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"})
                             else:
                                 ui.append({"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."})
-                            ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                            ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         except Exception:
                             ui = [{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}]
                         env = {"type":"assistant_ui","narration":"בוצע","actions":[{"type":"refresh","payload":{}}],"ui": ui}
@@ -4888,7 +4889,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         rows = [_row_for_table(r, 'candidate-jobs') for r in (ms or [])[:top_k]]
                         details_only_active = bool(getattr(req, 'detailsOnly', None) is True or CHAT_DETAILS_ONLY)
                         ui = ([] if (rows and details_only_active) else ([{"kind":"Table","id":"candidate-jobs","columns": _columns_for_table('candidate-jobs'),"rows": rows, "primaryKey":"job_id"}] if rows else [{"kind":"RichText","id":"no-results-guidance","html":"לא נמצאו משרות למועמד זה."}]))
-                        ui.append({"kind":"Metric","id":"matches-kpi","label":"מספר תוצאות","value": int(len(rows))})
+                        ui.append({"kind":"Metric","id":"matches-kpi","label":"Results","value": int(len(rows))})
                         return {"answer":"בוצע","type":"assistant_ui","actions":[{"type":"refresh","payload":{}}],"ui": ui, "took_ms": int((time.time()-t0)*1000)}
                     except Exception:
                         return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
@@ -5109,7 +5110,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                             ui.append({
                                 "kind": "Metric",
                                 "id": "matches-kpi",
-                                "label": "מספר תוצאות",
+                                "label": "Results",
                                 "value": total
                             })
                         except Exception:
@@ -5138,7 +5139,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
             actions.extend(extra)
     except Exception:
         pass
-    answer = "הוחל סינון על פי הבקשה"
+    answer = "Filters applied per request"
     if warnings:
         answer += " (" + "; ".join(warnings[:2]) + ")"
     try:
@@ -5161,7 +5162,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
             def _gen():
                 import json as _json
                 # Quick initial hint
-                yield _json.dumps({"type":"text_delta","text":"מיישם סינון..."}, ensure_ascii=False) + "\n"
+                yield _json.dumps({"type":"text_delta","text":"Applying filters..."}, ensure_ascii=False) + "\n"
                 # Build a small UI table using current DSL → match report (limited)
                 ui: list[dict] = []
                 # Discussions view streaming
@@ -5263,7 +5264,7 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                         ui.append({
                             "kind": "Metric",
                             "id": "matches-kpi",
-                            "label": "מספר תוצאות",
+                            "label": "Results",
                             "value": total
                         })
                     except Exception:

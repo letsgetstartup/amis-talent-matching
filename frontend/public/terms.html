@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms of Service — Recruiter Copilot</title>
+  <style>
+    :root{--bg:#0b1324;--panel:#0a1428;--muted:#9ca3af;--accent:#22d3ee;--line:#1f2a44}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#e5e7eb;
+      background:
+        radial-gradient(1200px 600px at -10% -10%, rgba(15,23,42,.6), transparent),
+        radial-gradient(1200px 600px at 110% -10%, rgba(2,6,23,.6), transparent),
+        linear-gradient(180deg, #0a1428 0%, #0b1324 40%, #0f172a 100%);
+    }
+    header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(10,20,40,.7);backdrop-filter:blur(6px)}
+    header .brand{font-weight:700;letter-spacing:.2px}
+    header a{color:#cbd5e1;text-decoration:none}
+    .wrap{max-width:980px;margin:0 auto;padding:18px 22px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px}
+    .h1{font-size:34px;line-height:1.2;margin:0}
+    .h1 .accent{background:linear-gradient(90deg,#22d3ee,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .back{display:inline-flex;gap:8px;align-items:center;color:#9ca3af;text-decoration:none;border:1px solid var(--line);padding:6px 10px;border-radius:999px}
+    .back:hover{color:#cbd5e1;border-color:#304260}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    h2{margin:0 0 8px;font-size:18px}
+    p{margin:8px 0;color:#cbd5e1}
+    ul{margin:8px 0 8px 18px;color:#cbd5e1}
+    .muted{color:var(--muted)}
+    footer{margin:24px 0 12px;color:#9ca3af;font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <header role="banner" aria-label="Site header">
+    <div class="brand"><a href="/agency-portal.html" aria-label="Go to homepage">Recruiter Copilot</a></div>
+    <nav aria-label="Page navigation" style="display:flex;gap:8px;align-items:center">
+      <a class="back" href="#" onclick="if(history.length>1){history.back();}else{location.href='/agency-portal.html';}return false;" aria-label="Go back">← Back</a>
+      <a class="back" href="/agency-portal.html" aria-label="Go to homepage">Home</a>
+      <a class="back" id="toCopilot" href="/agency-portal.html#copilot" aria-label="Open Copilot" style="display:none">Copilot</a>
+    </nav>
+  </header>
+  <script>
+    try{
+      if(localStorage.getItem('apiKey')){
+        var c = document.getElementById('toCopilot'); if(c) c.style.display='inline-flex';
+      }
+    }catch(e){}
+  </script>
+  <main class="wrap" role="main" aria-label="Terms of service content">
+    <div class="hero">
+      <h1 class="h1">Terms of <span class="accent">Service</span></h1>
+      <div class="muted" aria-label="updated">Updated: 2025-09-02</div>
+    </div>
+
+    <section class="card" aria-labelledby="t-acceptance">
+      <h2 id="t-acceptance">Acceptance</h2>
+      <p>By using Recruiter Copilot, you agree to these Terms and all applicable policies (including the Privacy Policy).</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-usage">
+      <h2 id="t-usage">Acceptable use</h2>
+      <ul>
+        <li>Do not upload unlawful or infringing content.</li>
+        <li>Protect your credentials and respect rate limits.</li>
+        <li>No reverse engineering, data harvesting, or misuse of the Open Pool.</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="t-accounts">
+      <h2 id="t-accounts">Accounts & billing</h2>
+      <p>Some features require a subscription. You agree to provide accurate account information and to pay applicable fees.</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-disclaimers">
+      <h2 id="t-disclaimers">Disclaimers</h2>
+      <p>The service is provided “as is”. We do not warrant uninterrupted or error-free operation. AI outputs may be inaccurate—review before acting.</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-liability">
+      <h2 id="t-liability">Limitation of liability</h2>
+      <p>To the maximum extent permitted by law, we are not liable for indirect, incidental, or consequential damages.</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-changes">
+      <h2 id="t-changes">Changes</h2>
+      <p>We may update these Terms. We will notify you of material changes via the product or email.</p>
+    </section>
+
+    <section class="card" aria-labelledby="t-contact">
+      <h2 id="t-contact">Contact</h2>
+      <p>Email: <a href="mailto:support@example.com">support@example.com</a></p>
+    </section>
+
+    <footer>© 2025 Recruiter Copilot · <a href="/privacy.html">Privacy</a> · <a href="/contact.html">Contact</a></footer>
+  </main>
+</body>
+</html>

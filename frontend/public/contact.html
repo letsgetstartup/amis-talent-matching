@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact — Recruiter Copilot</title>
+  <style>
+    :root{--bg:#0b1324;--panel:#0a1428;--muted:#9ca3af;--accent:#22d3ee;--line:#1f2a44}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#e5e7eb;
+      background:
+        radial-gradient(1200px 600px at -10% -10%, rgba(15,23,42,.6), transparent),
+        radial-gradient(1200px 600px at 110% -10%, rgba(2,6,23,.6), transparent),
+        linear-gradient(180deg, #0a1428 0%, #0b1324 40%, #0f172a 100%);
+    }
+    header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(10,20,40,.7);backdrop-filter:blur(6px)}
+    header .brand{font-weight:700;letter-spacing:.2px}
+    header a{color:#cbd5e1;text-decoration:none}
+    .wrap{max-width:980px;margin:0 auto;padding:18px 22px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px}
+    .h1{font-size:34px;line-height:1.2;margin:0}
+  .h1 .accent{background:linear-gradient(90deg,#22d3ee,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .back{display:inline-flex;gap:8px;align-items:center;color:#9ca3af;text-decoration:none;border:1px solid var(--line);padding:6px 10px;border-radius:999px}
+    .back:hover{color:#cbd5e1;border-color:#304260}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    label{font-size:12px;color:#9ca3af;display:block;margin:4px 0}
+    input,textarea{width:100%;background:#0b1020;border:1px solid #223150;border-radius:10px;padding:10px 12px;color:#e5e7eb}
+    textarea{min-height:120px;resize:vertical}
+    button{background:#22d3ee;color:#00131a;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+    button:hover{background:#1fb5d3}
+    .muted{color:var(--muted)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:720px){ .row{grid-template-columns:1fr} }
+    footer{margin:24px 0 12px;color:#9ca3af;font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <header role="banner" aria-label="Site header">
+    <div class="brand"><a href="/agency-portal.html" aria-label="Go to homepage">Recruiter Copilot</a></div>
+    <nav aria-label="Page navigation" style="display:flex;gap:8px;align-items:center">
+      <a class="back" href="#" onclick="if(history.length>1){history.back();}else{location.href='/agency-portal.html';}return false;" aria-label="Go back">← Back</a>
+      <a class="back" href="/agency-portal.html" aria-label="Go to homepage">Home</a>
+      <a class="back" id="toCopilot" href="/agency-portal.html#copilot" aria-label="Open Copilot" style="display:none">Copilot</a>
+    </nav>
+  </header>
+  <script>
+    try{
+      if(localStorage.getItem('apiKey')){
+        var c = document.getElementById('toCopilot'); if(c) c.style.display='inline-flex';
+      }
+    }catch(e){}
+  </script>
+  <main class="wrap" role="main" aria-label="Contact us form">
+    <div class="hero">
+      <h1 class="h1">Contact <span class="accent">Us</span></h1>
+      <div class="muted">We’ll get back to you within 1-2 business days.</div>
+    </div>
+
+    <form class="card" aria-labelledby="c-heading" onsubmit="return submitContact(event)">
+      <h2 id="c-heading" style="margin:0 0 8px">Send a message</h2>
+      <div class="row">
+        <div>
+          <label for="cName">Full name</label>
+          <input id="cName" autocomplete="name" aria-required="true" />
+        </div>
+        <div>
+          <label for="cEmail">Email</label>
+          <input id="cEmail" inputmode="email" autocomplete="email" aria-required="true" />
+        </div>
+      </div>
+      <div>
+        <label for="cMsg">Message</label>
+        <textarea id="cMsg" aria-required="true" placeholder="How can we help?"></textarea>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button type="submit" aria-label="Send message">Send</button>
+        <div id="cStatus" role="alert" aria-live="polite" class="muted"></div>
+      </div>
+    </form>
+
+    <section class="card" aria-labelledby="c-alt">
+      <h2 id="c-alt">Other ways</h2>
+      <p>Email: <a href="mailto:support@example.com">support@example.com</a></p>
+    </section>
+
+    <footer>© 2025 Recruiter Copilot · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></footer>
+  </main>
+  <script>
+    async function submitContact(ev){
+      ev.preventDefault();
+      const s = document.getElementById('cStatus');
+      const name = document.getElementById('cName');
+      const email = document.getElementById('cEmail');
+      const msg = document.getElementById('cMsg');
+      [name,email,msg].forEach(i=>i.removeAttribute('aria-invalid'));
+      s.textContent = 'Sending…';
+      try{
+        if(!name.value || !email.value || !msg.value){
+          [name,email,msg].forEach(i=>{ if(!i.value) i.setAttribute('aria-invalid','true'); });
+          s.textContent = 'Please fill all required fields.';
+          return false;
+        }
+        // Demo-only: echo success locally
+        await new Promise(r=>setTimeout(r, 600));
+        s.textContent = 'Thanks! We‘ll be in touch soon.';
+        name.value=''; email.value=''; msg.value='';
+      }catch(e){ s.textContent = 'Error sending message. Please try again.'; }
+      return false;
+    }
+  </script>
+</body>
+</html>

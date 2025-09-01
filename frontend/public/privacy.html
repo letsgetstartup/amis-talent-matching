@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — Recruiter Copilot</title>
+  <style>
+    :root{--bg:#0b1324;--panel:#0a1428;--muted:#9ca3af;--accent:#22d3ee;--line:#1f2a44}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#e5e7eb;
+      background:
+        radial-gradient(1200px 600px at -10% -10%, rgba(15,23,42,.6), transparent),
+        radial-gradient(1200px 600px at 110% -10%, rgba(2,6,23,.6), transparent),
+        linear-gradient(180deg, #0a1428 0%, #0b1324 40%, #0f172a 100%);
+    }
+    header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:rgba(10,20,40,.7);backdrop-filter:blur(6px)}
+    header .brand{font-weight:700;letter-spacing:.2px}
+    header a{color:#cbd5e1;text-decoration:none}
+    .wrap{max-width:980px;margin:0 auto;padding:18px 22px}
+    .hero{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 18px}
+    .h1{font-size:34px;line-height:1.2;margin:0}
+    .h1 .accent{background:linear-gradient(90deg,#22d3ee,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .back{display:inline-flex;gap:8px;align-items:center;color:#9ca3af;text-decoration:none;border:1px solid var(--line);padding:6px 10px;border-radius:999px}
+    .back:hover{color:#cbd5e1;border-color:#304260}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    h2{margin:0 0 8px;font-size:18px}
+    p{margin:8px 0;color:#cbd5e1}
+    ul{margin:8px 0 8px 18px;color:#cbd5e1}
+    .muted{color:var(--muted)}
+    footer{margin:24px 0 12px;color:#9ca3af;font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <header role="banner" aria-label="Site header">
+    <div class="brand"><a href="/agency-portal.html" aria-label="Go to homepage">Recruiter Copilot</a></div>
+    <nav aria-label="Page navigation" style="display:flex;gap:8px;align-items:center">
+      <a class="back" href="#" onclick="if(history.length>1){history.back();}else{location.href='/agency-portal.html';}return false;" aria-label="Go back">← Back</a>
+      <a class="back" href="/agency-portal.html" aria-label="Go to homepage">Home</a>
+      <a class="back" id="toCopilot" href="/agency-portal.html#copilot" aria-label="Open Copilot" style="display:none">Copilot</a>
+    </nav>
+  </header>
+  <script>
+    // Show Copilot shortcut if a prior auth session exists (localStorage only)
+    try{
+      if(localStorage.getItem('apiKey')){
+        var c = document.getElementById('toCopilot'); if(c) c.style.display='inline-flex';
+      }
+    }catch(e){}
+  </script>
+  <main class="wrap" role="main" aria-label="Privacy policy content">
+    <div class="hero">
+      <h1 class="h1">Privacy <span class="accent">Policy</span></h1>
+      <div class="muted" aria-label="updated">Updated: 2025-09-02</div>
+    </div>
+
+    <section class="card" aria-labelledby="p-overview">
+      <h2 id="p-overview">Overview</h2>
+      <p>We respect your privacy. This policy explains what data we collect, how we use it, and the choices you have.</p>
+    </section>
+
+    <section class="card" aria-labelledby="p-collection">
+      <h2 id="p-collection">Data we collect</h2>
+      <ul>
+        <li>Account data (name, email, company)</li>
+        <li>Workspace data you upload (jobs, candidates) and ATS sync data (e.g., Greenhouse)</li>
+        <li>Operational logs and telemetry for reliability and security</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="p-use">
+      <h2 id="p-use">How we use data</h2>
+      <ul>
+        <li>Provide and improve our AI recruiting copilot</li>
+        <li>Perform matching, explainability, and workflow actions you request</li>
+        <li>Security, monitoring, and compliance</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="p-open-pool">
+      <h2 id="p-open-pool">Open Pool & consent</h2>
+      <p>Sharing to the Open Pool is opt-in and gated by candidate consent. Open Pool profiles are anonymized until consent is granted. You control whether your tenant participates.</p>
+    </section>
+
+    <section class="card" aria-labelledby="p-retention">
+      <h2 id="p-retention">Retention & deletion</h2>
+      <p>We retain data for as long as needed to provide the service. You can request deletion of tenant data; we honor legal and contractual obligations.</p>
+    </section>
+
+    <section class="card" aria-labelledby="p-security">
+      <h2 id="p-security">Security & processors</h2>
+      <p>We use industry-standard security controls. Subprocessors may include hosting, email, logging, and AI model providers. We maintain DPAs as applicable.</p>
+    </section>
+
+    <section class="card" aria-labelledby="p-rights">
+      <h2 id="p-rights">Your rights</h2>
+      <p>Depending on your jurisdiction, you may have rights to access, correct, export, or delete your data. Contact us to exercise these rights.</p>
+    </section>
+
+    <section class="card" aria-labelledby="p-contact">
+      <h2 id="p-contact">Contact</h2>
+      <p>Email: <a href="mailto:support@example.com">support@example.com</a></p>
+    </section>
+
+    <footer>© 2025 Recruiter Copilot · <a href="/terms.html">Terms</a> · <a href="/contact.html">Contact</a></footer>
+  </main>
+</body>
+</html>

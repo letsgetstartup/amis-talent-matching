@@ -54,6 +54,12 @@
   .tag{ border:1px solid #374151; border-radius:999px; padding:4px 8px; background:#111827; color:#9ca3af; font-size:11px; transition:all .15s }
   .tag:hover{ border-color:#3b82f6; color:#c7d2fe }
 
+  /* Footer */
+  .site-footer{ margin-top:24px; padding:18px 0; border-top:1px solid #1f2a44; color:#9ca3af; font-size:12px }
+  .site-footer .inner{ max-width:1180px; margin:0 auto; padding:0 22px; display:flex; gap:14px; align-items:center; justify-content:space-between; flex-wrap:wrap }
+  .site-footer a{ color:#9ca3af; text-decoration:none; border-bottom:1px dotted transparent }
+  .site-footer a:hover{ color:#cbd5e1; border-bottom-color:#334155 }
+
   /* Copilot full-screen layout */
   body.copilot-active header{ border-bottom-color: transparent; background: transparent; }
   body.copilot-active .wrap{ max-width:920px; padding-top:12px; }
@@ -151,6 +157,9 @@
     .sidebar .brand{ font-weight:600; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:16px; }
     .sidebar.collapsed .brand{ display:none; }
     .nav{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; }
+  /* Hide specific items from the sidebar */
+  .sidebar .nav .nav-item[data-tab="dashboard"],
+  .sidebar .nav .nav-item[data-tab="upload"]{ display:none !important; }
     .nav-item{ display:flex; align-items:center; gap:12px; width:100%; background:transparent; color:#cbd5e1; border:none; border-radius:8px; padding:12px; cursor:pointer; text-align:left; transition:all 0.15s ease; font-size:14px; }
     .nav-item:hover{ background:rgba(255,255,255,0.05); color:#fff; }
     .nav-item:hover .icon svg{ color:#22d3ee; }
@@ -180,7 +189,7 @@
 </head>
 <body>
   <!-- ChatGPT-like Sidebar (LTR only) -->
-  <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+  <aside id="sidebar" class="sidebar" role="navigation" aria-label="Main navigation">
     <div class="top">
   <div class="brand">Score Agents</div>
       <button id="sidebarCollapse" class="icon-btn" title="Collapse/Expand" aria-label="Collapse sidebar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/></svg></button>
@@ -199,11 +208,11 @@
     </div>
   </aside>
 
-  <header>
+  <header role="banner" aria-label="Site header">
     <div class="brand">Recruiter Copilot</div>
     <div class="user" id="userSlot">לא מחובר</div>
   </header>
-  <div class="wrap">
+  <div class="wrap" role="main" aria-label="Main content">
   <div id="toast" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:#0b1324;border:1px solid #1f2937;color:#e2e8f0;padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
     <div class="tabs">
       <div class="tab active" data-tab="dashboard">לוח</div>
@@ -259,42 +268,42 @@
         </div>
 
         <div class="home-side">
-          <div class="home-card home-auth">
-            <h3 style="margin:0 0 8px">Login</h3>
+          <div class="home-card home-auth" role="form" aria-labelledby="home-login-heading">
+            <h3 id="home-login-heading" style="margin:0 0 8px">Login</h3>
             <div class="grid2">
               <div>
-                <label>Email</label>
-                <input id="loginEmail" placeholder="name@company.com" />
+                <label for="loginEmail">Email</label>
+                <input id="loginEmail" placeholder="name@company.com" autocomplete="email" inputmode="email" aria-required="true" />
               </div>
               <div>
-                <label>Password</label>
-                <input id="loginPass" type="password" placeholder="••••••••" />
+                <label for="loginPass">Password</label>
+                <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" aria-required="true" />
               </div>
             </div>
-            <div style="margin-top:10px"><button class="primary" id="loginBtn">Login</button></div>
-            <div class="hint" id="loginHint"></div>
+            <div style="margin-top:10px"><button class="primary" id="loginBtn" aria-label="Login to Recruiter Copilot">Login</button></div>
+            <div class="hint" id="loginHint" role="alert" aria-live="polite"></div>
             <div class="divider"></div>
-            <h3 style="margin:8px 0 8px">Create an account</h3>
-            <div class="grid2">
+            <h3 id="home-signup-heading" style="margin:8px 0 8px">Create an account</h3>
+            <div class="grid2" role="group" aria-labelledby="home-signup-heading">
               <div>
-                <label>Company</label>
-                <input id="regCompany" placeholder="Company Inc." />
+                <label for="regCompany">Company</label>
+                <input id="regCompany" placeholder="Company Inc." autocomplete="organization" aria-required="true" />
               </div>
               <div>
-                <label>Full name</label>
-                <input id="regName" placeholder="Jane Doe" />
+                <label for="regName">Full name</label>
+                <input id="regName" placeholder="Jane Doe" autocomplete="name" aria-required="true" />
               </div>
               <div>
-                <label>Email</label>
-                <input id="regEmail" placeholder="name@company.com" />
+                <label for="regEmail">Email</label>
+                <input id="regEmail" placeholder="name@company.com" autocomplete="email" inputmode="email" aria-required="true" />
               </div>
               <div>
-                <label>Password</label>
-                <input id="regPass" type="password" placeholder="Create a strong password" />
+                <label for="regPass">Password</label>
+                <input id="regPass" type="password" placeholder="Create a strong password" autocomplete="new-password" aria-required="true" />
               </div>
             </div>
-            <div style="margin-top:10px"><button class="primary" id="signupBtn">Create account</button></div>
-            <div class="hint" id="regHint"></div>
+            <div style="margin-top:10px"><button class="primary" id="signupBtn" aria-label="Create a new Recruiter Copilot account">Create account</button></div>
+            <div class="hint" id="regHint" role="alert" aria-live="polite"></div>
           </div>
           <div class="home-card">
             <h4 style="margin:0 0 6px">Executive Summary</h4>
@@ -988,7 +997,12 @@
     if(tab==='jobs') refreshJobs();
     if(tab==='candidates') refreshCandidates();
   }
-  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=> { try{ localStorage.setItem('activeTab', t.dataset.tab); }catch(e){} activate(t.dataset.tab); }));
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=> { 
+    const tab = t.dataset.tab; 
+    try{ localStorage.setItem('activeTab', tab); }catch(e){}
+    try{ location.hash = tab; }catch(e){}
+    activate(tab); 
+  }));
   const _logoutBtn = document.getElementById('logoutBtn');
   if(_logoutBtn) _logoutBtn.onclick = ()=>{
     // Clear auth + UI to avoid any stale cross-tenant view
@@ -1087,12 +1101,15 @@
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPass').value;
     const hint = document.getElementById('regHint');
+  // reset validity
+  ['regCompany','regName','regEmail','regPass'].forEach(id=>{ const el=document.getElementById(id); if(el) el.removeAttribute('aria-invalid'); });
     hint.textContent='';
     try{
       const r = await apiFetch(`${API}/auth/signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({company,name,email,password})});
       if(!r.ok){
         const txt = await r.text();
-        throw new Error(txt || `HTTP ${r.status}`);
+    ['regCompany','regName','regEmail','regPass'].forEach(id=>{ const el=document.getElementById(id); if(el && !el.value) el.setAttribute('aria-invalid','true'); });
+    throw new Error(txt || `HTTP ${r.status}`);
       }
       const j = await r.json();
       state.token = j.token; state.tenantId = j.tenant_id;
@@ -1101,9 +1118,9 @@
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
   try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-  showUser(); hideHome(); activate('upload');
-      hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
-    }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
+  showUser(); hideHome(); activate('copilot');
+  hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
+  }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
   };
 
   // Login
@@ -1111,12 +1128,14 @@
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPass').value;
     const hint = document.getElementById('loginHint');
+  ['loginEmail','loginPass'].forEach(id=>{ const el=document.getElementById(id); if(el) el.removeAttribute('aria-invalid'); });
     hint.textContent='';
     try{
       const r = await apiFetch(`${API}/auth/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
       if(!r.ok){
         const txt = await r.text();
-        throw new Error(txt || `HTTP ${r.status}`);
+    ['loginEmail','loginPass'].forEach(id=>{ const el=document.getElementById(id); if(el && !el.value) el.setAttribute('aria-invalid','true'); });
+    throw new Error(txt || `HTTP ${r.status}`);
       }
       const j = await r.json();
       state.token = j.token; state.tenantId = j.tenant_id;
@@ -1125,8 +1144,9 @@
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
   try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-  showUser(); hideHome(); activate('jobs');
-      await refreshJobs(); await refreshCandidates();
+  showUser(); hideHome(); activate('copilot');
+  // Preload data in background while user starts with Copilot
+  Promise.allSettled([refreshJobs(), refreshCandidates()]);
     }catch(e){ hint.textContent = `שגיאה בהתחברות: ${String(e && e.message || e).slice(0,140)}`; }
   };
 
@@ -2284,7 +2304,7 @@
       return `<button class="secondary" data-prompt="${escapeHtml(prompt)}" style="margin:4px">${label}</button>`;
     }).join('');
     card.innerHTML = `
-      <div class="muted small" style="margin-bottom:6px">הצע המשך</div>
+      <div class="muted small" style="margin-bottom:6px">Suggested follow-ups</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${btns}</div>
     `;
     mount.appendChild(card);
@@ -2393,7 +2413,7 @@
             <div class="small muted">חובה ${Number(mustCnt.have)||0}/${Number(mustCnt.total)||0} · יתרון ${Number(niceCnt.have)||0}/${Number(niceCnt.total)||0}</div>
           </div>
         </div>
-        <div style="margin-top:8px"><button class="secondary" aria-expanded="false" aria-controls="${detailsId}">הצג פירוט</button></div>
+  <div style="margin-top:8px"><button class="secondary" aria-expanded="false" aria-controls="${detailsId}">Show details</button></div>
         <div id="${detailsId}" style="display:none;margin-top:10px"></div>
       `;
       frag.appendChild(card);
@@ -2439,8 +2459,11 @@
       }catch(e){}
       showUser();
   try{ hideHome(); }catch(e){}
-  let tab = 'jobs';
-  try{ tab = localStorage.getItem('activeTab') || 'jobs'; }catch(e){}
+  let tab = 'copilot';
+  try{
+    const fromHash = (location.hash||'').replace(/^#/,'');
+    tab = fromHash || localStorage.getItem('activeTab') || 'copilot';
+  }catch(e){}
   activate(tab);
   try{ document.body.classList.toggle('copilot-active', tab==='copilot'); }catch(e){}
   try{ renderGlobalExplainer(); }catch(e){}
@@ -3389,5 +3412,19 @@
     }
   }
 </script>
+
+  <footer class="site-footer" role="contentinfo" aria-label="Site footer">
+    <div class="inner">
+      <div>© <span aria-label="year">2025</span> Recruiter Copilot</div>
+      <nav aria-label="Footer navigation">
+        <a href="/privacy.html" aria-label="Privacy Policy">Privacy</a>
+        ·
+        <a href="/terms.html" aria-label="Terms of Service">Terms</a>
+        ·
+        <a href="/contact.html" aria-label="Contact support">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
 </body>
 </html>

@@ -41,7 +41,7 @@ def _assistant_instructions() -> str:
         '{ "type": "assistant_ui", "narration": "your text", "actions": [], "ui": [components...] } '
         "where components MUST use 'kind' (not 'type') attribute. Examples: "
         '{"kind": "Table", "id": "results", "columns": [...], "rows": [...]} '
-        '{"kind": "Metric", "id": "count", "label": "מספר תוצאות", "value": "10"} '
+    '{"kind": "Metric", "id": "count", "label": "Results", "value": "10"} '
         '{"kind": "MatchList", "id": "matches", "items": [...]} '
         '{"kind": "JobDetails", "id": "job_x", "details": {"id": "...", "title": "...", "city": "...", "must_have": [], "nice_to_have": []}} '
         "STRICT RULES: (1) Do NOT include JSON or code fences in narration. (2) Do NOT echo the assistant_ui object anywhere except the final JSON. "
