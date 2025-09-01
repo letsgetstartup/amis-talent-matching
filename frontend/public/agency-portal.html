@@ -12,6 +12,48 @@
     header .brand{font-weight:600;letter-spacing:.2px;color:#ececec}
     header .user{font-size:14px;color:#9ca3af}
   .wrap{max-width:1100px;margin:0 auto;padding:18px}
+  /* Homepage (logged-out) full-screen layout */
+  body.home-active{ background:
+      radial-gradient(1200px 600px at -10% -10%, rgba(15,23,42,.6), transparent),
+      radial-gradient(1200px 600px at 110% -10%, rgba(2,6,23,.6), transparent),
+      linear-gradient(180deg, #0a1428 0%, #0b1324 40%, #0f172a 100%);
+    }
+  body.home-active .sidebar{ display:none !important; }
+  body.home-active.has-sidebar{ padding-left:0 !important; }
+  body.home-active header .user{ display:none; }
+  body.home-active .tabs{ display:none !important; }
+  body.home-active header{ border-bottom-color: transparent; background: linear-gradient(180deg, rgba(15,23,42,.85), rgba(2,6,23,.6)); box-shadow: none; }
+  body.home-active .wrap{ max-width:1180px; padding:0 22px 50px; }
+  #dashboard.homepage{ padding:0; background:transparent; border:none; margin:0; }
+  .home-hero{ min-height:calc(100dvh - var(--headerH)); display:grid; grid-template-columns: 1.15fr 0.85fr; gap:28px; align-items:center; }
+  @media(max-width:980px){ .home-hero{ grid-template-columns:1fr; padding:24px 0 10px; } }
+  .home-copy h1{ font-size:44px; line-height:1.1; margin:0 0 12px; letter-spacing:.2px; }
+  @media(max-width:720px){ .home-copy h1{ font-size:34px; } }
+  .home-copy h1 .accent{ color: var(--accent); }
+  .home-copy h1 .accent{ background: linear-gradient(90deg, #22d3ee, #60a5fa); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .home-copy p.lead{ color:#cbd5e1; font-size:18px; margin:0 0 18px; }
+  .pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(34,211,238,.12); color:#a5f3fc; border:1px solid rgba(34,211,238,.25); font-size:12px; font-weight:600; }
+  .benefits{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px; }
+  @media(max-width:720px){ .benefits{ grid-template-columns:1fr; } }
+  .benefit{ background:#1b2337; border:1px solid #2b3b55; border-radius:12px; padding:12px; }
+  .benefit h4{ margin:0 0 4px; font-size:14px; color:#e5e7eb }
+  .benefit p{ margin:0; font-size:13px; color:#9ca3af }
+  .features{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  @media(max-width:720px){ .features{ grid-template-columns:1fr; } }
+  .feature{ background:#0b1324; border:1px solid #1f2a44; border-radius:12px; padding:12px; }
+  .feature h5{ margin:0 0 6px; font-size:13px; color:#cbd5e1; letter-spacing:.2px }
+  .langs{ font-size:11px; color:#93c5fd; opacity:.9; }
+  .home-card{ background:#0a1428; border:1px solid #1f2a44; border-radius:14px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .home-side{ display:flex; flex-direction:column; gap:12px; }
+  .home-auth .grid2{ grid-template-columns:1fr 1fr; }
+  .home-auth label{ font-size:12px; color:#9ca3af; display:block; margin:4px 0; }
+  .home-auth input{ background:#0b1020; border:1px solid #223150; }
+  .home-auth .primary{ width:100%; padding:12px 14px; font-weight:700; }
+  .divider{ height:1px; background:linear-gradient(90deg, transparent, #1f2a44, transparent); margin:4px 0; }
+  .trust{ display:flex; gap:14px; flex-wrap:wrap; color:#9ca3af; font-size:12px; }
+  .tag{ border:1px solid #374151; border-radius:999px; padding:4px 8px; background:#111827; color:#9ca3af; font-size:11px; transition:all .15s }
+  .tag:hover{ border-color:#3b82f6; color:#c7d2fe }
+
   /* Copilot full-screen layout */
   body.copilot-active header{ border-bottom-color: transparent; background: transparent; }
   body.copilot-active .wrap{ max-width:920px; padding-top:12px; }
@@ -158,7 +200,7 @@
   </aside>
 
   <header>
-    <div class="brand">Agency Portal</div>
+    <div class="brand">Recruiter Copilot</div>
     <div class="user" id="userSlot">לא מחובר</div>
   </header>
   <div class="wrap">
@@ -174,35 +216,92 @@
       <div style="margin-inline-start:auto" class="muted"><button id="logoutBtn">התנתק</button></div>
     </div>
 
-    <div id="dashboard" class="panel">
-      <h2>ברוך הבא</h2>
-      <p class="muted">אחרי התחברות תוכל להעלות משרות, להעלות קו״ח ולצפות בפריטים שלך.</p>
-      <div class="row">
-        <div class="col">
-          <div class="panel">
-            <h3>הרשמה</h3>
-            <div class="grid2">
-              <input id="regCompany" placeholder="שם חברה" />
-              <input id="regName" placeholder="שם מלא" />
-              <input id="regEmail" placeholder="אימייל" />
-              <input id="regPass" type="password" placeholder="סיסמה" />
+    <div id="dashboard" class="panel homepage">
+      <section class="home-hero">
+        <div class="home-copy">
+          <span class="pill">Recruiter Copilot · AI SaaS</span>
+          <h1>
+            Recruiter <span class="accent">Copilot</span> — Chat‑first recruiting workspace
+          </h1>
+          <p class="lead">
+            Connect your jobs and candidates to an AI copilot. Upload CSVs or sync Greenhouse, then ask the copilot to find matches, explain fit, draft outreach, and push shortlists back to your ATS — all in chat.
+          </p>
+          <div class="langs">English · Español</div>
+          <div class="benefits">
+            <div class="benefit">
+              <h4>Faster hiring</h4>
+              <p>Automated matching and conversational retrieval of your own talent data.</p>
             </div>
-            <div style="margin-top:10px"><button class="primary" id="signupBtn">צור סוכנות</button></div>
+            <div class="benefit">
+              <h4>Higher quality</h4>
+              <p>Explainable fit analysis, skill gap highlighting, and iterative prompts.</p>
+            </div>
+            <div class="benefit">
+              <h4>Zero friction</h4>
+              <p>Chat UX, CSV import with AI field‑mapping, and 1‑click ATS sync.</p>
+            </div>
+            <div class="benefit">
+              <h4>Network effects</h4>
+              <p>Consent‑gated Open Pool boosts reach across tenants while keeping PII private.</p>
+            </div>
+          </div>
+          <div class="features">
+            <div class="feature"><h5>Chat‑native UX</h5><p>Ask for shortlists, why they fit, and next steps.</p></div>
+            <div class="feature"><h5>Greenhouse integration</h5><p>Full sync + push shortlisted candidates back to ATS.</p></div>
+            <div class="feature"><h5>Privacy & Compliance</h5><p>Anonymized Open Pool with candidate consent gating.</p></div>
+            <div class="feature"><h5>Observability</h5><p>Sentry for errors, Papertrail/Better Stack for logs.</p></div>
+          </div>
+          <div class="trust" style="margin-top:10px">
+            <span class="tag">FastAPI · MongoDB Atlas · OpenAI · MCP</span>
+            <span class="tag">Heroku (container)</span>
+            <span class="tag">SendGrid (email)</span>
+          </div>
+        </div>
+
+        <div class="home-side">
+          <div class="home-card home-auth">
+            <h3 style="margin:0 0 8px">Login</h3>
+            <div class="grid2">
+              <div>
+                <label>Email</label>
+                <input id="loginEmail" placeholder="name@company.com" />
+              </div>
+              <div>
+                <label>Password</label>
+                <input id="loginPass" type="password" placeholder="••••••••" />
+              </div>
+            </div>
+            <div style="margin-top:10px"><button class="primary" id="loginBtn">Login</button></div>
+            <div class="hint" id="loginHint"></div>
+            <div class="divider"></div>
+            <h3 style="margin:8px 0 8px">Create an account</h3>
+            <div class="grid2">
+              <div>
+                <label>Company</label>
+                <input id="regCompany" placeholder="Company Inc." />
+              </div>
+              <div>
+                <label>Full name</label>
+                <input id="regName" placeholder="Jane Doe" />
+              </div>
+              <div>
+                <label>Email</label>
+                <input id="regEmail" placeholder="name@company.com" />
+              </div>
+              <div>
+                <label>Password</label>
+                <input id="regPass" type="password" placeholder="Create a strong password" />
+              </div>
+            </div>
+            <div style="margin-top:10px"><button class="primary" id="signupBtn">Create account</button></div>
             <div class="hint" id="regHint"></div>
           </div>
-        </div>
-        <div class="col">
-          <div class="panel">
-            <h3>התחברות</h3>
-            <div class="grid2">
-              <input id="loginEmail" placeholder="אימייל" />
-              <input id="loginPass" type="password" placeholder="סיסמה" />
-            </div>
-            <div style="margin-top:10px"><button class="primary" id="loginBtn">התחבר</button></div>
-            <div class="hint" id="loginHint"></div>
+          <div class="home-card">
+            <h4 style="margin:0 0 6px">Executive Summary</h4>
+            <p class="small muted" style="margin:0">Recruiter Copilot is a chat‑first recruiting workspace for internal talent teams. Upload data or connect Greenhouse, then let AI accelerate sourcing, evaluation, and outreach across your private data and an anonymized Open Pool.</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
 
     <div id="jobs" class="panel" style="display:none">
@@ -499,6 +598,30 @@
   }catch(e){}
   const hasAuth = () => !!state.apiKey;
   const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
+
+  // Homepage visibility helpers
+  function showHome(){
+    try{
+      document.body.classList.add('home-active');
+      const sidebar = document.getElementById('sidebar');
+      if(sidebar) sidebar.style.display='none';
+      const wrap = document.querySelector('.wrap');
+      if(wrap) wrap.style.display='block';
+      const dashboard = document.getElementById('dashboard');
+      if(dashboard) dashboard.style.display='block';
+      // Ensure dashboard is the only visible panel
+      ;['jobs','candidates','matches','copilot','upload','imports'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+    }catch(e){}
+  }
+  function hideHome(){
+    try{
+      document.body.classList.remove('home-active');
+      const sidebar = document.getElementById('sidebar');
+      if(sidebar) sidebar.style.display='block';
+      const dashboard = document.getElementById('dashboard');
+      if(dashboard) dashboard.style.display='none';
+    }catch(e){}
+  }
 
   // Central matches state controlled by chat/actions and UI
   const matchesState = {
@@ -877,7 +1000,8 @@
       ['jobModal','candidateModal','matchesModal','letterModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
     }catch(e){}
     showUser();
-    activate('dashboard');
+  // Switch to homepage full-screen
+  try{ showHome(); }catch(e){}
   };
 
   // Sidebar (ChatGPT-like) wiring
@@ -976,8 +1100,8 @@
   const kj = await k.json();
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
-      try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-      showUser(); activate('upload');
+  try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
+  showUser(); hideHome(); activate('upload');
       hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
     }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
   };
@@ -1000,8 +1124,8 @@
   const kj = await k.json();
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
-      try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-      showUser(); activate('jobs');
+  try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
+  showUser(); hideHome(); activate('jobs');
       await refreshJobs(); await refreshCandidates();
     }catch(e){ hint.textContent = `שגיאה בהתחברות: ${String(e && e.message || e).slice(0,140)}`; }
   };
@@ -2314,6 +2438,7 @@
         }
       }catch(e){}
       showUser();
+  try{ hideHome(); }catch(e){}
   let tab = 'jobs';
   try{ tab = localStorage.getItem('activeTab') || 'jobs'; }catch(e){}
   activate(tab);
@@ -2351,7 +2476,7 @@
       }catch(e){}
     } else {
       showUser();
-      activate('dashboard');
+  try{ showHome(); }catch(e){}
     }
   })();
 
