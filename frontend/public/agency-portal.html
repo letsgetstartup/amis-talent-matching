@@ -387,9 +387,21 @@
   </div>
 
   <script>
-  // Use same-origin API base (works when the portal is served by the API server on 8085)
-  // This avoids hardcoding port 8080 which breaks signup/login when API runs on a different port.
-  const API = location.origin;
+  // Resolve API base robustly:
+  // Priority: URL ?api=... override -> window.API_BASE -> file:// fallback -> same-origin
+  // This lets the portal work when opened from file:// or a different host/port.
+  const API = (() => {
+    try {
+      const url = new URL(location.href);
+      const apiQS = url.searchParams.get('api');
+      if (apiQS) return String(apiQS).replace(/\/$/, '');
+      if (typeof window !== 'undefined' && window.API_BASE) return String(window.API_BASE).replace(/\/$/, '');
+      if (location.protocol === 'file:') return 'http://localhost:8000';
+      return location.origin;
+    } catch (e) {
+      return location.origin;
+    }
+  })();
   const state = { token:null, tenantId:null, apiKey:null, profile:null };
   try{
     const savedKey = localStorage.getItem('apiKey');
@@ -742,8 +754,9 @@
   }
   function activate(tab){
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
-  ['dashboard','jobs','candidates','matches','copilot','upload','imports'].forEach(id=>{
-      document.getElementById(id).style.display = (id===tab)?'block':'none';
+    ['dashboard','jobs','candidates','matches','copilot','upload','imports'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el){ el.style.display = (id===tab)?'block':'none'; }
     });
     if(tab==='matches'){
   // Prepare global explainer once visible
@@ -757,7 +770,8 @@
     if(tab==='candidates') refreshCandidates();
   }
   document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=> { try{ localStorage.setItem('activeTab', t.dataset.tab); }catch(e){} activate(t.dataset.tab); }));
-  document.getElementById('logoutBtn').onclick = ()=>{
+  const _logoutBtn = document.getElementById('logoutBtn');
+  if(_logoutBtn) _logoutBtn.onclick = ()=>{
     // Clear auth + UI to avoid any stale cross-tenant view
     state.token=null; state.apiKey=null; state.tenantId=null; state.profile=null;
     try{ localStorage.removeItem('apiKey'); localStorage.removeItem('tenantId'); localStorage.removeItem('token'); }catch(e){}
@@ -793,17 +807,20 @@
     hint.textContent='';
     try{
       const r = await apiFetch(`${API}/auth/signup`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({company,name,email,password})});
-      if(!r.ok){ throw new Error(await r.text()); }
+      if(!r.ok){
+        const txt = await r.text();
+        throw new Error(txt || `HTTP ${r.status}`);
+      }
       const j = await r.json();
-  state.token = j.token; state.tenantId = j.tenant_id;
+      state.token = j.token; state.tenantId = j.tenant_id;
       const k = await apiFetch(`${API}/auth/apikey`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tenant_id: state.tenantId, name: 'portal'})});
-      const kj = await k.json();
+  const kj = await k.json();
   state.apiKey = kj.key;
-  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); }catch(e){}
+  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
       try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
       showUser(); activate('upload');
       hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
-    }catch(e){ hint.textContent = 'שגיאה בהרשמה'; }
+    }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
   };
 
   // Login
@@ -814,17 +831,20 @@
     hint.textContent='';
     try{
       const r = await apiFetch(`${API}/auth/login`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
-      if(!r.ok){ throw new Error(await r.text()); }
+      if(!r.ok){
+        const txt = await r.text();
+        throw new Error(txt || `HTTP ${r.status}`);
+      }
       const j = await r.json();
-  state.token = j.token; state.tenantId = j.tenant_id;
+      state.token = j.token; state.tenantId = j.tenant_id;
       const k = await apiFetch(`${API}/auth/apikey`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tenant_id: state.tenantId, name: 'portal'})});
-      const kj = await k.json();
+  const kj = await k.json();
   state.apiKey = kj.key;
-  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); }catch(e){}
+  try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
       try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
       showUser(); activate('jobs');
       await refreshJobs(); await refreshCandidates();
-    }catch(e){ hint.textContent = 'שגיאה בהתחברות'; }
+    }catch(e){ hint.textContent = `שגיאה בהתחברות: ${String(e && e.message || e).slice(0,140)}`; }
   };
 
   // Jobs list
@@ -849,7 +869,8 @@
     });
     document.getElementById('jobsMeta').textContent = `סה"כ ${j.total} רשומות`;
   }
-  document.getElementById('jobsRefresh').onclick = refreshJobs;
+  const _jobsRefresh = document.getElementById('jobsRefresh');
+  if(_jobsRefresh) _jobsRefresh.onclick = refreshJobs;
 
   // Candidates list
   async function refreshCandidates(){
@@ -948,7 +969,8 @@
       });
     }
   }
-  document.getElementById('candRefresh').onclick = refreshCandidates;
+  const _candRefresh = document.getElementById('candRefresh');
+  if(_candRefresh) _candRefresh.onclick = refreshCandidates;
 
   // Matches report (CV ↔ Jobs)
   let matchesAbort; // AbortController for in-flight refreshes
@@ -1493,7 +1515,11 @@
     if(!idEl) return; // page without panel
     idEl.addEventListener('input', updateSearchValidity);
     idEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); if(!document.getElementById('searchMatches').disabled) searchMatchesById(); } });
-    document.querySelectorAll('input[name="searchType"]').forEach(el=> el.addEventListener('change', ()=>{ updateSearchValidity(); document.getElementById('searchResults').style.display='none'; document.getElementById('searchResults').innerHTML=''; }));
+    document.querySelectorAll('input[name="searchType"]').forEach(el=> el.addEventListener('change', ()=>{
+      updateSearchValidity();
+      const out = document.getElementById('searchResults');
+      if(out){ out.style.display='none'; out.innerHTML=''; }
+    }));
     const btn = document.getElementById('searchMatches'); if(btn) btn.addEventListener('click', searchMatchesById);
     updateSearchValidity();
   })();
@@ -1773,6 +1799,34 @@
     mount.appendChild(card);
   }
 
+  // Render a JobDetails card
+  function renderCopilotJobDetails(component, mount){
+    mount = mount || document.getElementById('copilotUi');
+    if(!mount) return;
+    const d = (component && component.details) || {};
+    const id = String(d.id || component.id || '');
+    const title = String(d.title || '');
+    const city = String(d.city || '');
+    const must = Array.isArray(d.must_have) ? d.must_have : [];
+    const nice = Array.isArray(d.nice_to_have) ? d.nice_to_have : [];
+    const chips = (arr)=> arr.map(x=>`<span class="chip">${escapeHtml(String(x))}</span>`).join(' ');
+    const card = document.createElement('div');
+    card.className = 'panel';
+    card.innerHTML = `
+      <div class="small muted">פירוט משרה</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 8px 0">
+        <div>
+          <div class="small muted">${escapeHtml(city)}</div>
+          <div style="font-weight:600">${escapeHtml(title)}</div>
+        </div>
+        ${id ? `<div class="small muted" style="direction:ltr">${escapeHtml(id)}</div>` : ''}
+      </div>
+      ${must.length? `<div style="margin:8px 0"><div class="small muted" style="margin-bottom:4px">חובה</div><div class="chips">${chips(must)}</div></div>`:''}
+      ${nice.length? `<div style="margin:8px 0"><div class="small muted" style="margin-bottom:4px">יתרון</div><div class="chips">${chips(nice)}</div></div>`:''}
+    `;
+    mount.appendChild(card);
+  }
+
   function renderCopilotMetric(component, strip){
     strip = strip || document.getElementById('copilotKpis');
     if(!strip) return;
@@ -1795,6 +1849,7 @@
       if(!c || typeof c !== 'object' || !c.kind) continue;
     if(c.kind==='Table') renderCopilotTable(c, targets.attachEl);
       else if(c.kind==='RichText') renderCopilotRichText(c, targets.attachEl);
+      else if(c.kind==='JobDetails') renderCopilotJobDetails(c, targets.attachEl);
       else if(c.kind==='Metric') renderCopilotMetric(c, targets.kpiEl);
   else if(c.kind==='DiscussionThread') renderCopilotDiscussion(c, targets.attachEl);
   else if(c.kind==='SkillsBadges') renderCopilotSkillsBadges(c, targets.attachEl);
@@ -2162,7 +2217,8 @@
   };
 
   // Job upload progress reporting
-  document.getElementById('jobsUpload').onclick = async () => {
+  const _jobsUpload = document.getElementById('jobsUpload');
+  if(_jobsUpload) _jobsUpload.onclick = async () => {
     if(!hasAuth()) { alert('התחבר תחילה'); return; }
     const f = document.getElementById('jobsFile').files[0];
     if(!f){ alert('בחר קובץ'); return; }
@@ -2232,7 +2288,8 @@
   };
 
   // Job single create
-  document.getElementById('jobCreate').onclick = async () => {
+  const _jobCreate = document.getElementById('jobCreate');
+  if(_jobCreate) _jobCreate.onclick = async () => {
     if(!hasAuth()) { alert('התחבר תחילה'); return; }
     const payload = {
       external_job_id: document.getElementById('jobExt').value.trim(),
@@ -2253,7 +2310,8 @@
   };
 
   // Candidates upload
-  document.getElementById('candUpload').onclick = async () => {
+  const _candUpload = document.getElementById('candUpload');
+  if(_candUpload) _candUpload.onclick = async () => {
     if(!hasAuth()) { alert('התחבר תחילה'); return; }
     const files = document.getElementById('candFiles').files;
     if(!files || !files.length){ alert('בחר קבצים'); return; }

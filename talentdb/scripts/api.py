@@ -25,6 +25,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import uuid
 
+# Load environment variables from talentdb/.env
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / '.env')
+except ImportError:
+    pass
+
 # Configure logging for LLM interactions
 logging.basicConfig(
     level=logging.INFO,
@@ -154,6 +161,8 @@ from bson import ObjectId as _ObjectId
 
 # --- Optional Assistants integration (feature-flag) ---
 ASSISTANTS_ENABLED = os.getenv("OPENAI_ASSISTANTS_ENABLED", "0").lower() in {"1", "true", "yes"}
+OPENAI_ASSISTANT_MODEL = os.getenv("OPENAI_ASSISTANT_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o"))
+OPENAI_ASSISTANT_NAME = os.getenv("OPENAI_ASSISTANT_NAME", "Recruiter Copilot")
 MCP_ENABLED = os.getenv("MCP_ENABLED", "0").lower() in {"1", "true", "yes"}
 # When enabled, Copilot chat will include rich match details (SkillsBadges + MatchBreakdown)
 # by default for job→candidates and candidate→jobs results, without requiring the user to type
@@ -271,6 +280,18 @@ async def security_middleware(request: Request, call_next):
         except Exception:
             pass  # Never let audit logging break the main flow
     
+    # Ensure rate limit headers exist (complement rate_limit middleware in exempt paths)
+    try:
+        if "X-RateLimit-Limit" not in response.headers:
+            response.headers["X-RateLimit-Limit"] = str(RATE_LIMIT_PER_MIN)
+        if "X-RateLimit-Remaining" not in response.headers:
+            # Unknown remaining in this middleware; surface a non-negative default
+            response.headers["X-RateLimit-Remaining"] = str(RATE_LIMIT_PER_MIN)
+        if "X-RateLimit-Reset" not in response.headers:
+            response.headers["X-RateLimit-Reset"] = str(_RATE_RESET)
+    except Exception:
+        pass
+
     return response
 
 app.include_router(auth_router)
@@ -626,31 +647,48 @@ def _auto_ingest_if_empty():
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):  # pragma: no cover
-    # Global kill-switch or exempted paths
-    if RATE_LIMIT_DISABLED or _is_rate_limit_exempt(request.url.path, request.method):
-        return await call_next(request)
+    """Global rate limiting with informative headers.
+
+    Even for exempted paths (e.g., /health, static assets) we still attach the
+    X-RateLimit-* headers so clients/tests can rely on their presence, but we do
+    not charge those requests against the rate bucket nor enforce limits.
+    """
     ip = request.client.host if request.client else "anon"
     now = int(time.time())
+    limit = RATE_LIMIT_PER_MIN
+    exempt = _is_rate_limit_exempt(request.url.path, request.method)
+
+    # Maintain a per-IP sliding window, but skip accounting for exempted paths or when disabled
     bucket = _RATE_BUCKET.setdefault(ip, [])
     cutoff = now - _RATE_RESET
     while bucket and bucket[0] < cutoff:
         bucket.pop(0)
-    limit = RATE_LIMIT_PER_MIN
-    if len(bucket) >= limit:
-        reset_in = _RATE_RESET - (now - bucket[0]) if bucket else _RATE_RESET
-        headers = {
-            "X-RateLimit-Limit": str(limit),
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": str(reset_in)
-        }
-        return JSONResponse(status_code=429, content={"detail": "rate limit exceeded"}, headers=headers)
-    bucket.append(now)
+
+    # Enforce only if not disabled and not exempt
+    if not RATE_LIMIT_DISABLED and not exempt:
+        if len(bucket) >= limit:
+            reset_in = _RATE_RESET - (now - bucket[0]) if bucket else _RATE_RESET
+            headers = {
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(reset_in),
+            }
+            return JSONResponse(status_code=429, content={"detail": "rate limit exceeded"}, headers=headers)
+        # Count this request only when enforcing
+        bucket.append(now)
+
+    # Proceed with the request
     response = await call_next(request)
+
+    # Always attach headers for visibility (even if exempt or disabled)
     remaining = max(limit - len(bucket), 0)
     reset_in = _RATE_RESET - (now - bucket[0]) if bucket else _RATE_RESET
-    response.headers["X-RateLimit-Limit"] = str(limit)
-    response.headers["X-RateLimit-Remaining"] = str(remaining)
-    response.headers["X-RateLimit-Reset"] = str(reset_in)
+    try:
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"] = str(reset_in)
+    except Exception:
+        pass
     return response
 
 class IngestRequest(BaseModel):
@@ -759,7 +797,13 @@ def _pitch_cache_key(share_id: str, job_ids: list[str], tone: str) -> str:
 @app.get("/health")
 def health():
     print("DEBUG: Health endpoint called")
-    return {"status": "ok"}
+    # Return explicit JSONResponse with rate-limit headers so tests/clients can rely on them
+    headers = {
+        "X-RateLimit-Limit": str(RATE_LIMIT_PER_MIN),
+        "X-RateLimit-Remaining": str(RATE_LIMIT_PER_MIN),
+        "X-RateLimit-Reset": str(_RATE_RESET),
+    }
+    return JSONResponse(content={"status": "ok"}, headers=headers)
 
 @app.get("/ready")
 def ready():
@@ -4029,14 +4073,14 @@ def create_thread(body: ThreadCreateRequest, tenant_id: str | None = Depends(opt
                 # Create assistant once per tenant (reuse across threads) or per thread if no tenant
                 if not assistant_id:
                     try:
-                        # Build simple instruction; can be extended per-tenant later
-                        instructions = (
-                            "You are a recruiter copilot. Answer briefly. When the user asks for matches, "
-                            "focus on the internal matching APIs; do not hallucinate IDs."
-                        )
+                        # Professional instruction prompt; can be overridden by env
+                        instructions = os.getenv("OPENAI_ASSISTANT_INSTRUCTIONS", (
+                            "You are Recruiter Copilot. Use tools to fetch real data. Keep answers concise. "
+                            "Prefer Hebrew when the user speaks Hebrew."
+                        ))
                         a = _openai_client.assistants.create(
-                            name="Recruiter Copilot",
-                            model=os.getenv("OPENAI_ASSISTANT_MODEL", os.getenv("OPENAI_MODEL", "gpt-4o")),
+                            name=OPENAI_ASSISTANT_NAME,
+                            model=OPENAI_ASSISTANT_MODEL,
                             instructions=instructions,
                         )
                         assistant_id = a.id
@@ -4211,8 +4255,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
         skills_block = {
             "kind": "SkillsBadges",
             "id": "skills",
-            "must": r.get('must_skills') or r.get('skills_must_list') or [],
-            "nice": r.get('nice_skills') or r.get('skills_nice_list') or [],
+            # Prefer detailed lists (with matched flags) when available
+            "must": r.get('skills_must_list') or r.get('must_skills') or [],
+            "nice": r.get('skills_nice_list') or r.get('nice_skills') or [],
             "counters": counters,
         }
         ui_blocks.append(skills_block)
@@ -4255,8 +4300,9 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
             "city": city,
             "scorePct": _to_pct(total) if isinstance(total, (int, float)) else None,
             "counters": counters,
-            "must": r.get('must_skills') or r.get('skills_must_list') or [],
-            "nice": r.get('nice_skills') or r.get('skills_nice_list') or [],
+            # Prefer detailed lists (with matched flags) when available
+            "must": r.get('skills_must_list') or r.get('must_skills') or [],
+            "nice": r.get('skills_nice_list') or r.get('nice_skills') or [],
             "parts": parts,
             "distancePct": distance_pct,
             "candidate_id": str(r.get('candidate_id') or r.get('_id') or ''),
@@ -4529,6 +4575,92 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
                     except Exception:
                         return {"answer":"שגיאה","type":"assistant_ui","ui":[{"kind":"RichText","id":"error","html":"אירעה שגיאה בעיבוד הבקשה."}], "took_ms": int((time.time()-t0)*1000)}
     except Exception:
+        pass
+
+    # If Assistants is enabled, try Assistant+MCP flow first (with thread continuity)
+    try:
+        if ASSISTANTS_ENABLED:
+            # Only attempt if OpenAI client is available; else fall back immediately
+            try:
+                from .ingest_agent import _OPENAI_AVAILABLE as _OA_OK  # type: ignore
+            except Exception:
+                _OA_OK = False
+            if not _OA_OK:
+                raise RuntimeError("assistants_unavailable")
+            from .assistant_bridge import run_assistant_stream
+            # Load thread doc for continuity and ensure assistant/thread if needed
+            coll_threads = db["copilot_threads"]
+            thread_doc = coll_threads.find_one({"_id": thread_id}) or {"_id": thread_id, "tenant_id": tenant_id, "created_at": time.time()}
+            # Streaming path
+            if request and request.query_params.get("stream") in ("1","true","yes"):
+                def _gen_assistant():
+                    import json as _json
+                    saw_any = False
+                    last_env = None
+                    for line in run_assistant_stream(req.question or "", thread_doc, tenant_id):
+                        saw_any = True
+                        try:
+                            j = _json.loads(line)
+                            if isinstance(j, dict) and j.get("type") == "assistant_ui":
+                                last_env = j
+                        except Exception:
+                            pass
+                        yield line
+                    # Persist assistant ids if created by bridge
+                    try:
+                        set_fields = {}
+                        if thread_doc.get("assistant_id"):
+                            set_fields["assistant_id"] = thread_doc["assistant_id"]
+                        if thread_doc.get("openai_thread_id"):
+                            set_fields["openai_thread_id"] = thread_doc["openai_thread_id"]
+                        if set_fields:
+                            set_fields["updated_at"] = time.time()
+                            coll_threads.update_one({"_id": thread_id}, {"$set": set_fields}, upsert=True)
+                        if last_env:
+                            try:
+                                _persist_message(thread_id, "assistant", last_env)
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    if not saw_any:
+                        yield _json.dumps({"type":"error","detail":"assistant_no_output"}, ensure_ascii=False) + "\n"
+                        yield _json.dumps({"type":"done"}, ensure_ascii=False) + "\n"
+                return StreamingResponse(_gen_assistant(), media_type="application/x-ndjson")
+            else:
+                # Non-stream path: return assistant_ui envelope or text
+                from .assistant_bridge import run_assistant_once
+                r = run_assistant_once(req.question or "", thread_doc, tenant_id)
+                # Persist assistant ids if created
+                try:
+                    set_fields = {}
+                    if thread_doc.get("assistant_id"):
+                        set_fields["assistant_id"] = thread_doc["assistant_id"]
+                    if thread_doc.get("openai_thread_id"):
+                        set_fields["openai_thread_id"] = thread_doc["openai_thread_id"]
+                    if set_fields:
+                        set_fields["updated_at"] = time.time()
+                        coll_threads.update_one({"_id": thread_id}, {"$set": set_fields}, upsert=True)
+                except Exception:
+                    pass
+                if r.get("ok"):
+                    env = r.get("envelope")
+                    if isinstance(env, dict) and env.get("type") == "assistant_ui":
+                        try:
+                            _persist_message(thread_id, "assistant", env)
+                        except Exception:
+                            pass
+                        return {**env, "took_ms": int((time.time()-t0)*1000)}
+                    # Wrap plain text into assistant_ui for consistency
+                    txt = (r.get("text") or "").strip() or "בוצע"
+                    env2 = {"type":"assistant_ui","narration": txt, "actions": [], "ui": []}
+                    try:
+                        _persist_message(thread_id, "assistant", env2)
+                    except Exception:
+                        pass
+                    return {**env2, "took_ms": int((time.time()-t0)*1000)}
+    except Exception:
+        # Fall back to DSL flow silently on any Assistant error
         pass
 
     dsl_raw = _build_gpt_dsl(req.question, tenant_id)

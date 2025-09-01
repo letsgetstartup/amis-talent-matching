@@ -5,6 +5,15 @@ compute matches, generate outreach, and fetch analytics. Safe to import when
 disabled; no side effects on import.
 """
 
+import os
+
+# Load dotenv if available
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
+
 __all__ = [
     "get_mcp_runtime",
 ]

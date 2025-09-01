@@ -16,6 +16,15 @@ from typing import Any, Dict, Optional
 
 class _McpRuntime:
     def __init__(self) -> None:
+        import os
+        print(f"DEBUG: Current dir: {os.getcwd()}")
+        print(f"DEBUG: MCP_ENABLED env var before load_dotenv: {os.getenv('MCP_ENABLED', 'NOT_SET')}")
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+            print("DEBUG: load_dotenv called")
+        except Exception as e:
+            print(f"DEBUG: load_dotenv failed: {e}")
         self.enabled = os.getenv("MCP_ENABLED", "0").lower() in {"1", "true", "yes"}
         print(f"DEBUG: MCP_ENABLED env var: {os.getenv('MCP_ENABLED', 'NOT_SET')}, enabled: {self.enabled}")
         self._lock = threading.Lock()
