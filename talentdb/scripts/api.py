@@ -180,7 +180,7 @@ RATE_LIMIT_PER_MIN = int(os.getenv("RATE_LIMIT_PER_MIN", "300"))
 RATE_LIMIT_DISABLED = os.getenv("RATE_LIMIT_DISABLED", "0").lower() in {"1","true","yes"}
 # Comma-separated list of URL path prefixes to exempt from the global limiter.
 # Defaults cover static assets and agency portal HTML.
-_exempt_default = "/health,/favicon.ico,/static/,/assets/,/public/,/agency-portal.html,/agency-portal.json"
+_exempt_default = "/health,/favicon.ico,/static/,/assets/,/public/,/agency-portal.html,/agency-portal.json,/copilot-greenhouse.html,/ai-matching.html"
 RATE_LIMIT_EXEMPT_PREFIXES = tuple(
     p.strip() if p.strip().startswith("/") else f"/{p.strip()}"
     for p in os.getenv("RATE_LIMIT_EXEMPT_PREFIXES", _exempt_default).split(",")
@@ -238,6 +238,14 @@ async def lifespan(app: FastAPI):  # pragma: no cover
             _auto_ingest_if_empty()
         except Exception:
             pass
+    # Warm-up MCP (non-fatal)
+    try:
+        if MCP_ENABLED:
+            from ..mcp import get_mcp_runtime  # type: ignore
+            rt = get_mcp_runtime()
+            rt.start()  # idempotent
+    except Exception:
+        pass
     yield
     # teardown logic (none for now)
 
@@ -403,6 +411,42 @@ def agency_portal_html():
     }
     raise HTTPException(status_code=404, detail=detail)
 
+@app.get("/terms.html", response_class=HTMLResponse)
+def terms_html():
+    content = _load_static_file("terms.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "terms.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
+@app.get("/privacy.html", response_class=HTMLResponse)
+def privacy_html():
+    content = _load_static_file("privacy.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "privacy.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
+@app.get("/copilot-greenhouse.html", response_class=HTMLResponse)
+def copilot_greenhouse_html():
+    content = _load_static_file("copilot-greenhouse.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "copilot-greenhouse.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
 @app.get("/matches-dashboard.html", response_class=HTMLResponse)
 def matches_dashboard_html():
     content = _load_static_file("matches-dashboard.html")
@@ -426,6 +470,23 @@ def imports_html():
         "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
     }
     raise HTTPException(status_code=404, detail=detail)
+
+@app.get("/ai-matching.html", response_class=HTMLResponse)
+def ai_matching_html():
+    """Serve the lean AI Matching page (separate from agency portal)."""
+    content = _load_static_file("ai-matching.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "ai-matching.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
+@app.get("/ai-matching", response_class=HTMLResponse)
+def ai_matching_alias():
+    return ai_matching_html()
 
 @app.get("/agency-quick-match.html", response_class=HTMLResponse)
 def agency_quick_match_html():
@@ -3495,6 +3556,36 @@ def save_match(req: SaveMatchRequest, tenant_id: str | None = Depends(optional_t
         raise HTTPException(status_code=500, detail=f"save_failed: {e}")
 
 
+# --- Matches count (today) ---
+@app.get("/match/count/today")
+def match_count_today(tenant_id: str | None = Depends(optional_tenant_id)):
+    """Return number of matches saved today (local server day), tenant-scoped when provided.
+
+    Counts documents in matches_history where ts is between local midnight and now.
+    """
+    try:
+        import time as _t
+        # Compute local midnight epoch
+        now = _t.time()
+        lt = _t.localtime(now)
+        midnight_tuple = (lt.tm_year, lt.tm_mon, lt.tm_mday, 0, 0, 0, lt.tm_wday, lt.tm_yday, lt.tm_isdst)
+        start_ts = int(_t.mktime(midnight_tuple))
+        end_ts = int(now)
+        q = {"ts": {"$gte": start_ts, "$lte": end_ts}}
+        if tenant_id:
+            q["tenant_id"] = tenant_id
+        try:
+            from .ingest_agent import db as _db
+        except Exception:
+            # Fallback to global db symbol if available
+            pass
+        coll = db["matches_history"]
+        cnt = int(coll.count_documents(q))
+        return {"count": cnt, "from_ts": start_ts, "to_ts": end_ts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"count_failed: {e}")
+
+
 def _time_range_from_req(req: ChatMatchesRequest) -> tuple[int, int]:
     import time as _t
     now = int(_t.time())
@@ -4167,6 +4258,16 @@ def chat_query(req: ChatQueryRequest, tenant_id: str | None = Depends(optional_t
     import time
     t0 = time.time()
     cid = uuid.uuid4().hex[:12]
+    
+    # Ensure MCP runtime is started if enabled
+    if MCP_ENABLED:
+        try:
+            from ..mcp import get_mcp_runtime  # type: ignore
+            rt = get_mcp_runtime()
+            rt.start()  # Idempotent - safe to call multiple times
+        except Exception:
+            pass  # Continue without MCP if there's an issue
+    
     _log_chat_event(
         "query.start",
         cid,

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Recruiter Copilot — Greenhouse</title>
+	<style>
+		:root {
+			--bg: #0b1220;
+			--panel: #0f172a;
+			--muted: #94a3b8;
+			--border: #1f2937;
+			--chip: #0b2038;
+			--chip-b: #1e293b;
+			--accent: #60a5fa;
+			--assistant: #0b2038;
+			--user: #13233a;
+		}
+		html, body { height: 100%; }
+		body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: #e5e7eb; }
+		.wrap { max-width: 1024px; margin: 0 auto; padding: 16px; }
+		header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+		header .right { display: flex; gap: 8px; align-items: center; }
+		select, input[type="text"], input[type="search"], button { font-size: 14px; border-radius: 8px; border: 1px solid var(--border); background: #0b1528; color: #e5e7eb; padding: 10px 12px; }
+		button { cursor: pointer; background: #0c1c33; border-color: #253247; }
+		button.primary { background: #1d4ed8; border-color: #1d4ed8; }
+		button:disabled { opacity: 0.6; cursor: default; }
+		.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+		.hint { color: var(--muted); font-size: 12px; }
+		.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+		.chip { background: var(--chip); border: 1px solid var(--chip-b); border-radius: 999px; padding: 6px 10px; color: #cbd5e1; font-size: 12px; }
+		.welcome { text-align: center; padding: 24px 12px 12px; }
+		.welcome h1 { margin: 0 0 6px; font-size: 22px; }
+		.chat-box { display: grid; gap: 8px; }
+		.chat-log { background: #0a1428; border: 1px solid var(--border); border-radius: 10px; padding: 10px; min-height: 200px; max-height: 55vh; overflow: auto; }
+		.msg { display: grid; gap: 4px; margin: 8px 0; }
+		.msg .meta { color: var(--muted); font-size: 11px; }
+		.bubble { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); }
+		.bubble.user { background: var(--user); }
+		.bubble.assistant { background: var(--assistant); }
+		.chat-input { display: flex; gap: 8px; align-items: center; }
+		.kpis { display: grid; grid-auto-flow: column; gap: 8px; align-items: center; justify-content: start; overflow-x: auto; }
+		.kpi { background: var(--chip); border: 1px solid var(--chip-b); border-radius: 10px; padding: 8px 10px; }
+		.toast { display:none; position: fixed; right: 12px; bottom: 12px; background: #0a1428; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; color: #e5e7eb; }
+	</style>
+</head>
+<body>
+	<div class="wrap">
+		<header>
+			<div class="left">
+				<div class="hint">Recruiter Copilot for Greenhouse</div>
+			</div>
+			<div class="right">
+				<label for="langSel" class="hint">Language</label>
+				<select id="langSel" aria-label="Language">
+					<option value="en">English</option>
+					<option value="es">Español</option>
+				</select>
+			</div>
+		</header>
+
+		<div class="panel" aria-live="polite">
+			<div id="welcome" class="welcome">
+				<h1>Recruiter Copilot</h1>
+				<div class="hint" data-i18n="copilot.hint">Assistant is connected to your workspace. Ask anything.</div>
+			</div>
+			<div id="kpis" class="kpis" style="margin-bottom:8px"></div>
+			<div class="chat-box">
+				<div id="log" class="chat-log" aria-live="polite" aria-busy="false"></div>
+				<div class="chat-input">
+					<input id="q" type="text" data-i18n-placeholder="copilot.placeholder" placeholder="Message Copilot..." />
+					<button id="send" class="primary" data-i18n="copilot.sendButton">Send</button>
+				</div>
+				<div class="hint" data-i18n="copilot.hint2">Answers stream live; Copilot can use system data and actions.</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="toast" class="toast"></div>
+
+	<script src="./i18n.js"></script>
+	<script>
+		// --- i18n init ---
+		(function initLang(){
+			try {
+				const sel = document.getElementById('langSel');
+				if(sel){
+					const saved = localStorage.getItem('selectedLanguage') || 'en';
+					sel.value = saved;
+					sel.addEventListener('change', () => window.i18n.setLanguage(sel.value));
+				}
+				window.i18n.applyTranslations();
+			} catch (e) {}
+		})();
+
+		// --- API base resolution (reused pattern) ---
+		const API = (() => {
+			try {
+				const url = new URL(location.href);
+				const apiQS = url.searchParams.get('api');
+				if (apiQS) return String(apiQS).replace(/\/$/, '');
+				if (typeof window !== 'undefined' && window.API_BASE) return String(window.API_BASE).replace(/\/$/, '');
+				if (location.protocol === 'file:') return 'http://localhost:8000';
+				return location.origin;
+			} catch (e) {
+				return location.origin;
+			}
+		})();
+		const state = { apiKey: null };
+		try { state.apiKey = localStorage.getItem('apiKey') || null; } catch {}
+		const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
+
+		// --- helpers ---
+		function toast(msg, kind='info', ms=3000){
+			const el = document.getElementById('toast');
+			el.textContent = msg;
+			el.style.display = 'block';
+			el.style.borderColor = kind==='error' ? '#ef4444' : kind==='ok' ? '#10b981' : '#334155';
+			clearTimeout(window.__toastT);
+			window.__toastT = setTimeout(()=>{ el.style.display='none'; }, ms);
+		}
+			function scrollLog(){ const log = document.getElementById('log'); log.scrollTop = log.scrollHeight; }
+			function esc(s){
+				const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+				return String(s).replace(/[&<>"']/g, c => map[c]);
+			}
+		function appendBubble(role, html){
+			const log = document.getElementById('log');
+			const wrap = document.createElement('div'); wrap.className = 'msg';
+			const meta = document.createElement('div'); meta.className='meta'; meta.textContent = role === 'user' ? 'You' : 'Copilot';
+			const b = document.createElement('div'); b.className = 'bubble ' + (role==='user'?'user':'assistant'); b.innerHTML = html;
+			wrap.appendChild(meta); wrap.appendChild(b); log.appendChild(wrap); scrollLog();
+		}
+		function renderKpis(items){
+			const el = document.getElementById('kpis'); if(!el) return;
+			el.innerHTML = '';
+			(items||[]).forEach(k => {
+				const div = document.createElement('div'); div.className = 'kpi';
+				const label = document.createElement('div'); label.className = 'hint'; label.textContent = k.label || '';
+				const val = document.createElement('div'); val.textContent = k.value != null ? String(k.value) : '';
+				div.appendChild(label); div.appendChild(val); el.appendChild(div);
+			});
+		}
+		function renderQuickReplies(component){
+			if(!component || !Array.isArray(component.options)) return null;
+			const box = document.createElement('div'); box.className='chips';
+			component.options.forEach(opt => {
+				const btn = document.createElement('button'); btn.className='chip'; btn.textContent = opt.label || opt.text || '…';
+				btn.addEventListener('click', () => {
+					const q = String(opt.value || opt.text || opt.label || '').trim();
+					if(q){ document.getElementById('q').value = q; document.getElementById('send').click(); }
+				});
+				box.appendChild(btn);
+			});
+			return box;
+		}
+			function renderComponents(ui){
+			if(!Array.isArray(ui) || !ui.length) return;
+				const frag = document.createDocumentFragment();
+			ui.forEach(c => {
+				try{
+					const kind = (c && c.kind) || '';
+					if(kind === 'Title'){
+						const h = document.createElement('h3'); h.textContent = c.text || c.title || '';
+						const div = document.createElement('div'); div.appendChild(h); frag.appendChild(div);
+					} else if(kind === 'Text' || kind === 'Paragraph'){
+						const p = document.createElement('p'); p.textContent = c.text || '';
+						frag.appendChild(p);
+					} else if(kind === 'Kpis'){
+						renderKpis(c.items || c.kpis || []);
+					} else if(kind === 'QuickReplies'){
+						const qr = renderQuickReplies(c);
+						if(qr) frag.appendChild(qr);
+					} else if(kind === 'Html'){
+						const div = document.createElement('div'); div.innerHTML = c.html || '';
+						frag.appendChild(div);
+					} else {
+						// Fallback raw component
+						const pre = document.createElement('pre'); pre.textContent = JSON.stringify(c, null, 2);
+						frag.appendChild(pre);
+					}
+				}catch(e){}
+			});
+				const container = document.createElement('div');
+				container.appendChild(frag);
+				appendBubble('assistant', container.innerHTML);
+		}
+
+		async function askCopilot(question){
+			const log = document.getElementById('log');
+			const send = document.getElementById('send');
+			const qEl = document.getElementById('q');
+			const welcome = document.getElementById('welcome');
+			try{
+				send.disabled = true; qEl.disabled = true; log.setAttribute('aria-busy','true');
+				// Hide welcome after first question
+				if(welcome) welcome.style.display='none';
+				appendBubble('user', esc(question));
+				const body = { question: question, detailsOnly: false, currentView: 'greenhouse' };
+				const r = await fetch(`${API}/chat/query`, { method:'POST', headers: { 'Content-Type': 'application/json', ...hdrs() }, body: JSON.stringify(body), cache: 'no-store' });
+				if(!r.ok){ const txt = await r.text(); throw new Error(txt || r.statusText || String(r.status)); }
+				const data = await r.json();
+				// Render answer and any UI components
+				const answer = (data && (data.answer || data.text || data.message)) || '';
+				if(answer) appendBubble('assistant', esc(answer));
+				if(data && Array.isArray(data.ui) && data.ui.length){ renderComponents(data.ui); }
+			} catch (e){
+				console.error(e);
+				toast('Error: ' + (e && e.message ? e.message : 'Request failed'), 'error');
+			} finally {
+				send.disabled = false; qEl.disabled = false; log.setAttribute('aria-busy','false'); qEl.focus();
+			}
+		}
+
+		(function wireUI(){
+			const q = document.getElementById('q');
+			const send = document.getElementById('send');
+			send.addEventListener('click', () => {
+				const question = String(q.value||'').trim(); if(!question) return; q.value=''; askCopilot(question);
+			});
+			q.addEventListener('keydown', (ev) => { if(ev.key==='Enter' && !ev.shiftKey){ ev.preventDefault(); send.click(); } });
+		})();
+	</script>
+</body>
+</html>

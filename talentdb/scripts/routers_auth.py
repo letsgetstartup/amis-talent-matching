@@ -53,6 +53,47 @@ def apikey(req: ApiKeyReq):
     return key
 
 
+class InviteReq(BaseModel):
+    tenant_id: str
+    emails: list[str]
+
+
+@router.post("/invite-collaborators")
+def invite_collaborators(req: InviteReq, authorization: str | None = Header(default=None, alias="Authorization")):
+    tok = None
+    if authorization and authorization.lower().startswith("bearer "):
+        tok = authorization.split(" ", 1)[1].strip()
+    if not tok:
+        raise HTTPException(status_code=401, detail="missing_token")
+    body = jwt_decode(tok)
+    tid = body.get("tenant_id")
+    role = body.get("role") or "user"
+    if tid != req.tenant_id:
+        raise HTTPException(status_code=403, detail="forbidden")
+    # Only admin can invite
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="admin_required")
+
+    inserted = 0
+    for em in (req.emails or []):
+        email = (em or "").strip().lower()
+        if not email or "@" not in email:
+            continue
+        if db["users"].find_one({"email": email, "tenant_id": req.tenant_id}):
+            continue
+        # Create a placeholder user with invite status
+        doc = {
+            "email": email,
+            "tenant_id": req.tenant_id,
+            "role": "user",
+            "status": "invited",
+        }
+        db["users"].insert_one(doc)
+        inserted += 1
+
+    return {"invited": inserted}
+
+
 @router.get("/me")
 def me(authorization: str | None = Header(default=None, alias="Authorization"), token: str | None = None):
     """Return basic profile and tenant info using the provided JWT token.

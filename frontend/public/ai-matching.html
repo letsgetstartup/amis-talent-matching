@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Matching</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --muted:#9ca3af; --accent:#10b981; --danger:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Rubik, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: #e5e7eb; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 8px 0 16px; }
+    .title { font-size: 20px; font-weight:700; letter-spacing:.2px; }
+    .row { display:flex; gap:16px; align-items:stretch; }
+    .col { flex:1; }
+    .panel { background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 14px; }
+    .panel h3 { margin: 0 0 10px; font-size: 16px; }
+    textarea, input, select, button { font-family: inherit; }
+    textarea { width: 100%; min-height: 110px; padding: 10px; border-radius: 10px; border: 1px solid #334155; background:#0b1220; color:#e5e7eb; resize: vertical; }
+    .btn { background:#0b1220; color:#e5e7eb; border:1px solid #334155; padding:10px 14px; border-radius:8px; cursor:pointer; }
+    .btn.primary { background: linear-gradient(135deg,#059669,#0ea5e9); border: none; font-weight:600; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin-top:6px }
+    .inline { display:flex; gap:8px; align-items:center; }
+
+    .chat { height: 420px; overflow:auto; background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:10px }
+    .bubble { margin: 8px 0; padding: 8px 10px; border-radius: 10px; max-width: 85%; line-height:1.4; }
+    .bubble.user { background:#1f2937; margin-left:auto; }
+    .bubble.assistant { background:#0f172a; border:1px solid #263041; }
+    .bubble .meta { font-size:11px; color:#94a3b8; margin-bottom:4px }
+
+    .cards { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+    @media (max-width: 900px) { .row { flex-direction: column; } .cards { grid-template-columns: 1fr; } }
+    .card { background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:10px }
+    .badge { display:inline-block; padding:3px 8px; margin: 2px 4px 0 0; border-radius:999px; background:#0f172a; border:1px solid #243145; font-size:12px }
+    .score { font-weight:700; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">🤖 AI Matching (דף עצמאי)</div>
+      <div class="inline">
+        <input id="tenantId" placeholder="Tenant ID (אופציונלי)" class="btn" style="padding:8px 10px" />
+        <input id="apiKey" placeholder="X-API-Key" class="btn" style="padding:8px 10px; min-width:260px" />
+        <button class="btn" id="saveCreds">שמור</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:16px">
+      <div class="col panel">
+        <h3>תיאור משרה</h3>
+        <textarea id="jobText" placeholder="הדביקו כאן את תיאור המשרה או כתבו במילים שלכם"></textarea>
+        <div class="inline" style="margin-top:8px; gap:10px">
+          <button class="btn primary" id="btnAnalyze">נתח דרישות</button>
+          <button class="btn" id="btnFind">מצא מועמדים מתאימים</button>
+          <span class="hint">המערכת תשתמש בכלי MCP ומסד הנתונים בלבד, ללא המצאות.</span>
+        </div>
+        <div id="analysis" class="hint" style="margin-top:8px"></div>
+      </div>
+      <div class="col panel">
+        <h3>תוצאות מועמדים</h3>
+        <div id="results" class="cards"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>שאלו את הדאטה</h3>
+      <div class="chat" id="chat"></div>
+      <div class="inline" style="margin-top:8px">
+  <input id="q" class="btn" style="flex:1; padding:10px" placeholder="לדוגמה: כמה מועמדים בתל אביב עם office_administration?" />
+        <button id="ask" class="btn primary">שאלו</button>
+      </div>
+      <div class="hint">מענה מוזן מנתונים אמיתיים בלבד: חישובים, ספירות, חיתוכים – דרך MCP וכלי אנליטיקה.</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const API = (window.API_BASE) || (location.origin);
+  let MCP_AVAILABLE = null; // null=unknown, true/false cached
+  const els = {
+    apiKey: document.getElementById('apiKey'),
+    tenantId: document.getElementById('tenantId'),
+    jobText: document.getElementById('jobText'),
+    btnAnalyze: document.getElementById('btnAnalyze'),
+    btnFind: document.getElementById('btnFind'),
+    analysis: document.getElementById('analysis'),
+    results: document.getElementById('results'),
+    chat: document.getElementById('chat'),
+    q: document.getElementById('q'),
+    ask: document.getElementById('ask'),
+    saveCreds: document.getElementById('saveCreds'),
+  };
+
+  try {
+    els.apiKey.value = localStorage.getItem('apiKey') || '';
+    els.tenantId.value = localStorage.getItem('tenantId') || '';
+  } catch(e){}
+
+  function headers(){
+    const h = { 'Content-Type': 'application/json' };
+    if (els.apiKey.value) h['X-API-Key'] = els.apiKey.value;
+    if (els.tenantId.value) h['X-Tenant-Id'] = els.tenantId.value; // optional passthrough
+    return h;
+  }
+
+  async function isMcpEnabled(){
+    if (MCP_AVAILABLE !== null) return MCP_AVAILABLE;
+    try{
+      const r = await fetch(`${API}/mcp/tools`, { headers: headers() });
+      if (!r.ok) return MCP_AVAILABLE = false;
+      const j = await r.json();
+      MCP_AVAILABLE = !!(j && j.enabled);
+      return MCP_AVAILABLE;
+    }catch(e){
+      MCP_AVAILABLE = false; return false;
+    }
+  }
+
+  function bubble(role, text){
+    const div = document.createElement('div');
+    div.className = 'bubble ' + (role === 'user' ? 'user' : 'assistant');
+    div.innerHTML = '<div class="meta">' + (role==='user' ? 'אתם' : 'Assistant') + '</div>' +
+                    (text || '').replace(/\n/g,'<br/>');
+    els.chat.appendChild(div);
+    els.chat.scrollTop = els.chat.scrollHeight;
+  }
+
+  function candidateCard(row){
+    const sMust = (row.skills_must_list||[]).slice(0,6);
+    const sNice = (row.skills_nice_list||[]).slice(0,4);
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+        <div>
+          <div style="font-weight:600; margin-bottom:4px">${row.title || 'מועמד/ת'}</div>
+          <div class="hint">${row.city || ''}</div>
+        </div>
+        <div class="score">${Math.round((row.score||0)*100)}%</div>
+      </div>
+      <div style="margin-top:6px">
+        ${sMust.map(n=>`<span class="badge">${n}</span>`).join(' ')}
+        ${sNice.length? `<div class="hint" style="margin-top:4px">יתרונות: ${sNice.map(n=>`<span class='badge'>${n}</span>`).join(' ')}</div>`:''}
+      </div>
+    `;
+    return div;
+  }
+
+  async function mcpCall(name, args){
+    const r = await fetch(`${API}/mcp/call`, { method:'POST', headers: headers(), body: JSON.stringify({name, arguments: args})});
+    if (!r.ok) throw new Error('MCP call failed');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error && j.error.message || 'MCP error');
+    return j.data;
+  }
+
+  async function analyzeJob(){
+    const text = els.jobText.value.trim();
+    if (!text) { els.analysis.textContent = 'אנא הזינו תיאור משרה'; return; }
+    els.analysis.textContent = 'מנתח דרישות...' ;
+    try{
+      // Simple heuristic: extract top skill tokens (fallback without LLM)
+      const tokens = Array.from(new Set(text.toLowerCase().match(/[a-zA-Z_\-]{3,}/g) || [])).slice(0, 12);
+      els.analysis.textContent = 'מיומנויות מזוהות: ' + tokens.join(', ');
+      return tokens;
+    }catch(e){
+      els.analysis.textContent = 'שגיאה בניתוח';
+      return [];
+    }
+  }
+
+  async function findCandidates(){
+    const skills = await analyzeJob();
+    els.results.innerHTML = '';
+    try{
+      if (await isMcpEnabled()){
+        // Step 1: try to identify the most relevant job by skills
+        const jobs = await mcpCall('search_jobs', { skills, city: undefined, seniority: undefined, k: 1 });
+        const job = jobs && jobs.jobs && jobs.jobs[0];
+        if (job && job.id){
+          // Step 2: get top candidates for that job via matching (with scores and skill breakdown)
+          const match = await mcpCall('match_job_to_candidates', { job_id: job.id, k: 10 });
+          const rows = (match && match.rows) || [];
+          if (rows.length){
+            els.results.append(...rows.map(candidateCard));
+            return;
+          }
+        }
+        // Fallback: direct candidate search by skills via MCP
+        const data = await mcpCall('search_candidates', { skills, city: undefined, min_experience: undefined, k: 10 });
+        const candidates = (data && data.candidates) || [];
+        if (candidates.length){
+          els.results.append(...candidates.map(candidateCard));
+          return;
+        }
+      }
+      // Final fallback: native search endpoint
+      const qs = new URLSearchParams({ skills: (skills||[]).join(','), mode: 'any', limit: '10' });
+      const r = await fetch(`${API}/search/candidates?${qs.toString()}`, { headers: headers() });
+      if (r.ok){
+        const j = await r.json();
+        const arr = (j && j.results) || [];
+        if (arr.length){
+          // Map to candidateCard-compatible shape
+          els.results.append(...arr.map(d=>candidateCard({
+            title: d.title || d.name || 'מועמד/ת',
+            city: d.city,
+            score: 0,
+            skills_must_list: d.matched_skills || [],
+            skills_nice_list: d.matched_esco || [],
+          })));
+          return;
+        }
+      }
+      els.results.innerHTML = '<div class="hint">לא נמצאו מועמדים</div>';
+    }catch(e){
+      els.results.innerHTML = '<div class="hint" style="color: var(--danger)">שגיאה בשליפת מועמדים</div>';
+    }
+  }
+
+  async function ask(){
+    const q = els.q.value.trim();
+    if (!q) return;
+    bubble('user', q);
+    const url = `${API}/chat/query?stream=1`;
+    const body = JSON.stringify({ question: q, currentView: 'ai-matching' });
+    try{
+      const r = await fetch(url, { method:'POST', headers: headers(), body });
+      if (!r.ok) throw new Error('chat error');
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let assistant = '';
+      bubble('assistant', '');
+      const last = els.chat.lastElementChild;
+      while(true){
+        const {done, value} = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, {stream:true});
+        for (const line of chunk.split(/\n+/)){
+          if (!line.trim()) continue;
+          try{
+            const ev = JSON.parse(line);
+            if (ev.type === 'text_delta'){
+              assistant += ev.delta || '';
+              last.innerHTML = '<div class="meta">Assistant</div>' + assistant.replace(/\n/g,'<br/>');
+            } else if (ev.type === 'assistant_ui' && ev.ui){
+              // future: render match cards from UI payload
+            }
+          }catch(e){}
+        }
+      }
+    }catch(e){
+      bubble('assistant', 'אירעה שגיאה בעיבוד הבקשה');
+    }
+  }
+
+  els.btnAnalyze.addEventListener('click', analyzeJob);
+  els.btnFind.addEventListener('click', findCandidates);
+  els.ask.addEventListener('click', ask);
+  els.q.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') els.ask.click(); });
+  els.saveCreds.addEventListener('click', ()=>{
+    try{ localStorage.setItem('apiKey', els.apiKey.value||''); localStorage.setItem('tenantId', els.tenantId.value||''); }catch(e){}
+  });
+})();
+</script>
+</body>
+</html>
