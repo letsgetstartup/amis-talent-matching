@@ -351,6 +351,14 @@
   body.home-active .wrap{ max-width:1180px; padding:0 22px 50px; }
   /* Force-hide portfolio dashboard on homepage, even if scripts toggle it */
   body.home-active #portfolioDashboard{ display:none !important; }
+  /* Force-hide all dashboard/workspace panels on homepage */
+  body.home-active .panel{ display:none !important; }
+  /* Hide any explicit auth-only blocks and the mock chat input on homepage */
+  body.home-active [data-auth="private"],
+  body.home-active .auth-only,
+  body.home-active .mock-chat-input{ display:none !important; }
+  /* Extra safety: hide private blocks anytime the body lacks an explicit auth flag */
+  body:not(.auth) [data-auth="private"]{ display:none !important; }
   #dashboard.homepage{ padding:0; background:transparent; border:none; margin:0; }
   .home-hero{ min-height:calc(100dvh - var(--headerH)); display:grid; grid-template-columns: 1.15fr 0.85fr; gap:28px; align-items:center; }
   @media(max-width:980px){ .home-hero{ grid-template-columns:1fr; padding:24px 0 10px; } }
@@ -2235,7 +2243,7 @@
     </div>
     
     <!-- Talent Discovery Assistant -->
-    <div id="talent-discovery" class="panel ai-assistant-panel" style="display:none">
+  <div id="talent-discovery" class="panel ai-assistant-panel" style="display:none" data-auth="private">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -2460,30 +2468,35 @@
         </div>
       </div>
     </div>
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/>
-          </svg>
-          <span>Talent Discovery AI</span>
-          <div class="ai-status-indicator active">AI Active</div>
-        </div>
-        <div class="assistant-description">Proactive talent sourcing across multiple platforms with AI-powered candidate profiling.</div>
+    
+    <!-- Additional Talent Discovery AI Section -->
+    <div class="assistant-header" data-auth="private">
+      <div class="assistant-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/>
+        </svg>
+        <span>Talent Discovery AI</span>
+        <div class="ai-status-indicator active">AI Active</div>
       </div>
-      
-      <div class="discovery-stats">
-        <div class="stat-item">
-          <span class="stat-label">New Profiles Today</span>
-          <span class="stat-value">23</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">AI Confidence Score</span>
-          <span class="stat-value">94%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Sources Active</span>
-          <span class="stat-value">7</span>
-        </div>
+      <div class="assistant-description">Proactive talent sourcing across multiple platforms with AI-powered candidate profiling.</div>
+    </div>
+    
+    <div class="discovery-stats" data-auth="private">
+      <div class="stat-item">
+        <span class="stat-label">New Profiles Today</span>
+        <span class="stat-value">23</span>
       </div>
+      <div class="stat-item">
+        <span class="stat-label">AI Confidence Score</span>
+        <span class="stat-value">94%</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Sources Active</span>
+        <span class="stat-value">7</span>
+      </div>
+    </div>
       
-      <div class="ai-chat-section">
+      <div class="ai-chat-section" data-auth="private">
         <div class="chat-header">
           <span>💬 Ask Talent Discovery AI</span>
         </div>
@@ -2493,7 +2506,7 @@
               I've found 23 new potential candidates across LinkedIn, GitHub, and Stack Overflow. 5 of them are perfect matches for your React Developer role. Should I start the outreach sequence?
             </div>
           </div>
-          <div class="chat-input">
+          <div class="chat-input" data-auth="private">
             <input id="talentDiscoveryQ" placeholder="Ask about talent sourcing, candidate discovery, or outreach strategies..." />
             <button id="talentDiscoverySend">Send</button>
           </div>
@@ -5104,7 +5117,7 @@
         </div>
       </div>
     </div>
-        <div class="row" style="align-items:end;gap:12px">
+        <div class="row" style="align-items:end;gap:12px" data-auth="private">
           <div style="width:120px">
             <label for="mK" style="display:block;margin-bottom:6px">Top K</label>
             <input id="mK" type="number" value="5" min="1" max="20" />
@@ -5136,7 +5149,7 @@
         </div>
       </div>
   <!-- Phase 2: Weights & config controls -->
-  <div id="configPanel" class="panel" style="margin:10px 0 16px 0">
+  <div id="configPanel" class="panel" style="margin:10px 0 16px 0" data-auth="private">
         <h3>שקלול ציונים והגדרות (שרת)</h3>
         <div class="grid2" style="gap:14px">
           <div>
@@ -5193,14 +5206,14 @@
       </div>
       <div class="row" style="margin-bottom:10px">
         <div class="col">
-          <input id="matchesLimit" type="number" value="50" min="1" max="500" />
+          <input id="matchesLimit" type="number" value="50" min="1" max="500" data-auth="private" />
         </div>
-        <div style="display:flex;gap:8px;align-items:center"><button id="matchesRefresh">רענן</button><button id="matchesClear" class="secondary">נקה סינון</button><button id="matchesUndo" class="secondary" title="בטל פעולה">בטל</button><button id="matchesRedo" class="secondary" title="בצע שוב">בצע שוב</button></div>
+        <div style="display:flex;gap:8px;align-items:center" data-auth="private"><button id="matchesRefresh">רענן</button><button id="matchesClear" class="secondary">נקה סינון</button><button id="matchesUndo" class="secondary" title="בטל פעולה">בטל</button><button id="matchesRedo" class="secondary" title="בצע שוב">בצע שוב</button></div>
       </div>
-      <div id="matchesChips" class="chips" style="margin:-6px 0 10px 0"></div>
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start">
-        <div class="panel" style="margin:0;max-height:60vh;overflow:auto">
-          <table>
+      <div id="matchesChips" class="chips" style="margin:-6px 0 10px 0" data-auth="private"></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start" data-auth="private">
+        <div class="panel" style="margin:0;max-height:60vh;overflow:auto" data-auth="private">
+          <table data-auth="private">
             <thead>
               <tr><th>מועמד</th><th>תפקיד</th><th>כמות התאמות</th><th>טופ 3</th></tr>
             </thead>
@@ -5208,12 +5221,12 @@
           </table>
           <div class="muted" id="matchesMeta" style="margin-top:8px"></div>
         </div>
-        <div class="panel" style="margin:0">
+        <div class="panel" style="margin:0" data-auth="private">
           <h3>צ'אט התאמות</h3>
           <div class="chat-box">
             <div id="chatLog" class="chat-log"></div>
-            <div class="chat-input">
-              <input id="chatQ" placeholder="לדוגמה: כמה התאמות נמצאו היום?" />
+            <div class="chat-input" data-auth="private">
+              <input id="chatQ" placeholder="לדוגמה: כמה התאמות נמצאו היום?" data-auth="private" />
               <button id="chatSend">שלח</button>
             </div>
             <div class="hint">הצ'אט משתמש בנתונים ממונגו ו-API של OpenAI דרך FastAPI</div>
@@ -5222,7 +5235,7 @@
       </div>
     </div>
     
-    <div id="copilot" class="panel copilot-root" style="display:none">
+  <div id="copilot" class="panel copilot-root" style="display:none" data-auth="private">
       <!-- Master AI Assistant Header -->
       <div class="copilot-master-header" style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -5397,7 +5410,7 @@
             <div id="copilotLog" class="chat-log" style="min-height: 300px; background: rgba(255,255,255,0.02); border-radius: 8px; padding: 16px;"></div>
             
             <!-- Enhanced Chat Input -->
-            <div class="chat-input" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-top: 16px;">
+            <div class="chat-input" data-auth="private" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-top: 16px;">
               <div style="display: flex; gap: 12px; align-items: end;">
                 <div style="flex: 1;">
                   <input id="copilotQ" placeholder="Ask me anything about recruiting, candidates, jobs, market data, or let me optimize your workflow..." style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 12px 16px; color: var(--text); font-size: 14px;" />
@@ -5442,7 +5455,7 @@
       <h2>Copilot Chat (Text Only)</h2>
       <div class="chat-box">
         <div id="copilotLiteLog" class="chat-log" aria-live="polite"></div>
-        <div class="chat-input">
+  <div class="chat-input" data-auth="private">
           <input id="copilotLiteQ" placeholder="Ask Copilot… (text-only answers)" />
           <button id="copilotLiteSend">Send</button>
         </div>
@@ -5455,7 +5468,7 @@
       <h2>Copilot Chat 2</h2>
       <div class="chat-box">
         <div id="copilotLiteLog2" class="chat-log" aria-live="polite"></div>
-        <div class="chat-input">
+  <div class="chat-input" data-auth="private">
           <input id="copilotLiteQ2" placeholder="Ask Copilot… (text-only answers)" />
           <button id="copilotLiteSend2">Send</button>
         </div>
@@ -5466,7 +5479,7 @@
       <h2>Copilot Chat 3</h2>
       <div class="chat-box">
         <div id="copilotLiteLog3" class="chat-log" aria-live="polite"></div>
-        <div class="chat-input">
+  <div class="chat-input" data-auth="private">
           <input id="copilotLiteQ3" placeholder="Ask Copilot… (text-only answers)" />
           <button id="copilotLiteSend3">Send</button>
         </div>
@@ -5477,7 +5490,7 @@
       <h2>Copilot Chat 4</h2>
       <div class="chat-box">
         <div id="copilotLiteLog4" class="chat-log" aria-live="polite"></div>
-        <div class="chat-input">
+  <div class="chat-input" data-auth="private">
           <input id="copilotLiteQ4" placeholder="Ask Copilot… (text-only answers)" />
           <button id="copilotLiteSend4">Send</button>
         </div>
@@ -5755,20 +5768,23 @@
     const savedToken = localStorage.getItem('token');
     if(savedToken){ state.token = savedToken; }
   }catch(e){}
-  const hasAuth = () => !!state.apiKey;
+  // Consider a user authenticated only if both apiKey and token are present
+  const hasAuth = () => !!(state.apiKey && state.token);
   const hdrs = () => state.apiKey ? { 'X-API-Key': state.apiKey } : {};
 
   // Homepage visibility helpers
   function showHome(){
     try{
-      document.body.classList.add('home-active');
+  document.body.classList.add('home-active');
+  document.body.classList.remove('auth');
   document.body.classList.remove('copilot-active');
       const sidebar = document.getElementById('sidebar');
       if(sidebar) sidebar.style.display='none';
       const wrap = document.querySelector('.wrap');
       if(wrap) wrap.style.display='block';
       const dashboard = document.getElementById('dashboard');
-      if(dashboard) dashboard.style.display='block';
+      // Hide any legacy/summary dashboard on the public homepage
+      if(dashboard) dashboard.style.display='none';
   const hero = document.querySelector('.home-hero');
   if(hero) hero.style.display = '';
   const header = document.querySelector('header');
@@ -5779,9 +5795,13 @@
       hidePortfolioDashboard();
       // Ensure homepage is the only visible surface (hide workspace panels & assistants)
       const hideIds = [
-        'jobs','candidates','matches','upload','imports',
+        // Core workspace panels
+        'dashboard','jobs','candidates','matches','upload','imports','open-pool','configPanel',
+        // Assistants & copilots
         'copilot','copilot-lite','copilot-lite-2','copilot-lite-3','copilot-lite-4','chat-copilot-mockup',
-        'job-gap-analyzer','candidate-pipeline','match-intelligence','talent-discovery','engagement-optimizer'
+        'job-gap-analyzer','candidate-pipeline','match-intelligence','talent-discovery','engagement-optimizer',
+        // Admin/analytics surfaces
+        'portfolio-admin','fund-analytics'
       ];
       hideIds.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
     }catch(e){}
@@ -5789,6 +5809,7 @@
   function hideHome(){
     try{
       document.body.classList.remove('home-active');
+  document.body.classList.add('auth');
       const sidebar = document.getElementById('sidebar');
       if(sidebar) sidebar.style.display='block';
       const dashboard = document.getElementById('dashboard');
@@ -5806,6 +5827,14 @@
       }
     }catch(e){}
   }
+
+  // Early homepage/auth gate to prevent any flash of private UI
+  (function earlyAuthGate(){
+    try{
+      if(!hasAuth()){ showHome(); }
+      else { document.body.classList.add('auth'); }
+    }catch(e){}
+  })();
 
   // Central matches state controlled by chat/actions and UI
   const matchesState = {
