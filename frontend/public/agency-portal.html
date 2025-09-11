@@ -1225,22 +1225,97 @@
     transform: translateY(0);
   }
 
-  /* Registration modal (3-step wizard) */
-  .modal{display:none;position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000}
-  .modal-content{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b1324;border:1px solid #1f2a44;border-radius:14px;padding:18px;max-width:680px;width:92%;max-height:86%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  /* Registration modal (5-step wizard) */
+  .modal{display:none;position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;backdrop-filter:blur(8px)}
+  .modal-content{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b1324;border:1px solid #1f2a44;border-radius:16px;padding:24px;max-width:1200px;width:95%;max-height:90vh;overflow:auto;box-shadow:0 25px 80px rgba(0,0,0,.6)}
   .modal-header{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}
   .modal-close{background:none;border:none;color:#9ca3af;font-size:20px;cursor:pointer}
-  .wizard-steps{display:flex;gap:8px;align-items:center;margin:6px 0 12px}
-  .step-pill{padding:6px 10px;border-radius:999px;border:1px solid #334155;background:#0a1428;color:#9ca3af;font-size:12px}
-  .step-pill.active{border-color:#60a5fa;background:rgba(96,165,250,.12);color:#e5e7eb}
+  .wizard-steps{display:flex;gap:12px;align-items:center;margin:8px 0 20px;justify-content:center}
+  .step-pill{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid #334155;background:#0a1428;color:#9ca3af;font-size:13px;font-weight:500;transition:all 0.3s ease}
+  .step-pill.active{border-color:#10b981;background:rgba(16,185,129,.15);color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+  .step-pill.completed{border-color:#10b981;background:#10b981;color:#fff}
+  .step-number{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);font-size:11px;font-weight:600}
+  .step-pill.active .step-number{background:#10b981;color:#fff}
+  .step-pill.completed .step-number{background:#fff;color:#10b981}
   .wizard-actions{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#1f2937;border:1px solid #334155;color:#e5e7eb;cursor:pointer}
   .btn.primary{background:#2563eb;border-color:#3b82f6}
   .btn[disabled]{opacity:.6;cursor:not-allowed}
-  .field{display:flex;flex-direction:column;margin:6px 0}
-  .field label{font-size:12px;color:#9ca3af;margin:0 0 4px}
-  .field input{background:#0b1020;border:1px solid #223150;border-radius:10px;color:#e5e7eb;padding:10px}
+  .field{display:flex;flex-direction:column;margin:8px 0}
+  .field label{font-size:13px;color:#cbd5e1;margin:0 0 6px;font-weight:500}
+  .field input,.field select{background:#0b1020;border:1px solid #223150;border-radius:10px;color:#e5e7eb;padding:12px;transition:border-color 0.3s ease}
+  .field input:focus,.field select:focus{outline:none;border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
   .hint{font-size:12px;color:#9ca3af;margin-top:6px}
+  
+  /* Portfolio Import Styles */
+  .fund-integration-step{padding:20px 0}
+  .step-header{text-align:center;margin-bottom:24px}
+  .step-header h3{margin:0 0 8px;font-size:24px;color:#e5e7eb}
+  .step-header p{margin:0;color:#9ca3af;font-size:14px}
+  
+  .fund-url-section{margin:20px 0}
+  .url-input-group{display:flex;gap:12px;align-items:end}
+  .url-input-group .field{flex:1;margin:0}
+  .scan-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:12px 20px;border-radius:10px;font-weight:600;cursor:pointer;transition:all 0.3s ease}
+  .scan-btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(16,185,129,.3)}
+  .scan-btn:disabled{opacity:0.6;cursor:not-allowed}
+  
+  .scanning-progress{text-align:center;margin:20px 0;padding:20px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:12px}
+  .progress-bar{width:100%;height:4px;background:#1f2937;border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#10b981,#06b6d4);border-radius:2px;animation:progress 2s ease-in-out infinite}
+  @keyframes progress{0%{width:0%}50%{width:70%}100%{width:100%}}
+  
+  /* Portfolio Companies Grid */
+  .portfolio-step{padding:20px 0}
+  .portfolio-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .portfolio-header h3{margin:0;font-size:20px;color:#e5e7eb}
+  .companies-count{font-size:14px;color:#10b981;font-weight:600}
+  .add-manual-btn{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;transition:all 0.3s ease}
+  .add-manual-btn:hover{background:rgba(16,185,129,.2)}
+  
+  .companies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;max-height:400px;overflow-y:auto;padding:4px}
+  .companies-grid::-webkit-scrollbar{width:6px}
+  .companies-grid::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:3px}
+  .companies-grid::-webkit-scrollbar-thumb{background:rgba(16,185,129,.3);border-radius:3px}
+  
+  /* Loading animation */
+  .loading{width:14px;height:14px;border:2px solid transparent;border-top:2px solid currentColor;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px;display:inline-block}
+  @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+  
+  /* Grid layout utilities */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:768px){.grid2{grid-template-columns:1fr}}
+  
+  .company-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;transition:all 0.3s ease;position:relative;overflow:hidden}
+  .company-card:hover{border-color:rgba(16,185,129,.5);background:rgba(255,255,255,.06);transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,.2)}
+  
+  .company-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .company-logo{width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:14px}
+  .company-info h4{margin:0;font-size:16px;color:#e5e7eb;font-weight:600}
+  .company-url{font-size:12px;color:#9ca3af;text-decoration:none}
+  .company-url:hover{color:#10b981}
+  
+  .company-metrics{display:flex;justify-content:space-between;align-items:center;margin:12px 0;padding:8px;background:rgba(0,0,0,.2);border-radius:8px}
+  .jobs-count{font-size:14px;font-weight:600;color:#10b981}
+  .last-updated{font-size:11px;color:#9ca3af}
+  
+  .contacts-section{margin-top:12px}
+  .contacts-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .contacts-header h5{margin:0;font-size:13px;color:#cbd5e1;font-weight:500}
+  .contact-item{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(0,0,0,.1);border-radius:6px;margin-bottom:4px}
+  .contact-name{font-size:12px;color:#e5e7eb}
+  .contact-role{font-size:11px;color:#9ca3af}
+  .verify-btn,.add-contact-btn{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer}
+  .verify-btn:hover,.add-contact-btn:hover{background:rgba(16,185,129,.2)}
+  
+  /* Empty State */
+  .empty-portfolio{text-align:center;padding:40px;color:#9ca3af}
+  .empty-portfolio svg{width:48px;height:48px;margin-bottom:16px;opacity:0.5}
+  
+  /* Loading States */
+  .company-card.loading{opacity:0.6;pointer-events:none}
+  .company-card.loading::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);animation:shimmer 1.5s ease-in-out infinite}
+  @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
   .email-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0b1324;border:1px solid #334155;font-size:12px;color:#cbd5e1}
   .chip a{color:#94a3b8;text-decoration:none}
@@ -4294,34 +4369,164 @@
     </div>
 
     <!-- Registration Modal (3-step) -->
-    <div id="registrationModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Join Recruiter Copilot">
+    <div id="registrationModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Join PTX Portfolio Network">
       <div class="modal-content">
         <div class="modal-header">
-          <div style="font-weight:700">Create your account</div>
+          <div style="font-weight:700" id="regModalTitle">Create your account</div>
           <button class="modal-close" id="regClose" aria-label="Close">×</button>
         </div>
         <div class="wizard-steps">
-          <span class="step-pill" data-step="1">1 · Account</span>
-          <span class="step-pill" data-step="2">2 · Collaborators</span>
-          <span class="step-pill" data-step="3">3 · Done</span>
+          <span class="step-pill active" data-step="1">
+            <span class="step-number">1</span>
+            <span>Account</span>
+          </span>
+          <span class="step-pill" data-step="2">
+            <span class="step-number">2</span>
+            <span>Fund</span>
+          </span>
+          <span class="step-pill" data-step="3">
+            <span class="step-number">3</span>
+            <span>Portfolio</span>
+          </span>
+          <span class="step-pill" data-step="4">
+            <span class="step-number">4</span>
+            <span>Team</span>
+          </span>
+          <span class="step-pill" data-step="5">
+            <span class="step-number">5</span>
+            <span>Done</span>
+          </span>
         </div>
+        <!-- Step 1: Account Setup -->
         <div id="regStep1">
-          <div class="field"><label for="rCompany">Company</label><input id="rCompany" placeholder="Company Inc." autocomplete="organization"></div>
-          <div class="field"><label for="rName">Full name</label><input id="rName" placeholder="Jane Doe" autocomplete="name"></div>
-          <div class="field"><label for="rEmail">Work email</label><input id="rEmail" placeholder="name@company.com" autocomplete="email" inputmode="email"></div>
+          <div class="grid2">
+            <div class="field"><label for="rCompany">Fund/Company Name</label><input id="rCompany" placeholder="Acme Ventures" autocomplete="organization"></div>
+            <div class="field">
+              <label for="rFundType">Organization Type</label>
+              <select id="rFundType">
+                <option value="vc">Venture Capital</option>
+                <option value="pe">Private Equity</option>
+                <option value="accelerator">Accelerator</option>
+                <option value="corporate">Corporate VC</option>
+                <option value="family">Family Office</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label for="rName">Full Name</label><input id="rName" placeholder="Jane Doe" autocomplete="name"></div>
+            <div class="field"><label for="rTitle">Your Title</label><input id="rTitle" placeholder="Partner, Talent Director" autocomplete="organization-title"></div>
+          </div>
+          <div class="field"><label for="rEmail">Work Email</label><input id="rEmail" placeholder="name@fund.com" autocomplete="email" inputmode="email"></div>
           <div class="field"><label for="rPass">Password</label><input id="rPass" type="password" placeholder="Create a strong password" autocomplete="new-password"></div>
           <label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px"><input type="checkbox" id="rTerms" style="margin-top:2px"><span>I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.</span></label>
           <div class="hint" id="rHint1"></div>
         </div>
+
+        <!-- Step 2: Fund Integration -->
         <div id="regStep2" style="display:none">
-          <div class="field"><label for="rInvites">Invite collaborators (emails)</label><input id="rInvites" placeholder="hr@company.com, talent@company.com"></div>
-          <div class="email-chips" id="rInviteChips"></div>
-          <div class="hint">Optional. You can invite your HR teammates now or later from Portfolio Admin.</div>
-          <div class="hint" id="rHint2"></div>
+          <div class="fund-integration-step">
+            <div class="step-header">
+              <h3>Connect Your Portfolio</h3>
+              <p>We'll automatically discover your portfolio companies and their job openings</p>
+            </div>
+            
+            <div class="fund-url-section">
+              <div class="url-input-group">
+                <div class="field">
+                  <label for="rFundUrl">Fund Website or Portfolio Page</label>
+                  <input id="rFundUrl" type="url" placeholder="https://your-fund.com/portfolio">
+                </div>
+                <button type="button" class="scan-btn" id="scanPortfolioBtn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  Scan Portfolio
+                </button>
+              </div>
+            </div>
+            
+            <div class="scanning-progress" id="scanProgress" style="display:none">
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+              <p>🔍 Discovering portfolio companies and job openings...</p>
+              <div class="hint">This may take 30-60 seconds depending on your portfolio size</div>
+            </div>
+            
+            <div class="hint">
+              <strong>What we'll do:</strong><br>
+              • Scan your portfolio page to identify companies<br>
+              • Extract job listings from each company's careers page<br>
+              • Find HR contacts on LinkedIn for each portfolio company<br>
+              • Set up automated job monitoring
+            </div>
+            <div class="hint" id="rHint2"></div>
+          </div>
         </div>
+
+        <!-- Step 3: Portfolio Companies -->
         <div id="regStep3" style="display:none">
-          <h3 style="margin:6px 0 8px">You're all set 🎉</h3>
-          <p class="hint">We created your workspace. You can start exploring the dashboard. We've also sent invitations to your collaborators (if provided).</p>
+          <div class="portfolio-step">
+            <div class="portfolio-header">
+              <div>
+                <h3>Portfolio Companies</h3>
+                <div class="companies-count" id="companiesCount">0 companies discovered</div>
+              </div>
+              <button type="button" class="add-manual-btn" id="addManualCompany">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px">
+                  <path d="M12 2v20M2 12h20"/>
+                </svg>
+                Add Company
+              </button>
+            </div>
+            
+            <div class="companies-grid" id="companiesGrid">
+              <!-- Companies will be populated here -->
+            </div>
+            
+            <div class="empty-portfolio" id="emptyPortfolio">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+              </svg>
+              <h4>No companies found</h4>
+              <p>We couldn't automatically discover portfolio companies. You can add them manually or try a different portfolio URL.</p>
+            </div>
+            
+            <div class="hint" id="rHint3"></div>
+          </div>
+        </div>
+
+        <!-- Step 4: Team Collaboration -->
+        <div id="regStep4" style="display:none">
+          <div class="step-header">
+            <h3>Invite Your Team</h3>
+            <p>Collaborate with your talent acquisition team across portfolio companies</p>
+          </div>
+          <div class="field"><label for="rInvites">Team Members (emails)</label><input id="rInvites" placeholder="hr@fund.com, talent@fund.com"></div>
+          <div class="email-chips" id="rInviteChips"></div>
+          <div class="hint">Optional. You can invite team members now or later from Portfolio Admin. Each member can access all portfolio companies in your network.</div>
+          <div class="hint" id="rHint4"></div>
+        </div>
+
+        <!-- Step 5: Completion -->
+        <div id="regStep5" style="display:none">
+          <div class="step-header">
+            <h3>🎉 Welcome to PTX!</h3>
+            <p>Your portfolio talent network is ready</p>
+          </div>
+          
+          <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:20px;margin:20px 0">
+            <h4 style="margin:0 0 12px;color:#10b981">What's Next?</h4>
+            <div style="display:grid;gap:8px;font-size:14px;color:#cbd5e1">
+              <div>✅ <span id="summaryCompanies">0 portfolio companies</span> connected</div>
+              <div>✅ <span id="summaryJobs">0 job openings</span> being monitored</div>
+              <div>✅ <span id="summaryContacts">0 HR contacts</span> discovered</div>
+              <div>✅ Team invitations sent</div>
+            </div>
+          </div>
+          
+          <div class="hint">Start exploring your portfolio talent dashboard, where you can view all job openings, share candidates across companies, and leverage AI-powered matching.</div>
         </div>
         <div class="wizard-actions">
           <button class="btn" id="regBack" disabled>Back</button>
@@ -8331,23 +8536,208 @@
     const step1 = document.getElementById('regStep1');
     const step2 = document.getElementById('regStep2');
     const step3 = document.getElementById('regStep3');
+    const step4 = document.getElementById('regStep4');
+    const step5 = document.getElementById('regStep5');
     let cur = 1;
+    let portfolioData = [];
 
     function setStep(n){
       cur = n;
-      [step1,step2,step3].forEach((el,i)=>{ if(el) el.style.display = (i===n-1)?'block':'none'; });
-      stepPills.forEach(p=>p.classList.toggle('active', Number(p.dataset.step)===n));
+      [step1,step2,step3,step4,step5].forEach((el,i)=>{ if(el) el.style.display = (i===n-1)?'block':'none'; });
+      stepPills.forEach(p=>{
+        const stepNum = Number(p.dataset.step);
+        p.classList.toggle('active', stepNum === n);
+        p.classList.toggle('completed', stepNum < n);
+      });
       back.disabled = (n===1);
-      next.style.display = (n===1)?'inline-flex':'none';
+      next.style.display = (n<5)?'inline-flex':'none';
       create.style.display = (n===1)?'inline-flex':'none';
-      finish.style.display = (n===3)?'inline-flex':'none';
+      finish.style.display = (n===5)?'inline-flex':'none';
+      
+      // Update next button text based on step
+      const nextText = document.getElementById('regNextText') || next;
+      if (n === 1) nextText.textContent = 'Continue →';
+      else if (n === 2) nextText.textContent = 'Scan Portfolio';
+      else if (n === 3) nextText.textContent = 'Continue with Selection';
+      else if (n === 4) nextText.textContent = 'Complete Setup';
     }
-    function open(){ if(modal){ modal.style.display='block'; modal.setAttribute('aria-hidden','false'); setStep(1);} }
-    function close(){ if(modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); } }
+
+    function open(){ 
+      if(modal){ 
+        modal.style.display='block'; 
+        modal.setAttribute('aria-hidden','false'); 
+        setStep(1);
+        portfolioData = [];
+      } 
+    }
+    
+    function close(){ 
+      if(modal){ 
+        modal.style.display='none'; 
+        modal.setAttribute('aria-hidden','true'); 
+      } 
+    }
+
     if(join) join.onclick = (e)=>{ e.preventDefault(); open(); };
     if(closeBtn) closeBtn.onclick = close;
     back.onclick = ()=> setStep(Math.max(1, cur-1));
-    next.onclick = ()=> setStep(Math.min(3, cur+1));
+    next.onclick = ()=> {
+      if (cur === 2) {
+        // Step 2: Portfolio scanning
+        scanPortfolio();
+      } else {
+        setStep(Math.min(5, cur+1));
+      }
+    };
+
+    // Portfolio scanning functionality
+    async function scanPortfolio() {
+      const fundUrl = document.getElementById('rFundUrl').value.trim();
+      if (!fundUrl) {
+        document.getElementById('rHint2').innerHTML = '<span style="color:#ef4444">Please enter your fund website or portfolio page URL</span>';
+        return;
+      }
+
+      const scanBtn = document.getElementById('scanPortfolioBtn');
+      const progress = document.getElementById('scanProgress');
+      
+      // Show scanning progress
+      scanBtn.disabled = true;
+      scanBtn.innerHTML = '<div class="loading"></div>Scanning...';
+      progress.style.display = 'block';
+      
+      // Simulate portfolio scanning with realistic data
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+        
+        // Simulate discovered portfolio companies
+        portfolioData = [
+          { name: 'TechCorp Inc', website: 'techcorp.com', jobs: 12, industry: 'Software', stage: 'Series B' },
+          { name: 'DataFlow Systems', website: 'dataflow.io', jobs: 8, industry: 'Analytics', stage: 'Series A' },
+          { name: 'CloudScale', website: 'cloudscale.com', jobs: 15, industry: 'Infrastructure', stage: 'Series C' },
+          { name: 'AI Innovations', website: 'ai-innovations.com', jobs: 6, industry: 'AI/ML', stage: 'Seed' },
+          { name: 'FinTech Solutions', website: 'fintech-sol.com', jobs: 10, industry: 'FinTech', stage: 'Series A' },
+          { name: 'HealthTech Labs', website: 'healthtech.io', jobs: 4, industry: 'HealthTech', stage: 'Seed' }
+        ];
+        
+        progress.style.display = 'none';
+        setStep(3);
+        renderPortfolioCompanies();
+        
+      } catch (error) {
+        progress.style.display = 'none';
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Scan Portfolio';
+        document.getElementById('rHint2').innerHTML = '<span style="color:#ef4444">Failed to scan portfolio. Please check the URL and try again.</span>';
+      }
+    }
+
+    function renderPortfolioCompanies() {
+      const grid = document.getElementById('companiesGrid');
+      const emptyState = document.getElementById('emptyPortfolio');
+      const countEl = document.getElementById('companiesCount');
+      
+      if (portfolioData.length === 0) {
+        grid.style.display = 'none';
+        emptyState.style.display = 'flex';
+        countEl.textContent = '0 companies discovered';
+        return;
+      }
+      
+      grid.style.display = 'grid';
+      emptyState.style.display = 'none';
+      countEl.textContent = `${portfolioData.length} companies discovered`;
+      
+      grid.innerHTML = portfolioData.map((company, index) => `
+        <div class="company-card" data-index="${index}">
+          <div class="company-header">
+            <div class="company-info">
+              <h4>${company.name}</h4>
+              <div class="company-meta">
+                <span class="industry-tag">${company.industry}</span>
+                <span class="stage-tag">${company.stage}</span>
+              </div>
+            </div>
+            <label class="company-checkbox">
+              <input type="checkbox" checked>
+              <div class="checkmark"></div>
+            </label>
+          </div>
+          <div class="company-stats">
+            <div class="stat">
+              <span class="stat-value">${company.jobs}</span>
+              <span class="stat-label">Open Jobs</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value">2</span>
+              <span class="stat-label">HR Contacts</span>
+            </div>
+          </div>
+          <div class="company-actions">
+            <button class="company-action-btn" onclick="viewCompanyJobs(${index})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              View Jobs
+            </button>
+            <button class="company-action-btn" onclick="viewCompanyContacts(${index})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-1 16H9V7h9v14z"/>
+              </svg>
+              Contacts
+            </button>
+          </div>
+        </div>
+      `).join('');
+      
+      // Update summary for step 5
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const selectedCompanies = portfolioData.length;
+      const totalJobs = portfolioData.reduce((sum, company) => sum + company.jobs, 0);
+      const totalContacts = selectedCompanies * 2; // Simulate 2 contacts per company
+      
+      document.getElementById('summaryCompanies').textContent = `${selectedCompanies} portfolio companies`;
+      document.getElementById('summaryJobs').textContent = `${totalJobs} job openings`;
+      document.getElementById('summaryContacts').textContent = `${totalContacts} HR contacts`;
+    }
+
+    function viewCompanyJobs(index) {
+      const company = portfolioData[index];
+      alert(`Viewing ${company.jobs} job openings at ${company.name}`);
+    }
+
+    function viewCompanyContacts(index) {
+      const company = portfolioData[index];
+      alert(`Managing HR contacts at ${company.name}`);
+    }
+
+    // Manual portfolio scanning button
+    document.addEventListener('DOMContentLoaded', function() {
+      const scanBtn = document.getElementById('scanPortfolioBtn');
+      if (scanBtn) {
+        scanBtn.onclick = scanPortfolio;
+      }
+      
+      const addManualBtn = document.getElementById('addManualCompany');
+      if (addManualBtn) {
+        addManualBtn.onclick = () => {
+          const companyName = prompt('Enter company name:');
+          if (companyName) {
+            portfolioData.push({
+              name: companyName,
+              website: companyName.toLowerCase().replace(/\s+/g, '') + '.com',
+              jobs: Math.floor(Math.random() * 20) + 1,
+              industry: 'Other',
+              stage: 'Unknown'
+            });
+            renderPortfolioCompanies();
+          }
+        };
+      }
+    });
 
     // Parse invites into chips
     const inviteInput = document.getElementById('rInvites');
@@ -8383,28 +8773,41 @@
       }catch(e){ if(hint) hint.textContent = `Signup failed: ${String(e&&e.message||e)}`; }
     };
 
-    // Finish: send invites then go to dashboard
+    // Finish: complete registration and redirect to portfolio dashboard
     finish.onclick = async ()=>{
-      // optional invites - best-effort
-      if(_inv.length){
-        try{
+      const finishBtn = document.getElementById('regFinish');
+      finishBtn.disabled = true;
+      finishBtn.innerHTML = '<div class="loading"></div>Setting up workspace...';
+      
+      try {
+        // Save portfolio data and send invites
+        if(_inv.length){
           await apiFetch(`${API}/auth/invite-collaborators`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.token}`}, body: JSON.stringify({tenant_id: state.tenantId, emails: _inv})});
-        }catch(e){}
+        }
+        
+        // Simulate saving portfolio companies
+        if(portfolioData.length > 0) {
+          await apiFetch(`${API}/portfolio/import`, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.token}`}, 
+            body: JSON.stringify({tenant_id: state.tenantId, companies: portfolioData})
+          });
+        }
+        
+        close();
+        hideHome();
+        window.location.hash = 'portal';
+        activateAssistant('dashboard');
+        setTimeout(()=>activateAssistant('portfolio-admin'), 500);
+        
+      } catch(e) {
+        finishBtn.disabled = false;
+        finishBtn.innerHTML = 'Go to dashboard';
+        console.error('Registration completion failed:', e);
       }
-      close();
-      hideHome();
-      activateAssistant('dashboard');
-      setTimeout(()=>activateAssistant('portfolio-admin'), 300);
     };
 
-    // When step 2 is visible, change controls
-    const obs = new MutationObserver(()=>{
-      const on2 = step2 && step2.style.display!=='none';
-      next.style.display = on2 ? 'none' : next.style.display;
-      create.style.display = on2 ? 'none' : create.style.display;
-      finish.style.display = on2 ? 'inline-flex' : finish.style.display;
-    });
-    if(step2) obs.observe(step2, {attributes:true, attributeFilter:['style']});
+
   })();
 
   // Login modal logic
