@@ -3,14 +3,249 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agency Portal</title>
+  <title>PTX - Portfolio Talent Exchange</title>
   <style>
-  :root{--bg:#0f172a;--panel:#111827;--muted:#9ca3af;--accent:#10b981;--ok:#10b981;--err:#ef4444;--warn:#f59e0b;--headerH:56px;--border:#1f2937;--text:#e5e7eb;--field-bg:#0b1220;--field-border:#334155}
-    *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);transition: background .25s ease, color .25s ease}
-  header{position:sticky;top:0;z-index:10;display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 18px;background: linear-gradient(135deg, rgba(17,24,39,0.95), rgba(15,23,42,0.9)); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(31,41,55,0.6)}
-    header .brand{font-weight:700;letter-spacing:.2px;background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; background-clip: text; color: transparent;}
-    header .user{font-size:14px;color:var(--muted)}
+  :root{
+    /* Enhanced Color System */
+    --bg: #0f172a;
+    --panel: #111827;
+    --muted: #9ca3af;
+    --accent: #10b981;
+    --ok: #10b981;
+    --err: #ef4444;
+    --warn: #f59e0b;
+    --headerH: 56px;
+    --border: #1f2937;
+    --text: #e5e7eb;
+    --field-bg: #0b1220;
+    --field-border: #334155;
+    
+    /* New Professional Gradients */
+    --primary-gradient: linear-gradient(135deg, #0891b2, #0e7490);
+    --secondary-gradient: linear-gradient(135deg, #10b981, #059669);
+    --accent-teal: #14b8a6;
+    --card-bg: rgba(30, 41, 59, 0.8);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-border: rgba(148, 163, 184, 0.2);
+    
+    /* Typography Scale */
+    --font-xs: 0.75rem;
+    --font-sm: 0.875rem;
+    --font-base: 1rem;
+    --font-lg: 1.125rem;
+    --font-xl: 1.25rem;
+    --font-2xl: 1.5rem;
+    --font-3xl: 1.875rem;
+    --font-4xl: 2.25rem;
+    --font-5xl: 3rem;
+    
+    /* Spacing System (8px grid) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+  }
+  
+  *{box-sizing:border-box}
+  
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: 
+      radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
+      var(--bg);
+    color:var(--text);
+    transition: background .25s ease, color .25s ease;
+    line-height: 1.6;
+    font-size: var(--font-base);
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  /* Container System */
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    width: 100%;
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      padding: 0 var(--space-4);
+    }
+  }
+  
+  /* Top Navigation */
+  .top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+  }
+  
+  .top-nav .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-4);
+  }
+  
+  .nav-brand {
+    font-weight: 700;
+    font-size: var(--font-2xl);
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+  
+  .nav-brand:hover {
+    background: linear-gradient(135deg, #14b8a6, #0891b2, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  /* Logged-in user menu */
+  .user-menu{ position:relative; }
+  .user-btn{ display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px; border:1px solid transparent; color:var(--text); background:transparent; cursor:pointer; }
+  .user-btn:hover{ background: rgba(148,163,184,0.10); }
+  .user-dropdown{ position:absolute; right:0; top:calc(100% + 8px); min-width:200px; background: var(--panel); border:1px solid var(--glass-border); border-radius:12px; box-shadow: var(--shadow-xl); padding:6px; display:none; z-index: 1500; }
+  .user-dropdown.open{ display:block; animation: fadeIn .15s ease; }
+  .user-dropdown a, .user-dropdown button{ display:flex; width:100%; text-align:left; padding:8px 10px; border-radius:8px; color: var(--text-secondary); text-decoration:none; border:none; background:transparent; cursor:pointer; font-size:14px; }
+  .user-dropdown a:hover, .user-dropdown button:hover{ background: rgba(148,163,184,0.08); color: var(--text); }
+  .dropdown-divider{ height:1px; background: var(--border); margin:6px 4px; }
+  
+  .nav-btn {
+    padding: var(--space-2) var(--space-4);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: var(--font-sm);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+  }
+  
+  .nav-btn:hover {
+    color: var(--text-primary);
+    background: rgba(148, 163, 184, 0.1);
+  }
+  
+  .nav-btn.primary {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  }
+  
+  .nav-btn.primary:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  }
+  
+  /* Main content spacing for fixed header */
+  body { padding-top: 80px; }
+  
+  header{
+    position:sticky;
+    top:0;
+    z-index:1000;
+    display:flex;
+    gap:var(--space-4);
+    align-items:center;
+    justify-content:space-between;
+    padding:var(--space-4) var(--space-6);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+  }
+  
+  header:hover{
+    background: rgba(15, 23, 42, 0.98);
+    border-bottom-color: rgba(16, 185, 129, 0.3);
+  }
+  
+  header .brand{
+    font-weight:700;
+    font-size: var(--font-xl);
+    letter-spacing:-0.025em;
+    background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: all 0.3s ease;
+  }
+  
+  header .brand:hover{
+    background: linear-gradient(135deg, #14b8a6, #0891b2, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  
+  header .user{
+    font-size: var(--font-sm);
+    color:var(--text-secondary);
+    font-weight: 500;
+  }
   header .ai-status{ display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
   header .ai-status .pulse{ width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
   /* Header configuration button */
@@ -348,7 +583,12 @@
   /* Hide the General sub-tabs when on homepage */
   body.home-active #general .subtabs{ display:none !important; }
   body.home-active header{ display:none !important; }
-  body.home-active .wrap{ max-width:1180px; padding:0 22px 50px; }
+  body.home-active .wrap{ 
+    max-width:1400px; 
+    padding:0 var(--space-6) var(--space-20);
+    margin: 0 auto;
+  }
+  
   /* Force-hide portfolio dashboard on homepage, even if scripts toggle it */
   body.home-active #portfolioDashboard{ display:none !important; }
   /* Force-hide all dashboard/workspace panels on homepage */
@@ -359,35 +599,631 @@
   body.home-active .mock-chat-input{ display:none !important; }
   /* Extra safety: hide private blocks anytime the body lacks an explicit auth flag */
   body:not(.auth) [data-auth="private"]{ display:none !important; }
-  #dashboard.homepage{ padding:0; background:transparent; border:none; margin:0; }
-  .home-hero{ min-height:calc(100dvh - var(--headerH)); display:grid; grid-template-columns: 1.15fr 0.85fr; gap:28px; align-items:center; }
-  @media(max-width:980px){ .home-hero{ grid-template-columns:1fr; padding:24px 0 10px; } }
-  .home-copy h1{ font-size:44px; line-height:1.1; margin:0 0 12px; letter-spacing:.2px; }
-  @media(max-width:720px){ .home-copy h1{ font-size:34px; } }
-  .home-copy h1 .accent{ color: var(--accent); }
-  .home-copy h1 .accent{ background: linear-gradient(90deg, #22d3ee, #60a5fa); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .home-copy p.lead{ color:#cbd5e1; font-size:18px; margin:0 0 18px; }
-  .pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(34,211,238,.12); color:#a5f3fc; border:1px solid rgba(34,211,238,.25); font-size:12px; font-weight:600; }
-  .benefits{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px; }
-  @media(max-width:720px){ .benefits{ grid-template-columns:1fr; } }
-  .benefit{ background:#1b2337; border:1px solid #2b3b55; border-radius:12px; padding:12px; }
-  .benefit h4{ margin:0 0 4px; font-size:14px; color:#e5e7eb }
-  .benefit p{ margin:0; font-size:13px; color:#9ca3af }
-  .features{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-  @media(max-width:720px){ .features{ grid-template-columns:1fr; } }
-  .feature{ background:#0b1324; border:1px solid #1f2a44; border-radius:12px; padding:12px; }
-  .feature h5{ margin:0 0 6px; font-size:13px; color:#cbd5e1; letter-spacing:.2px }
-  .langs{ font-size:11px; color:#93c5fd; opacity:.9; }
-  .home-card{ background:#0a1428; border:1px solid #1f2a44; border-radius:14px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-  .home-side{ display:flex; flex-direction:column; gap:12px; }
-  .home-auth .grid2{ grid-template-columns:1fr 1fr; }
-  .home-auth label{ font-size:12px; color:#9ca3af; display:block; margin:4px 0; }
-  .home-auth input{ background:#0b1020; border:1px solid #223150; }
-  .home-auth .primary{ width:100%; padding:12px 14px; font-weight:700; }
-  .divider{ height:1px; background:linear-gradient(90deg, transparent, #1f2a44, transparent); margin:4px 0; }
-  .trust{ display:flex; gap:14px; flex-wrap:wrap; color:#9ca3af; font-size:12px; }
-  .tag{ border:1px solid #374151; border-radius:999px; padding:4px 8px; background:#111827; color:#9ca3af; font-size:11px; transition:all .15s }
-  .tag:hover{ border-color:#3b82f6; color:#c7d2fe }
+  
+  #dashboard.homepage{ 
+    padding:0; 
+    background:transparent; 
+    border:none; 
+    margin:0;
+  }
+  .home-hero{ 
+    min-height:calc(100dvh - 80px); 
+    padding: var(--space-12) 0;
+  }
+  
+  .home-hero .container {
+    display:grid; 
+    grid-template-columns: 1.8fr 1fr; 
+    gap:var(--space-16); 
+    align-items:center;
+    min-height: calc(100vh - 160px);
+  }
+  
+  @media(max-width:980px){ 
+    .home-hero .container { 
+      grid-template-columns:1fr; 
+      gap:var(--space-12);
+      min-height: auto;
+    }
+    
+    .home-hero {
+      padding:var(--space-8) 0 var(--space-4);
+    }
+  }
+  
+  .home-copy h1{ 
+    font-size:clamp(2.25rem, 5vw, 3.5rem); 
+    line-height:1.1; 
+    margin:0 0 var(--space-6); 
+    letter-spacing:-0.02em;
+    font-weight:800;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  @media(max-width:720px){ 
+    .home-copy h1{ 
+      font-size:clamp(1.875rem, 8vw, 2.25rem);
+    } 
+  }
+  
+  .home-copy h1 .accent{ 
+    background: linear-gradient(135deg, #10b981, #06b6d4, #3b82f6);
+    -webkit-background-clip:text; 
+    background-clip:text; 
+    color:transparent;
+  }
+  .home-copy p.lead{ 
+    color:var(--text-secondary); 
+    font-size:clamp(1.125rem, 3vw, 1.25rem); 
+    margin:0 0 var(--space-8);
+    line-height:1.7;
+    font-weight:400;
+    max-width: 90%;
+  }
+  
+  /* Value Props */
+  .value-item {
+    text-align: center;
+    padding: var(--space-4);
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  .value-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    transform: translateY(-2px);
+  }
+  
+  .value-number {
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  
+  .value-label {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    margin-top: var(--space-1);
+    font-weight: 600;
+  }
+  
+  /* Sidebar Content */
+  .why-now-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  
+  .why-item {
+    padding: var(--space-2);
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.05);
+    border-left: 3px solid var(--accent);
+  }
+  
+  .why-item strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: var(--font-sm);
+    margin-bottom: var(--space-1);
+  }
+  
+  .why-item p {
+    margin: 0;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  
+  .roi-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .roi-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2);
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.05);
+  }
+  
+  .roi-label {
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  
+  .roi-value {
+    font-size: var(--font-sm);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  
+  /* Footer */
+  .ptx-footer {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: var(--space-12) 0 var(--space-8);
+    margin-top: var(--space-16);
+  }
+  
+  .footer-content {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: var(--space-12);
+    margin-bottom: var(--space-8);
+  }
+  
+  .footer-brand .nav-brand {
+    margin-bottom: var(--space-3);
+  }
+  
+  .footer-tagline {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    line-height: 1.6;
+    margin: 0;
+    max-width: 400px;
+  }
+  
+  .footer-links {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-8);
+  }
+  
+  .footer-section h5 {
+    color: var(--text-primary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    margin: 0 0 var(--space-3);
+  }
+  
+  .footer-section a {
+    display: block;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: var(--font-sm);
+    margin-bottom: var(--space-2);
+    transition: color 0.3s ease;
+  }
+  
+  .footer-section a:hover {
+    color: var(--accent);
+  }
+  
+  .footer-bottom {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  
+  .footer-bottom p {
+    margin: 0;
+    font-size: var(--font-xs);
+    color: var(--muted);
+  }
+  
+  @media (max-width: 768px) {
+    .footer-content {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+    }
+    
+    .footer-links {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+  }
+  
+  .pill{ 
+    display:inline-flex; 
+    align-items:center; 
+    gap:var(--space-2); 
+    padding:var(--space-2) var(--space-4); 
+    border-radius:999px; 
+    background:rgba(16,185,129,.12); 
+    color:#6ee7b7; 
+    border:1px solid rgba(16,185,129,.25); 
+    font-size: var(--font-sm); 
+    font-weight:600;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  
+  .pill:hover{
+    background:rgba(16,185,129,.18);
+    border-color:rgba(16,185,129,.4);
+    transform: translateY(-1px);
+  }
+  .benefits{ 
+    display:grid; 
+    grid-template-columns:1fr 1fr; 
+    gap:var(--space-4); 
+    margin:var(--space-6) 0;
+  }
+  
+  @media(max-width:720px){ 
+    .benefits{ 
+      grid-template-columns:1fr; 
+    } 
+  }
+  
+  .benefit{ 
+    background: var(--glass-bg);
+    border:1px solid var(--glass-border); 
+    border-radius: var(--radius-xl); 
+    padding:var(--space-5);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  
+  .benefit:hover{
+    transform: translateY(-2px);
+    border-color: rgba(16,185,129,.3);
+    box-shadow: var(--shadow-lg);
+    will-change: transform;
+  }
+  
+  .benefit h4{ 
+    margin:0 0 var(--space-2); 
+    font-size: var(--font-lg); 
+    color:var(--text-primary);
+    font-weight: 600;
+  }
+  
+  .benefit p{ 
+    margin:0; 
+    font-size: var(--font-sm); 
+    color:var(--text-secondary);
+    line-height: 1.6;
+  }
+  
+  .features{ 
+    display:grid; 
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); 
+    gap:var(--space-4); 
+    margin-top:var(--space-6);
+  }
+  
+  @media(max-width:720px){ 
+    .features{ 
+      grid-template-columns:1fr; 
+    } 
+  }
+  
+  .feature{ 
+    background: var(--glass-bg);
+    border:1px solid var(--glass-border); 
+    border-radius: var(--radius-xl); 
+    padding:var(--space-5);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .feature::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+  
+  .feature:hover{
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    will-change: transform;
+  }
+  
+  .feature h5{ 
+    margin:0 0 var(--space-3); 
+    font-size: var(--font-lg); 
+    color:var(--text-primary); 
+    font-weight: 600;
+  }
+  .langs{ 
+    font-size: var(--font-sm); 
+    color:#93c5fd; 
+    opacity:.9; 
+    font-weight: 500;
+    letter-spacing: 0.025em;
+  }
+  
+  .home-card{ 
+    background: var(--glass-bg);
+    border:1px solid var(--glass-border); 
+    border-radius: var(--radius-2xl); 
+    padding:var(--space-6); 
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .home-card::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+  
+  .home-card:hover{
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2xl);
+    border-color: rgba(16,185,129,.2);
+    will-change: transform;
+  }
+  
+  .home-side{ 
+    display:flex; 
+    flex-direction:column; 
+    gap:var(--space-6);
+    position: sticky;
+    top: calc(var(--headerH) + var(--space-8));
+  }
+  
+  .home-auth .grid2{ 
+    grid-template-columns:1fr 1fr; 
+  }
+  
+  .home-auth label{ 
+    font-size: var(--font-sm); 
+    color:var(--text-secondary); 
+    display:block; 
+    margin:var(--space-2) 0; 
+    font-weight: 500;
+  }
+  
+  .home-auth input{ 
+    background: rgba(11,16,32,0.8);
+    border:1px solid var(--glass-border); 
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+  
+  .home-auth input:focus{
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16,185,129,.1);
+    outline: none;
+  }
+  
+  .home-auth .primary{ 
+    width:100%; 
+    padding: var(--space-3) var(--space-4); 
+    font-weight:700;
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: var(--radius-lg);
+    color: white;
+    font-size: var(--font-base);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .home-auth .primary:hover{
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, #059669, #0891b2);
+  }
+  .divider{ 
+    height:1px; 
+    background:linear-gradient(90deg, transparent, var(--glass-border), transparent); 
+    margin: var(--space-4) 0;
+  }
+  
+  .trust{ 
+    display:flex; 
+    gap: var(--space-4); 
+    flex-wrap:wrap; 
+    color:var(--text-secondary); 
+    font-size: var(--font-sm);
+    margin-top: var(--space-6);
+  }
+  
+  .tag{ 
+    border:1px solid var(--glass-border); 
+    border-radius:999px; 
+    padding: var(--space-2) var(--space-4); 
+    background: var(--glass-bg); 
+    color:var(--text-secondary); 
+    font-size: var(--font-xs); 
+    transition:all .3s ease;
+    backdrop-filter: blur(10px);
+    font-weight: 500;
+  }
+  
+  .tag:hover{ 
+    border-color: var(--accent); 
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    background: rgba(16,185,129,.1);
+  }
+
+  /* Responsive Design Enhancements */
+  @media(max-width:768px){
+    .home-hero{
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+      padding: var(--space-6) 0;
+    }
+    
+    .home-copy h1{
+      text-align: center;
+    }
+    
+    .home-copy p.lead{
+      text-align: center;
+      max-width: 100%;
+    }
+    
+    .benefits{
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+    
+    .features{
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+    
+    .home-auth .grid2{
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+    
+    .trust{
+      justify-content: center;
+    }
+  }
+  
+  @media(max-width:480px){
+    body.home-active .wrap{
+      padding: 0 var(--space-4) var(--space-16);
+    }
+    
+    .home-card{
+      padding: var(--space-4);
+    }
+    
+    .benefit, .feature{
+      padding: var(--space-4);
+    }
+    
+    .pill{
+      font-size: var(--font-xs);
+      padding: var(--space-1) var(--space-3);
+    }
+  }
+
+  /* Loading States */
+  .loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Animation System */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes fadeInRight {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .animate-fadeInLeft {
+    animation: fadeInLeft 0.6s ease-out forwards;
+  }
+  
+  .animate-fadeInRight {
+    animation: fadeInRight 0.6s ease-out forwards;
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s infinite;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Scroll reveal initial state */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease-out;
+  }
+  
+  .scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
 
   /* Registration modal (3-step wizard) */
   .modal{display:none;position:fixed;inset:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000}
@@ -472,8 +1308,45 @@
   .gap-item{ background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; }
   .gap-item strong{ color: var(--text); display: block; margin-bottom: 4px; }
   .gap-details{ font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-  .ai-suggestion-btn{ background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; border: none; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
-  .ai-suggestion-btn:hover{ transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+  .ai-suggestion-btn{ 
+    background: var(--primary-gradient);
+    color: #fff; 
+    border: none; 
+    border-radius: var(--radius-lg); 
+    padding: var(--space-3) var(--space-5); 
+    font-size: var(--font-base); 
+    font-weight: 700; 
+    cursor: pointer; 
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .ai-suggestion-btn::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .ai-suggestion-btn:hover::before{
+    left: 100%;
+  }
+  
+  .ai-suggestion-btn:hover{ 
+    transform: translateY(-2px) scale(1.02); 
+    box-shadow: var(--shadow-xl);
+    background: linear-gradient(135deg, #059669, #0891b2);
+  }
+  
+  .ai-suggestion-btn:active{
+    transform: translateY(0) scale(0.98);
+  }
   
   /* Recommendations */
   .recommendation{ background: rgba(0,0,0,0.1); border-left: 3px solid var(--accent); padding: 8px 12px; margin-bottom: 8px; font-size: 13px; color: var(--text); }
@@ -1466,6 +2339,34 @@
   </style>
 </head>
 <body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="container">
+      <a href="#" class="nav-brand">PTX</a>
+      <!-- Logged-out actions -->
+      <div class="nav-actions" id="loggedOutNav">
+        <button id="demoBtn" class="nav-btn">Registration</button>
+        <button id="loginToggle" class="nav-btn primary">Login</button>
+      </div>
+
+      <!-- Logged-in actions -->
+      <div class="nav-actions" id="loggedInNav" style="display:none">
+        <div class="user-menu">
+          <button class="user-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
+            <span id="userDisplayName">User</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+          <div class="user-dropdown" id="userDropdown" role="menu" aria-label="User menu">
+            <button id="headerConfigBtn" role="menuitem" class="btn-config">Configuration</button>
+            <button id="topPropsBtn" role="menuitem">Properties</button>
+            <div class="dropdown-divider"></div>
+            <button id="topLogoutBtn" role="menuitem">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
   <!-- PTX AI Recruitment Sidebar -->
   <aside id="sidebar" class="sidebar" role="navigation" aria-label="PTX AI Navigation">
     <div class="top">
@@ -1685,18 +2586,7 @@
     </div>
   </aside>
 
-  <header role="banner" aria-label="AI Recruiter Copilot">
-    <div class="brand" id="headerBrand">Recruiter AI Copilot</div>
-    <div class="ai-status">
-      <span class="pulse"></span>
-      <span>AI Systems Online</span>
-    </div>
-    <div class="user" id="userArea">
-  <button id="headerConfigBtn" class="btn-config" style="display:none" title="Open configuration">⚙️ Configuration</button>
-      <span id="userSlot">לא מחובר</span>
-      <button id="logoutBtn" class="btn-small" style="margin-inline-start:8px;display:none">Logout</button>
-    </div>
-  </header>
+  <!-- Legacy header removed: unified top-nav handles all states -->
   <div class="wrap" role="main" aria-label="AI Copilot Workspace">
   <div id="toast" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
 
@@ -3229,40 +4119,58 @@
     </div>
 
       <section class="home-hero">
-        <div class="home-copy">
-          <span class="pill">🚀 Unified Talent Gateway · Apply Once to the Fund</span>
-          <h1>
-            <span class="accent">Unified Talent Gateway</span> — Portfolio-Wide Hiring Excellence
-          </h1>
-          <p class="lead">
-            Transform your fund's portfolio hiring with a single entry point for candidates. One application distributes across all portfolio opportunities through AI-orchestrated matching, governance, and talent sharing.
-          </p>
-          <div class="langs">Fund Management · Portfolio Companies · Candidates</div>
-          <div style="margin:18px 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button id="joinCta" class="ai-suggestion-btn" style="font-size:16px;padding:12px 18px">✨ Join</button>
-            <a href="#" id="viewDemo" style="color:#93c5fd;text-decoration:none;border-bottom:1px dotted #334155">View demo</a>
+        <div class="container">
+          <div class="home-copy">
+            <span class="pill scroll-reveal animate-float">🎯 PTX · Fund-Level Talent Network</span>
+            <h1 class="scroll-reveal">
+              <span class="accent">PTX</span> — Fund-Level Talent Network<br>
+              <span style="font-size: 0.8em; color: var(--text-secondary);">McKinsey-style Deep Dive</span>
+            </h1>
+            <p class="lead scroll-reveal">
+              Portfolio companies hire in silos. Up to 20–30% of rejected candidates are "silver medalists" who would fit elsewhere in the same fund, yet there is no systematic routing. PTX provides a fund-branded talent network operated by AI agents that capture, match, and route candidates across your portfolio with measurable ROI.
+            </p>
+            
+            <div class="value-props scroll-reveal" style="margin: 24px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+              <div class="value-item">
+                <div class="value-number">$80-100M</div>
+                <div class="value-label">NAV Uplift</div>
+              </div>
+              <div class="value-item">
+                <div class="value-number">$8-12M</div>
+                <div class="value-label">Cost Savings</div>
+              </div>
+              <div class="value-item">
+                <div class="value-number">100-180</div>
+                <div class="value-label">Recovered Hires/Year</div>
+              </div>
+            </div>
+            
+            <div class="langs scroll-reveal">Platform Teams · Portfolio Companies · Fund Operations</div>
+            <div class="scroll-reveal" style="margin:24px 0 6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <button id="joinCta" class="ai-suggestion-btn" style="font-size:16px;padding:12px 24px; background: linear-gradient(135deg, #10b981, #059669);">🚀 Get Started</button>
+              <span style="color: var(--text-secondary); font-size: 14px;">Apply once to the fund. Be considered everywhere.</span>
           </div>
           
           <!-- Agent-Orchestrated Hiring Layer -->
-          <div style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1)); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 20px; margin: 20px 0;">
+          <div class="scroll-reveal" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1)); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 20px; margin: 20px 0;">
             <h3 style="margin: 0 0 16px; color: var(--accent); font-size: 18px; display: flex; align-items: center; gap: 8px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               Agent-Orchestrated Hiring Layer
             </h3>
             <div class="benefits">
-              <div class="benefit">
+              <div class="benefit scroll-reveal">
                 <h4>📥 Job Ingestion Agents</h4>
                 <p>Automatically collect and normalize all portfolio company openings across different ATS systems into a unified talent marketplace.</p>
               </div>
-              <div class="benefit">
+              <div class="benefit scroll-reveal">
                 <h4>🎯 Rejection Intercept Agents</h4>
                 <p>Capture silver medalists at rejection stage and redirect them to relevant opportunities across your portfolio companies.</p>
               </div>
-              <div class="benefit">
+              <div class="benefit scroll-reveal">
                 <h4>🤝 Matching Agents</h4>
                 <p>Route candidates to relevant portfolio companies with explainable AI reasoning and transparent scoring mechanisms.</p>
               </div>
-              <div class="benefit">
+              <div class="benefit scroll-reveal">
                 <h4>🛡️ Governance Agents</h4>
                 <p>Enforce GDPR compliance, maintain consistent brand language, and ensure respectful candidate communications across all touchpoints.</p>
               </div>
@@ -3270,26 +4178,26 @@
           </div>
 
           <!-- Portfolio-Wide Value Stack -->
-          <div class="features">
-            <div class="feature" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05)); border-color: rgba(59,130,246,0.3);">
+          <div class="features scroll-reveal">
+            <div class="feature scroll-reveal" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05)); border-color: rgba(59,130,246,0.3);">
               <h5>💼 Fund Value</h5>
               <p><strong>NAV Uplift:</strong> Faster portfolio scaling, reduced failure risk, accelerated time-to-market for portfolio companies.</p>
             </div>
-            <div class="feature" style="background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(147,51,234,0.05)); border-color: rgba(168,85,247,0.3);">
+            <div class="feature scroll-reveal" style="background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(147,51,234,0.05)); border-color: rgba(168,85,247,0.3);">
               <h5>🏢 Portfolio Company Value</h5>
               <p><strong>Cost & Speed:</strong> Pre-qualified talent pool, lower agency dependency, dramatically shorter time-to-fill metrics.</p>
             </div>
-            <div class="feature" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05)); border-color: rgba(16,185,129,0.3);">
+            <div class="feature scroll-reveal" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05)); border-color: rgba(16,185,129,0.3);">
               <h5>👥 Candidate Value</h5>
               <p><strong>Experience:</strong> Multiple opportunities from single application, respectful rejections, fully transparent hiring process.</p>
             </div>
-            <div class="feature" style="background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(217,119,6,0.05)); border-color: rgba(245,158,11,0.3);">
+            <div class="feature scroll-reveal" style="background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(217,119,6,0.05)); border-color: rgba(245,158,11,0.3);">
               <h5>📊 Data-Driven Insights</h5>
               <p><strong>Analytics:</strong> Portfolio-wide talent intelligence, market insights, and predictive hiring success metrics.</p>
             </div>
           </div>
           
-          <div class="trust" style="margin-top:20px">
+          <div class="trust scroll-reveal" style="margin-top:20px">
             <span class="tag">Portfolio-Wide Talent Intelligence</span>
             <span class="tag">AI-Orchestrated Matching</span>
             <span class="tag">GDPR Compliant by Design</span>
@@ -3298,49 +4206,90 @@
         </div>
 
         <div class="home-side">
-          <div class="home-card home-auth" role="form" aria-labelledby="home-login-heading">
-            <h3 id="home-login-heading" style="margin:0 0 8px">Login</h3>
-            <div class="grid2">
-              <div>
-                <label for="loginEmail">Email</label>
-                <input id="loginEmail" placeholder="name@company.com" autocomplete="email" inputmode="email" aria-required="true" />
+          <div class="home-card scroll-reveal">
+            <h4 style="margin:0 0 12px; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Why PTX Now?
+            </h4>
+            <div class="why-now-items">
+              <div class="why-item">
+                <strong>✅ Hiring Budget Shift</strong>
+                <p>From paid sourcing to productivity tools</p>
               </div>
-              <div>
-                <label for="loginPass">Password</label>
-                <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" aria-required="true" />
+              <div class="why-item">
+                <strong>✅ ATS API Access</strong>
+                <p>Workday, Greenhouse, Lever now API-accessible</p>
               </div>
-            </div>
-            <div style="margin-top:10px"><button class="primary" id="loginBtn" aria-label="Login to Recruiter Copilot">Login</button></div>
-            <div class="hint" id="loginHint" role="alert" aria-live="polite"></div>
-            <div class="divider"></div>
-            <h3 id="home-signup-heading" style="margin:8px 0 8px">Create an account</h3>
-            <div class="grid2" role="group" aria-labelledby="home-signup-heading">
-              <div>
-                <label for="regCompany">Company</label>
-                <input id="regCompany" placeholder="Company Inc." autocomplete="organization" aria-required="true" />
+              <div class="why-item">
+                <strong>✅ LLM/Embeddings</strong>
+                <p>Enable explainable cross-role matching</p>
               </div>
-              <div>
-                <label for="regName">Full name</label>
-                <input id="regName" placeholder="Jane Doe" autocomplete="name" aria-required="true" />
-              </div>
-              <div>
-                <label for="regEmail">Email</label>
-                <input id="regEmail" placeholder="name@company.com" autocomplete="email" inputmode="email" aria-required="true" />
-              </div>
-              <div>
-                <label for="regPass">Password</label>
-                <input id="regPass" type="password" placeholder="Create a strong password" autocomplete="new-password" aria-required="true" />
+              <div class="why-item">
+                <strong>✅ Platform Operations</strong>
+                <p>a16z, Sequoia, Index run Platform ops</p>
               </div>
             </div>
-            <div style="margin-top:10px"><button class="primary" id="signupBtn" aria-label="Create a new Recruiter Copilot account">Create account</button></div>
-            <div class="hint" id="regHint" role="alert" aria-live="polite"></div>
           </div>
-          <div class="home-card">
-            <h4 style="margin:0 0 6px">Platform Vision</h4>
-            <p class="small muted" style="margin:0">Transforming hiring by replacing recruitment agencies with a community-powered AI marketplace. Join the revolution that gives every candidate a second chance while reducing hiring costs and improving outcomes for employers.</p>
+          
+          <div class="home-card scroll-reveal">
+            <h4 style="margin:0 0 8px; color: var(--accent);">ROI Model</h4>
+            <div class="roi-metrics">
+              <div class="roi-item">
+                <div class="roi-label">30-Company Fund</div>
+                <div class="roi-value">~600 eng hires/year</div>
+              </div>
+              <div class="roi-item">
+                <div class="roi-label">Typical Recovery</div>
+                <div class="roi-value">100-180 hires/year</div>
+              </div>
+              <div class="roi-item">
+                <div class="roi-label">Direct Savings</div>
+                <div class="roi-value">$8-12M agency + vacancy</div>
+              </div>
+              <div class="roi-item">
+                <div class="roi-label">ARR Acceleration</div>
+                <div class="roi-value">$10M across 5 portcos</div>
+              </div>
+            </div>
+            <p class="small muted" style="margin:8px 0 0;">At 8-10× SaaS multiples = $80-100M NAV uplift</p>
           </div>
         </div>
       </section>
+      
+      <!-- Footer -->
+      <footer class="ptx-footer">
+        <div class="container">
+          <div class="footer-content">
+            <div class="footer-brand">
+              <div class="nav-brand">PTX</div>
+              <p class="footer-tagline">Portfolio Talent Exchange - Transforming fund-level hiring through AI-orchestrated talent networks</p>
+            </div>
+            <div class="footer-links">
+              <div class="footer-section">
+                <h5>Platform</h5>
+                <a href="#features">Agent Network</a>
+                <a href="#roi">ROI Calculator</a>
+                <a href="#dashboard">Fund Dashboard</a>
+              </div>
+              <div class="footer-section">
+                <h5>Resources</h5>
+                <a href="#docs">Documentation</a>
+                <a href="#case-studies">Case Studies</a>
+                <a href="#integration">API Integration</a>
+              </div>
+              <div class="footer-section">
+                <h5>Support</h5>
+                <a href="#contact">Contact</a>
+                <a href="#privacy">Privacy Policy</a>
+                <a href="#terms">Terms of Service</a>
+              </div>
+            </div>
+          </div>
+          <div class="footer-bottom">
+            <p>&copy; 2025 Portfolio Talent Exchange. Designed for VC/PE funds and their portfolio companies.</p>
+          </div>
+        </div>
+      </footer>
       </div>
     </div>
 
@@ -3381,6 +4330,36 @@
             <button class="btn primary" id="regCreate" style="display:none">Create account</button>
             <button class="btn primary" id="regFinish" style="display:none">Go to dashboard</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Login to PTX">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div style="font-weight:700; display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Access PTX Platform
+          </div>
+          <button class="modal-close" id="loginClose" aria-label="Close">×</button>
+        </div>
+        <div style="padding: 20px 0;">
+          <div class="field">
+            <label for="modalLoginEmail">Email</label>
+            <input id="modalLoginEmail" placeholder="name@company.com" autocomplete="email" inputmode="email">
+          </div>
+          <div class="field">
+            <label for="modalLoginPass">Password</label>
+            <input id="modalLoginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="hint" id="modalLoginHint"></div>
+          <button class="btn primary" id="modalLoginBtn" style="width: 100%; margin-top: 16px;">
+            Login to Portfolio Network
+          </button>
+        </div>
+        <div style="text-align: center; padding-top: 16px; border-top: 1px solid var(--border);">
+          <p class="small muted">Need access? Contact your Platform team or Fund administrator</p>
         </div>
       </div>
     </div>
@@ -5787,8 +6766,6 @@
       if(dashboard) dashboard.style.display='none';
   const hero = document.querySelector('.home-hero');
   if(hero) hero.style.display = '';
-  const header = document.querySelector('header');
-  if(header) header.style.display = 'none';
   const footer = document.querySelector('.site-footer');
   if(footer) footer.style.display = 'none';
       // Hide portfolio dashboard on homepage
@@ -5816,8 +6793,6 @@
       if(dashboard) dashboard.style.display='none';
   const hero = document.querySelector('.home-hero');
   if(hero) hero.style.display = 'none';
-  const header = document.querySelector('header');
-  if(header) header.style.display = '';
   const footer = document.querySelector('.site-footer');
   if(footer) footer.style.display = '';
       
@@ -5831,9 +6806,71 @@
   // Early homepage/auth gate to prevent any flash of private UI
   (function earlyAuthGate(){
     try{
-      if(!hasAuth()){ showHome(); }
-      else { document.body.classList.add('auth'); }
+      if(!hasAuth()){
+        NavController.showLoggedOut();
+        showHome();
+      } else {
+        document.body.classList.add('auth');
+        NavController.showLoggedIn(state.profile||null);
+      }
     }catch(e){}
+  })();
+
+  // Unified Nav Controller
+  const NavController = {
+    showLoggedOut(){
+      const out = document.getElementById('loggedOutNav');
+      const _in = document.getElementById('loggedInNav');
+      if(out) out.style.display = 'flex';
+      if(_in) _in.style.display = 'none';
+    },
+    showLoggedIn(profile){
+      const out = document.getElementById('loggedOutNav');
+      const _in = document.getElementById('loggedInNav');
+      if(out) out.style.display = 'none';
+      if(_in) _in.style.display = 'flex';
+      const name = profile?.user?.name || profile?.user?.email?.split('@')[0] || 'User';
+      const el = document.getElementById('userDisplayName');
+      if(el) el.textContent = name;
+    }
+  };
+
+  // Lightweight Router using hash (#home | #portal)
+  (function initRouting(){
+    function routeFromHash(){
+      const h = (location.hash||'').replace(/^#/,'') || 'home';
+      if(h === 'portal'){
+        if(hasAuth()){
+          hideHome();
+          showPortfolioDashboard();
+          NavController.showLoggedIn(state.profile||null);
+        } else {
+          // Not authenticated → bounce to home and remember intent
+          window._redirectAfterAuth = 'portal';
+          if(location.hash !== '#home') history.replaceState(null, '', '#home');
+          showHome();
+          NavController.showLoggedOut();
+        }
+      } else {
+        // Default/public
+        showHome();
+        NavController.showLoggedOut();
+      }
+    }
+
+    // Initial route
+    if(!location.hash){
+      history.replaceState(null, '', hasAuth()? '#portal' : '#home');
+    }
+    routeFromHash();
+    window.addEventListener('hashchange', routeFromHash);
+
+    // Brand click → context-aware route
+    const brandEl = document.querySelector('.top-nav .nav-brand');
+    if(brandEl && !brandEl._routeBound){
+      brandEl._routeBound = true;
+      brandEl.addEventListener('click', (e)=>{ e.preventDefault(); location.hash = hasAuth()? '#portal' : '#home'; });
+    }
   })();
 
   // Central matches state controlled by chat/actions and UI
@@ -6497,8 +7534,9 @@
       portfolioDashboard.style.display = 'block';
       // Update title with company name
       updatePortfolioTitle();
-  // Also update the header brand with company name
+  // Also update the top brand and nav state
   if (typeof updateHeaderBrand === 'function') updateHeaderBrand();
+  if (window.state && window.state.profile) NavController.showLoggedIn(window.state.profile);
       // Trigger animations and data loading
       setTimeout(() => {
         updatePortfolioMetrics();
@@ -6515,18 +7553,14 @@
     }
   }
 
-  // Update header green headline with company name
+  // Update top brand (optional: append company)
   function updateHeaderBrand() {
-    const brandEl = document.getElementById('headerBrand');
+    const brandEl = document.querySelector('.top-nav .nav-brand');
     if (!brandEl) return;
     const companyName = (window.state && window.state.profile && window.state.profile.tenant && window.state.profile.tenant.name)
       ? window.state.profile.tenant.name
       : '';
-    if (companyName) {
-      brandEl.innerHTML = `Recruiter AI Copilot · <span style="color: var(--accent); font-weight: 700">${companyName}</span>`;
-    } else {
-      brandEl.textContent = 'Recruiter AI Copilot';
-    }
+    brandEl.textContent = companyName ? `PTX — ${companyName}` : 'PTX';
   }
 
   // Hide portfolio dashboard (for logout or navigation)
@@ -6906,20 +7940,15 @@
   }
 
   function showUser(){
-    const el = document.getElementById('userSlot');
-    const logoutBtn = document.getElementById('logoutBtn');
+  const el = null; // legacy header removed
+  const logoutBtn = null; // legacy header removed
     const homeHero = document.querySelector('.home-hero');
     const wrap = document.querySelector('.wrap');
     const sidebar = document.getElementById('sidebar');
     const header = document.querySelector('header');
     const footer = document.querySelector('.site-footer');
     if(hasAuth()){
-      const name = state.profile?.user?.name || '';
-      const comp = state.profile?.tenant?.name || '';
-      el.textContent = `שלום ${name} (${comp})`;
-  if(logoutBtn) logoutBtn.style.display = '';
-  const cfgBtn = document.getElementById('headerConfigBtn');
-  if(cfgBtn) cfgBtn.style.display = '';
+      NavController.showLoggedIn(state.profile||null);
       // Hide homepage hero after login
       if(homeHero) homeHero.style.display = 'none';
       if(sidebar) sidebar.style.display = 'block';
@@ -6927,10 +7956,7 @@
       if(header) header.style.display = '';
       if(footer) footer.style.display = '';
     } else {
-      el.textContent = 'לא מחובר';
-  if(logoutBtn) logoutBtn.style.display = 'none';
-  const cfgBtn = document.getElementById('headerConfigBtn');
-  if(cfgBtn) cfgBtn.style.display = 'none';
+      NavController.showLoggedOut();
       // Show homepage only when logged out
       if(homeHero) homeHero.style.display = '';
       if(sidebar) sidebar.style.display = 'none';
@@ -7290,22 +8316,7 @@
   
   setTimeout(updateTabKpis, 500);
   setInterval(updateTabKpis, 60000);
-  const _logoutBtn = document.getElementById('logoutBtn');
-  if(_logoutBtn) _logoutBtn.onclick = ()=>{
-    // Clear auth + UI to avoid any stale cross-tenant view
-    state.token=null; state.apiKey=null; state.tenantId=null; state.profile=null;
-    try{ localStorage.removeItem('apiKey'); localStorage.removeItem('tenantId'); localStorage.removeItem('token'); }catch(e){}
-    try{
-  ['jobsT','candT','afBody','matchesT','chatLog'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=''; });
-  ['jobsMeta','candMeta','matchesMeta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
-      ['jobModal','candidateModal','matchesModal','letterModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
-    }catch(e){}
-  showUser();
-  // Hide portfolio dashboard on logout
-  hidePortfolioDashboard();
-  // Switch to homepage full-screen
-  try{ showHome(); }catch(e){}
-  };
+  // Legacy header logout handler removed; using doLogout()
 
   // Registration wizard logic
   (function initRegistration(){
@@ -7396,10 +8407,189 @@
     if(step2) obs.observe(step2, {attributes:true, attributeFilter:['style']});
   })();
 
+  // Login modal logic
+  (function initLoginModal(){
+    const modal = document.getElementById('loginModal');
+    const loginToggle = document.getElementById('loginToggle');
+    const closeBtn = document.getElementById('loginClose');
+    const loginBtn = document.getElementById('modalLoginBtn');
+    const emailInput = document.getElementById('modalLoginEmail');
+    const passInput = document.getElementById('modalLoginPass');
+    const hint = document.getElementById('modalLoginHint');
+
+    function open(){ 
+      if(modal){ 
+        modal.style.display='block'; 
+        modal.setAttribute('aria-hidden','false'); 
+        if(emailInput) emailInput.focus();
+      } 
+    }
+    function close(){ 
+      if(modal){ 
+        modal.style.display='none'; 
+        modal.setAttribute('aria-hidden','true'); 
+        if(hint) hint.textContent = '';
+        if(emailInput) emailInput.value = '';
+        if(passInput) passInput.value = '';
+      } 
+    }
+
+    // Event listeners
+    if(loginToggle) loginToggle.onclick = (e)=>{ e.preventDefault(); open(); };
+    if(closeBtn) closeBtn.onclick = close;
+    
+    // Handle Enter key in form
+    [emailInput, passInput].forEach(input => {
+      if(input) {
+        input.addEventListener('keydown', (e) => {
+          if(e.key === 'Enter') {
+            e.preventDefault();
+            loginBtn.click();
+          }
+        });
+      }
+    });
+
+    // Login button handler
+    if(loginBtn) {
+      loginBtn.onclick = async () => {
+        const email = emailInput?.value?.trim() || '';
+        const password = passInput?.value || '';
+        
+        if(hint) hint.textContent = '';
+        if(!email || !password) {
+          if(hint) hint.textContent = 'Please enter both email and password.';
+          return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Logging in...';
+
+        try {
+          const response = await apiFetch(`${API}/auth/login`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, password})
+          });
+
+          if(!response.ok) {
+            throw new Error(await response.text() || `HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+          state.token = result.token;
+          state.tenantId = result.tenant_id;
+
+          // Get API key
+          try {
+            const keyResponse = await apiFetch(`${API}/auth/apikey`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({tenant_id: state.tenantId, name: 'portal'})
+            });
+            const keyResult = await keyResponse.json();
+            state.apiKey = keyResult.key;
+          } catch(e) {
+            console.warn('Could not create API key:', e);
+          }
+
+          // Save to localStorage
+          try {
+            localStorage.setItem('apiKey', state.apiKey || '');
+            localStorage.setItem('tenantId', state.tenantId || '');
+            localStorage.setItem('token', state.token || '');
+          } catch(e) {
+            console.warn('Could not save to localStorage:', e);
+          }
+
+          // Get user profile
+          try {
+            const profileResponse = await apiFetch(`${API}/auth/me`, {
+              headers: {'Authorization': `Bearer ${state.token}`}
+            });
+            state.profile = profileResponse.ok ? await profileResponse.json() : null;
+          } catch(e) {
+            console.warn('Could not fetch profile:', e);
+          }
+
+          // Success - close modal and route to portal
+          close();
+          const dest = window._redirectAfterAuth || 'portal';
+          delete window._redirectAfterAuth;
+          if(dest === 'portal'){
+            if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
+            hideHome();
+            showPortfolioDashboard();
+            NavController.showLoggedIn(state.profile||null);
+            // Default assistant on entry
+            setTimeout(()=> activateAssistant('job-gap-analyzer'), 50);
+            setTimeout(startPortfolioRealTimeUpdates, 100);
+          }
+          
+        } catch(error) {
+          if(hint) hint.textContent = `Login failed: ${error.message || error}`;
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Login to Portfolio Network';
+        }
+      };
+    }
+
+    // Close modal when clicking outside
+    if(modal) {
+      modal.addEventListener('click', (e) => {
+        if(e.target === modal) close();
+      });
+    }
+  })();
+
+  // Demo/Registration button handler
+  (function initDemoButton(){
+    const demoBtn = document.getElementById('demoBtn');
+    if(demoBtn) {
+      demoBtn.onclick = (e) => {
+        e.preventDefault();
+        const modal = document.getElementById('registrationModal');
+        if(modal) {
+          modal.style.display = 'block';
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      };
+    }
+  })();
+
   // Admin button handler
   (function initAdminButton(){
     const btn = document.getElementById('adminBtn');
-    if(btn){ btn.addEventListener('click', ()=>{ hideHome(); activateAssistant('portfolio-admin'); }); }
+    if(btn){ btn.addEventListener('click', ()=>{ 
+      if(!hasAuth()) { location.hash = '#home'; return; }
+      if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
+      hideHome(); 
+      showPortfolioDashboard();
+      activateAssistant('portfolio-admin'); 
+    }); }
+  })();
+
+  // Top-nav user menu and actions
+  (function initTopNav(){
+    const menuBtn = document.getElementById('userMenuBtn');
+    const menu = document.getElementById('userDropdown');
+    const propsBtn = document.getElementById('topPropsBtn');
+    const logoutBtn = document.getElementById('topLogoutBtn');
+    function openMenu(v){ if(!menu) return; menu.classList.toggle('open', !!v); if(menuBtn) menuBtn.setAttribute('aria-expanded', v?'true':'false'); }
+    if(menuBtn && !menuBtn._bound){ menuBtn._bound=true; menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openMenu(!menu.classList.contains('open')); }); }
+    document.addEventListener('click', (e)=>{ if(menu && menu.classList.contains('open')) openMenu(false); });
+    if(!window._topNavEscBound){
+      window._topNavEscBound = true;
+      document.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape' && menu && menu.classList.contains('open')){
+          openMenu(false);
+          if(menuBtn) menuBtn.focus();
+        }
+      });
+    }
+    if(propsBtn && !propsBtn._bound){ propsBtn._bound=true; propsBtn.addEventListener('click', (e)=>{ e.preventDefault(); openMenu(false); const popup=document.getElementById('userProperties'); if(popup){ popup.classList.add('open'); } }); }
+    if(logoutBtn && !logoutBtn._bound){ logoutBtn._bound=true; logoutBtn.addEventListener('click', (e)=>{ e.preventDefault(); openMenu(false); doLogout(); }); }
   })();
 
   // Sidebar (ChatGPT-like) wiring
@@ -7445,10 +8635,7 @@
     }
     if(sideLogout && !sideLogout._bound){
       sideLogout._bound = true;
-      sideLogout.addEventListener('click', ()=>{
-        const l = document.getElementById('logoutBtn');
-        if(l) l.click();
-      });
+      sideLogout.addEventListener('click', ()=>{ doLogout(); });
     }
 
     // User popup toggle
@@ -7487,6 +8674,16 @@
     function onChange(){ if(mq.matches){ sidebar.classList.remove('open'); } }
     try{ mq.addEventListener('change', onChange); }catch(e){ mq.onchange = onChange; }
   })();
+
+  // Unified logout
+  function doLogout(){
+    try{ localStorage.removeItem('apiKey'); localStorage.removeItem('tenantId'); localStorage.removeItem('token'); }catch{}
+    state.token = null; state.apiKey = null; state.tenantId = null; state.profile = null;
+    hidePortfolioDashboard();
+  if(location.hash !== '#home') history.replaceState(null, '', '#home');
+  showHome();
+    NavController.showLoggedOut();
+  }
 
   // ===== Copilot Chat Only tab =====
   // Panel markup injected near bottom of body
@@ -7608,7 +8805,12 @@
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
   try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-  showUser(); hideHome(); showPortfolioDashboard(); activate('job-gap-analyzer'); startPortfolioRealTimeUpdates();
+  showUser();
+  if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
+  hideHome();
+  showPortfolioDashboard();
+  activate('job-gap-analyzer');
+  startPortfolioRealTimeUpdates();
   hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
   }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
   };
@@ -7634,7 +8836,12 @@
   state.apiKey = kj.key;
   try{ localStorage.setItem('apiKey', state.apiKey); localStorage.setItem('tenantId', state.tenantId||''); localStorage.setItem('token', state.token||''); }catch(e){}
   try{ const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}}); state.profile = me.ok ? await me.json() : null; }catch(e){}
-  showUser(); hideHome(); showPortfolioDashboard(); activate('job-gap-analyzer'); startPortfolioRealTimeUpdates();
+  showUser();
+  if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
+  hideHome();
+  showPortfolioDashboard();
+  activate('job-gap-analyzer');
+  startPortfolioRealTimeUpdates();
   // Preload data in background while user starts with Copilot
   Promise.allSettled([refreshJobs(), refreshCandidates()]);
     }catch(e){ hint.textContent = `שגיאה בהתחברות: ${String(e && e.message || e).slice(0,140)}`; }
@@ -8998,12 +10205,10 @@
         }
       }catch(e){}
       showUser();
+  // Ensure we are on portal route when authenticated
+  if(!location.hash || location.hash === '#home') history.replaceState(null, '', '#portal');
   try{ hideHome(); }catch(e){}
-  let tab = 'job-gap-analyzer'; // Start with AI assistant
-  try{
-    const fromHash = (location.hash||'').replace(/^#/,'');
-    tab = fromHash || localStorage.getItem('activeAssistant') || 'job-gap-analyzer';
-  }catch(e){}
+  let tab = localStorage.getItem('activeAssistant') || 'job-gap-analyzer';
   showPortfolioDashboard();
   activateAssistant(tab);
   try{ document.body.classList.toggle('copilot-active', tab==='copilot'); }catch(e){}
@@ -9040,8 +10245,9 @@
       }catch(e){}
     } else {
       showUser();
+      // When logged out, force home route and keep homepage only
+      if(location.hash !== '#home') history.replaceState(null, '', '#home');
       try{ showHome(); }catch(e){}
-      // Do not activate any assistant when logged out; keep homepage full-screen
     }
   })();
 
@@ -10682,8 +11888,68 @@ Add multiple emails, one per line"></textarea>
     }
   }
 
+  // Scroll Reveal Animation System
+  function initScrollReveal() {
+    const scrollElements = document.querySelectorAll('.scroll-reveal');
+    
+    const elementInView = (el, dividend = 1) => {
+      const elementTop = el.getBoundingClientRect().top;
+      return (
+        elementTop <= (window.innerHeight || document.documentElement.clientHeight) / dividend
+      );
+    };
+
+    const displayScrollElement = (element) => {
+      element.classList.add('revealed');
+    };
+
+    const hideScrollElement = (element) => {
+      element.classList.remove('revealed');
+    };
+
+    const handleScrollAnimation = () => {
+      scrollElements.forEach((el) => {
+        if (elementInView(el, 1.25)) {
+          displayScrollElement(el);
+        }
+      })
+    }
+
+    // Initial check
+    handleScrollAnimation();
+
+    // Scroll event listener
+    window.addEventListener('scroll', () => {
+      handleScrollAnimation();
+    });
+  }
+
+  // Enhanced Link Hover Effects
+  function initLinkEffects() {
+    const viewDemoLink = document.getElementById('viewDemo');
+    if (viewDemoLink) {
+      viewDemoLink.addEventListener('mouseenter', function() {
+        this.style.color = '#10b981';
+        this.style.borderBottomColor = '#10b981';
+        this.style.transform = 'translateY(-1px)';
+      });
+      
+      viewDemoLink.addEventListener('mouseleave', function() {
+        this.style.color = '#93c5fd';
+        this.style.borderBottomColor = '#334155';
+        this.style.transform = 'translateY(0)';
+      });
+    }
+  }
+
   // Mock Chat Copilot Demo functionality
   document.addEventListener('DOMContentLoaded', function() {
+    // Initialize scroll animations
+    initScrollReveal();
+    
+    // Initialize enhanced interactions
+    initLinkEffects();
+    
     const mockInput = document.getElementById('mockCopilotInput');
     const mockSendBtn = document.getElementById('mockCopilotSend');
     const mockChatLog = document.querySelector('.mock-chat-log');
