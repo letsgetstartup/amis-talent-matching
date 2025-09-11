@@ -609,6 +609,122 @@
   .home-hero{ 
     min-height:calc(100dvh - 80px); 
     padding: var(--space-12) 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Animated Background Elements */
+  .hero-background {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .floating-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+
+  .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  .particle:nth-child(1) { 
+    top: 20%; left: 10%; 
+    animation: particleOrbit 15s linear infinite;
+    animation-delay: -2s;
+  }
+  .particle:nth-child(2) { 
+    top: 60%; left: 80%; 
+    animation: particleOrbit 12s linear infinite reverse;
+    animation-delay: -5s;
+  }
+  .particle:nth-child(3) { 
+    top: 30%; left: 60%; 
+    animation: particleOrbit 18s linear infinite;
+    animation-delay: -8s;
+  }
+  .particle:nth-child(4) { 
+    top: 80%; left: 20%; 
+    animation: particleOrbit 20s linear infinite reverse;
+    animation-delay: -1s;
+  }
+  .particle:nth-child(5) { 
+    top: 10%; left: 90%; 
+    animation: particleOrbit 14s linear infinite;
+    animation-delay: -10s;
+  }
+
+  .network-lines {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+
+  .line {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, 
+      transparent, 
+      rgba(16,185,129,0.3), 
+      transparent
+    );
+    animation: dataFlow 8s ease-in-out infinite;
+  }
+
+  .line:nth-child(1) { 
+    top: 25%; 
+    width: 200px; 
+    animation-delay: 0s; 
+  }
+  .line:nth-child(2) { 
+    top: 50%; 
+    width: 150px; 
+    animation-delay: 2s; 
+  }
+  .line:nth-child(3) { 
+    top: 75%; 
+    width: 180px; 
+    animation-delay: 4s; 
+  }
+
+  .morphing-shapes {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+
+  .blob {
+    position: absolute;
+    background: linear-gradient(135deg, 
+      rgba(16,185,129,0.1), 
+      rgba(6,182,212,0.1)
+    );
+    filter: blur(40px);
+  }
+
+  .blob-1 {
+    width: 300px;
+    height: 300px;
+    top: 10%;
+    right: 10%;
+    animation: morphingBlob 12s ease-in-out infinite;
+  }
+
+  .blob-2 {
+    width: 200px;
+    height: 200px;
+    bottom: 20%;
+    left: 5%;
+    animation: morphingBlob 15s ease-in-out infinite reverse;
+    animation-delay: -5s;
   }
   
   .home-hero .container {
@@ -664,20 +780,76 @@
     max-width: 90%;
   }
   
-  /* Value Props */
+  /* Enhanced Value Props for VC/Startup */
   .value-item {
     text-align: center;
-    padding: var(--space-4);
-    border-radius: 12px;
+    padding: var(--space-6);
+    border-radius: 16px;
     background: rgba(16, 185, 129, 0.05);
     border: 1px solid rgba(16, 185, 129, 0.2);
-    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+  }
+
+  .value-item::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent,
+      rgba(16,185,129,0.1),
+      transparent
+    );
+    transform: rotate(45deg);
+    transition: all 0.6s ease;
+    opacity: 0;
+  }
+
+  .value-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(135deg, 
+      rgba(16,185,129,0.3), 
+      rgba(6,182,212,0.3),
+      rgba(16,185,129,0.3)
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s ease;
   }
   
   .value-item:hover {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
-    transform: translateY(-2px);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 
+      0 20px 40px rgba(16,185,129,0.15),
+      0 0 0 1px rgba(16,185,129,0.2);
+  }
+
+  .value-item:hover::before {
+    opacity: 1;
+    animation: liquidWave 2s ease-in-out;
+  }
+
+  .value-item:hover::after {
+    opacity: 1;
+  }
+
+  .value-item:hover .value-number {
+    animation: glowPulse 1s ease-in-out;
+    color: #00e5a0;
   }
   
   .value-number {
@@ -1212,7 +1384,167 @@
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
-  
+
+  /* Advanced VC/Startup Animations */
+  @keyframes networkPulse {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+
+  @keyframes dataFlow {
+    0% { transform: translateX(-100%) scale(0); opacity: 0; }
+    10% { opacity: 1; transform: translateX(-80%) scale(1); }
+    90% { opacity: 1; transform: translateX(80%) scale(1); }
+    100% { transform: translateX(100%) scale(0); opacity: 0; }
+  }
+
+  @keyframes countUp {
+    0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+    50% { transform: translateY(-5px) scale(1.05); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { 
+      filter: drop-shadow(0 0 5px rgba(16,185,129,0.3));
+      transform: scale(1);
+    }
+    50% { 
+      filter: drop-shadow(0 0 20px rgba(16,185,129,0.6));
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes morphingBlob {
+    0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+    50% { border-radius: 50% 40% 60% 30% / 30% 40% 70% 50%; }
+    75% { border-radius: 40% 70% 50% 60% / 70% 50% 40% 30%; }
+    100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  }
+
+  @keyframes particleOrbit {
+    0% { transform: rotate(0deg) translateX(30px) rotate(0deg); }
+    100% { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+  }
+
+  @keyframes typewriter {
+    0% { width: 0; }
+    100% { width: 100%; }
+  }
+
+  @keyframes slideInFromBottom {
+    0% { transform: translateY(100px) scale(0.8); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  @keyframes magneticHover {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-2px, -2px) rotate(-1deg); }
+    50% { transform: translate(2px, -1px) rotate(1deg); }
+    75% { transform: translate(-1px, 2px) rotate(-1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  @keyframes liquidWave {
+    0%, 100% { transform: translateX(0%) rotate(0deg); }
+    25% { transform: translateX(-25%) rotate(5deg); }
+    50% { transform: translateX(0%) rotate(0deg); }
+    75% { transform: translateX(25%) rotate(-5deg); }
+  }
+
+  /* VC/Startup Animation Classes */
+  .animate-network-pulse {
+    animation: networkPulse 2.5s infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+
+  .animate-morphing-blob {
+    animation: morphingBlob 8s ease-in-out infinite;
+  }
+
+  .animate-particle-orbit {
+    animation: particleOrbit 10s linear infinite;
+  }
+
+  .animate-slide-in {
+    animation: slideInFromBottom 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    opacity: 0;
+  }
+
+  .animate-magnetic {
+    animation: magneticHover 0.5s ease-in-out;
+  }
+
+  .animate-liquid-wave {
+    animation: liquidWave 6s ease-in-out infinite;
+  }
+
+  /* Counter animation for metrics */
+  .counter-animate {
+    animation: countUp 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    opacity: 0;
+  }
+
+  /* Typewriter effect */
+  .typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    animation: typewriter 3s steps(40) forwards;
+  }
+
+  /* Magnetic Button Effects */
+  .magnetic-btn {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+  }
+
+  .magnetic-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .magnetic-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 
+      0 10px 30px rgba(16,185,129,0.3),
+      0 0 0 1px rgba(16,185,129,0.2);
+  }
+
+  .magnetic-btn:hover::before {
+    opacity: 1;
+  }
+
+  .magnetic-btn:active {
+    transform: translateY(-1px);
+  }
+
+  /* Accessibility: Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    
+    .particle,
+    .line,
+    .blob {
+      animation: none !important;
+    }
+  }
+
   /* Scroll reveal initial state */
   .scroll-reveal {
     opacity: 0;
@@ -1535,12 +1867,22 @@
     body{ direction:ltr; }
     body.has-sidebar{ padding-left:280px; transition:padding-left .25s ease; }
     body.has-sidebar.sidebar-collapsed{ padding-left:60px; }
-  .sidebar{ position:fixed; inset:0 auto 0 0; width:280px; background:var(--panel); border-right:1px solid var(--border); z-index:20; display:flex; flex-direction:column; padding:8px; gap:4px; transition:width .25s ease; }
+    .sidebar{ position:fixed; inset:0 auto 0 0; width:280px; background:var(--panel); border-right:1px solid var(--border); z-index:20; display:flex; flex-direction:column; padding:8px; gap:4px; transition:width .25s ease; height:100dvh; }
     .sidebar.collapsed{ width:60px; }
     .sidebar.collapsed .nav-item{ gap:0; justify-content:center; padding:12px 8px; }
     .sidebar .top{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px; margin-bottom:8px; }
     .sidebar .brand{ font-weight:600; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:16px; }
     .sidebar.collapsed .brand{ display:none; }
+    /* Scrollable nav area with gentle scrollbars and scroll-shadows */
+    .sidebar .nav{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-right:6px; scrollbar-gutter:stable both-edges; background:
+      linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0)) 0 0/100% 12px no-repeat,
+      linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0)) 0 100%/100% 16px no-repeat;
+      background-attachment: local, local;
+    }
+    .sidebar .nav::-webkit-scrollbar{ width:8px; }
+    .sidebar .nav::-webkit-scrollbar-track{ background:transparent; }
+    .sidebar .nav::-webkit-scrollbar-thumb{ background: rgba(148,163,184,0.25); border-radius:8px; border: 2px solid transparent; background-clip: content-box; }
+    .sidebar .nav:hover::-webkit-scrollbar-thumb{ background: rgba(148,163,184,0.4); border: 2px solid transparent; background-clip: content-box; }
     .nav{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; }
   /* Hide specific items from the sidebar */
   .sidebar .nav .nav-item[data-tab="dashboard"],
@@ -2500,11 +2842,11 @@
     </div>
     
     <!-- Onboarding Navigation -->
-    <div class="nav">
+  <div class="nav" role="tablist" aria-label="Workspace navigation">
       <div class="nav-section">
         <div class="nav-section-title">PLATFORM ONBOARDING</div>
         
-        <div class="nav-item active" data-tab="onboarding-welcome">
+  <div class="nav-item active" id="tab-onboarding-welcome" data-tab="onboarding-welcome" role="tab" aria-selected="true" tabindex="0" aria-controls="onboarding-welcome">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
@@ -2512,7 +2854,7 @@
           <div class="metric">1</div>
         </div>
         
-        <div class="nav-item" data-tab="greenhouse-integration">
+  <div class="nav-item" id="tab-greenhouse-integration" data-tab="greenhouse-integration" role="tab" aria-selected="false" tabindex="-1" aria-controls="greenhouse-integration">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
           </svg>
@@ -2520,7 +2862,7 @@
           <div class="metric">2</div>
         </div>
         
-        <div class="nav-item" data-tab="candidate-analysis">
+  <div class="nav-item" id="tab-candidate-analysis" data-tab="candidate-analysis" role="tab" aria-selected="false" tabindex="-1" aria-controls="candidate-analysis">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
           </svg>
@@ -2528,7 +2870,7 @@
           <div class="metric">3</div>
         </div>
         
-        <div class="nav-item" data-tab="open-pool-transition">
+  <div class="nav-item" id="tab-open-pool-transition" data-tab="open-pool-transition" role="tab" aria-selected="false" tabindex="-1" aria-controls="open-pool-transition">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
           </svg>
@@ -2536,7 +2878,7 @@
           <div class="metric">4</div>
         </div>
         
-        <div class="nav-item" data-tab="credit-system">
+  <div class="nav-item" id="tab-credit-system" data-tab="credit-system" role="tab" aria-selected="false" tabindex="-1" aria-controls="credit-system">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
           </svg>
@@ -2548,7 +2890,7 @@
       <div class="nav-section">
         <div class="nav-section-title">WORKSPACE</div>
         
-        <div class="nav-item" data-tab="dashboard">
+  <div class="nav-item" id="tab-dashboard" data-tab="dashboard" role="tab" aria-selected="false" tabindex="-1" aria-controls="dashboard">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
           </svg>
@@ -2556,7 +2898,7 @@
           <div class="metric" id="dashboardCount">12</div>
         </div>
         
-        <div class="nav-item" data-tab="candidates">
+  <div class="nav-item" id="tab-candidates" data-tab="candidates" role="tab" aria-selected="false" tabindex="-1" aria-controls="candidates">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A3.015 3.015 0 0 0 16.93 6c-.8 0-1.54.37-2.01.97l-2.66 8.01z"/>
           </svg>
@@ -2564,7 +2906,7 @@
           <div class="metric" id="candidatesCount">47</div>
         </div>
         
-        <div class="nav-item" data-tab="jobs">
+  <div class="nav-item" id="tab-jobs" data-tab="jobs" role="tab" aria-selected="false" tabindex="-1" aria-controls="jobs">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 6h-2.5l-1.5-1.5h-5L9.5 6H7c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h13c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/>
           </svg>
@@ -2572,7 +2914,7 @@
           <div class="metric" id="jobsCount">8</div>
         </div>
         
-        <div class="nav-item" data-tab="open-pool">
+  <div class="nav-item" id="tab-open-pool" data-tab="open-pool" role="tab" aria-selected="false" tabindex="-1" aria-controls="open-pool">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
           </svg>
@@ -2580,14 +2922,14 @@
           <div class="metric" id="openPoolCount">156</div>
         </div>
         
-        <div class="nav-item" data-tab="copilot">
+  <div class="nav-item" id="tab-copilot" data-tab="copilot" role="tab" aria-selected="false" tabindex="-1" aria-controls="copilot">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
           </svg>
           <div class="label">AI Copilot</div>
         </div>
         
-        <div class="nav-item" data-tab="chat-copilot-mockup">
+  <div class="nav-item" id="tab-chat-copilot-mockup" data-tab="chat-copilot-mockup" role="tab" aria-selected="false" tabindex="-1" aria-controls="chat-copilot-mockup">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
           </svg>
@@ -2598,7 +2940,7 @@
         <!-- Portfolio Management Section -->
         <div class="nav-section-title">PORTFOLIO MANAGEMENT</div>
         
-        <div class="nav-item" onclick="scrollToPortfolioDashboard()" style="cursor: pointer;">
+  <div class="nav-item" onclick="scrollToPortfolioDashboard()" style="cursor: pointer;" role="button" tabindex="0" aria-label="Scroll to portfolio overview">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
           </svg>
@@ -2606,7 +2948,7 @@
           <div class="ai-badge">Live</div>
         </div>
         
-        <div class="nav-item" data-tab="portfolio-admin">
+  <div class="nav-item" id="tab-portfolio-admin" data-tab="portfolio-admin" role="tab" aria-selected="false" tabindex="-1" aria-controls="portfolio-admin">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
             <path d="M9 12l2 2 4-4"/>
@@ -2615,12 +2957,21 @@
           <div class="count-badge blue" id="portfolioCompanyCount">5</div>
         </div>
         
-        <div class="nav-item" data-tab="fund-analytics">
+  <div class="nav-item" id="tab-fund-analytics" data-tab="fund-analytics" role="tab" aria-selected="false" tabindex="-1" aria-controls="fund-analytics">
           <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
           </svg>
           <div class="label">Fund Analytics</div>
           <div class="count-badge green" id="fundMetricsCount">12</div>
+        </div>
+
+        <!-- New: Talent Intelligence Tab -->
+  <div class="nav-item" id="tab-talent-intelligence" data-tab="talent-intelligence" role="tab" aria-selected="false" tabindex="-1" aria-controls="talent-intelligence">
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 5h18v2H3V5zm2 4h14v2H5V9zm-2 4h18v2H3v-2zm4 4h10v2H7v-2z"/>
+          </svg>
+          <div class="label">Talent Intelligence</div>
+          <div class="count-badge blue" id="talentIntelligenceCount">3</div>
         </div>
       </div>
     </div>
@@ -3753,7 +4104,7 @@
     </div>
 
     <!-- Welcome & Onboarding Panel -->
-    <div id="onboarding-welcome" class="panel ai-assistant-panel" style="display:none">
+  <div id="onboarding-welcome" class="panel ai-assistant-panel" style="display:none" role="tabpanel" aria-labelledby="tab-onboarding-welcome">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -3825,7 +4176,7 @@
     </div>
 
     <!-- Greenhouse.io Integration Demo -->
-    <div id="greenhouse-integration" class="panel ai-assistant-panel" style="display:none">
+  <div id="greenhouse-integration" class="panel ai-assistant-panel" style="display:none" role="tabpanel" aria-labelledby="tab-greenhouse-integration">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -3906,7 +4257,7 @@
     </div>
 
     <!-- AI Candidate Analysis Demo -->
-    <div id="candidate-analysis" class="panel ai-assistant-panel" style="display:none">
+  <div id="candidate-analysis" class="panel ai-assistant-panel" style="display:none" role="tabpanel" aria-labelledby="tab-candidate-analysis">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -3995,7 +4346,7 @@
     </div>
 
     <!-- Open Pool Transition Demo -->
-    <div id="open-pool-transition" class="panel ai-assistant-panel" style="display:none">
+  <div id="open-pool-transition" class="panel ai-assistant-panel" style="display:none" role="tabpanel" aria-labelledby="tab-open-pool-transition">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -4096,7 +4447,7 @@
     </div>
 
     <!-- Credit System Demo -->
-    <div id="credit-system" class="panel ai-assistant-panel" style="display:none">
+  <div id="credit-system" class="panel ai-assistant-panel" style="display:none" role="tabpanel" aria-labelledby="tab-credit-system">
       <div class="assistant-header">
         <div class="assistant-title">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -4194,35 +4545,57 @@
     </div>
 
       <section class="home-hero">
+        <!-- Animated Background Elements -->
+        <div class="hero-background">
+          <div class="floating-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+          </div>
+          <div class="network-lines">
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+          </div>
+          <div class="morphing-shapes">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+          </div>
+        </div>
+        
         <div class="container">
           <div class="home-copy">
             <span class="pill scroll-reveal animate-float">🎯 PTX · Fund-Level Talent Network</span>
-            <h1 class="scroll-reveal">
-              <span class="accent">PTX</span> — Fund-Level Talent Network<br>
-              <span style="font-size: 0.8em; color: var(--text-secondary);">McKinsey-style Deep Dive</span>
+            <h1 class="scroll-reveal animate-glow-pulse">
+              <span class="accent typewriter">PTX</span> — Fund-Level Talent Network<br>
+              <span style="font-size: 0.8em; color: var(--text-secondary);" class="animate-slide-in">McKinsey-style Deep Dive</span>
             </h1>
             <p class="lead scroll-reveal">
               Portfolio companies hire in silos. Up to 20–30% of rejected candidates are "silver medalists" who would fit elsewhere in the same fund, yet there is no systematic routing. PTX provides a fund-branded talent network operated by AI agents that capture, match, and route candidates across your portfolio with measurable ROI.
             </p>
             
             <div class="value-props scroll-reveal" style="margin: 24px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-              <div class="value-item">
-                <div class="value-number">$80-100M</div>
+              <div class="value-item animate-network-pulse" style="animation-delay: 0.2s;">
+                <div class="value-number counter-animate" data-target="90">$0-0M</div>
                 <div class="value-label">NAV Uplift</div>
               </div>
-              <div class="value-item">
-                <div class="value-number">$8-12M</div>
+              <div class="value-item animate-network-pulse" style="animation-delay: 0.4s;">
+                <div class="value-number counter-animate" data-target="10">$0-0M</div>
                 <div class="value-label">Cost Savings</div>
               </div>
-              <div class="value-item">
-                <div class="value-number">100-180</div>
+              <div class="value-item animate-network-pulse" style="animation-delay: 0.6s;">
+                <div class="value-number counter-animate" data-target="140">0-0</div>
                 <div class="value-label">Recovered Hires/Year</div>
               </div>
             </div>
             
             <div class="langs scroll-reveal">Platform Teams · Portfolio Companies · Fund Operations</div>
             <div class="scroll-reveal" style="margin:24px 0 6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-              <button id="joinCta" class="ai-suggestion-btn" style="font-size:16px;padding:12px 24px; background: linear-gradient(135deg, #10b981, #059669);">🚀 Get Started</button>
+              <button id="joinCta" class="ai-suggestion-btn animate-glow-pulse magnetic-btn" style="font-size:16px;padding:12px 24px; background: linear-gradient(135deg, #10b981, #059669); position: relative; overflow: hidden;">
+                <span style="position: relative; z-index: 1;">🚀 Get Started</span>
+              </button>
               <span style="color: var(--text-secondary); font-size: 14px;">Apply once to the fund. Be considered everywhere.</span>
           </div>
           
@@ -4671,7 +5044,7 @@
   </div>
 
   <!-- AI-Powered Recruiting Command Center -->
-  <div id="dashboard" class="panel" style="display:none">
+  <div id="dashboard" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-dashboard">
     <div class="dashboard-header" style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
@@ -4922,7 +5295,7 @@
     </div>
   </div>
 
-  <div id="jobs" class="panel" style="display:none">
+  <div id="jobs" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-jobs">
     <div class="jobs-header" style="background: linear-gradient(135deg, #059669, #10b981); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
@@ -5218,7 +5591,7 @@
     </div>
   </div>
 
-    <div id="candidates" class="panel" style="display:none">
+  <div id="candidates" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-candidates">
       <div class="candidates-header" style="background: linear-gradient(135deg, #7c3aed, #a855f7); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -5758,7 +6131,7 @@
     </div>
 
     <!-- Community Talent Marketplace (Open Pool) -->
-    <div id="open-pool" class="panel" style="display:none">
+  <div id="open-pool" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-open-pool">
       <div class="open-pool-header" style="background: linear-gradient(135deg, #16a34a, #15803d); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -6419,7 +6792,7 @@
       </div>
     </div>
     
-  <div id="copilot" class="panel copilot-root" style="display:none" data-auth="private">
+  <div id="copilot" class="panel copilot-root" style="display:none" data-auth="private" role="tabpanel" aria-labelledby="tab-copilot">
       <!-- Master AI Assistant Header -->
       <div class="copilot-master-header" style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -6683,7 +7056,7 @@
     </div>
     
     <!-- Chat Copilot Mockup -->
-    <div id="chat-copilot-mockup" class="panel" style="display:none">
+  <div id="chat-copilot-mockup" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-chat-copilot-mockup">
       <!-- Header with Recruiter Copilot Branding -->
       <div class="copilot-mockup-header" style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -7363,11 +7736,20 @@
     }
     // Update sidebar nav active state
     document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.tab === assistantId);
+      const isActive = item.dataset.tab === assistantId;
+      item.classList.toggle('active', isActive);
+      if(item.getAttribute('role') === 'tab'){
+        item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        item.setAttribute('tabindex', isActive ? '0' : '-1');
+      }
+      if(isActive){
+        // Ensure active tab is visible in scroll area
+        try{ item.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){}
+      }
     });
     
     // Show/hide assistant panels
-    ['job-gap-analyzer', 'candidate-pipeline', 'match-intelligence', 'talent-discovery', 'engagement-optimizer', 'copilot', 'imports', 'portfolio-admin', 'fund-analytics', 'dashboard', 'jobs', 'candidates', 'upload', 'open-pool', 'matches', 'copilot-lite', 'copilot-lite-2', 'copilot-lite-3', 'copilot-lite-4', 'chat-copilot-mockup'].forEach(id => {
+  ['onboarding-welcome','greenhouse-integration','candidate-analysis','open-pool-transition','credit-system','job-gap-analyzer', 'candidate-pipeline', 'match-intelligence', 'talent-discovery', 'engagement-optimizer', 'copilot', 'imports', 'portfolio-admin', 'fund-analytics', 'talent-intelligence', 'dashboard', 'jobs', 'candidates', 'upload', 'open-pool', 'matches', 'copilot-lite', 'copilot-lite-2', 'copilot-lite-3', 'copilot-lite-4', 'chat-copilot-mockup'].forEach(id => {
       const panel = document.getElementById(id);
       if(panel) panel.style.display = (id === assistantId) ? 'block' : 'none';
     });
@@ -7383,6 +7765,7 @@
     if(assistantId === 'engagement-optimizer') updateEngagementMetrics();
     if(assistantId === 'portfolio-admin') updatePortfolioMetrics();
     if(assistantId === 'fund-analytics') updateFundAnalytics();
+  if(assistantId === 'talent-intelligence') updateTalentIntelligence();
     
     try{ localStorage.setItem('activeAssistant', assistantId); }catch(e){}
   }
@@ -7397,6 +7780,7 @@
       'engagement-optimizer': ['Response Rates', 'Timing Optimization', 'Personalization'],
       'portfolio-admin': ['Company Invitations', 'Access Management', 'Talent Sharing'],
       'fund-analytics': ['Portfolio Performance', 'Cross-Company Metrics', 'ROI Analysis'],
+  'talent-intelligence': ['Market Signals', 'Skills Trends', 'Strategic Insights'],
       'dashboard': ['Portfolio Intelligence', 'Unified Gateway', 'Real-time Insights']
     };
     
@@ -7836,6 +8220,18 @@
       console.error('Error updating fund analytics:', e);
     }
   }
+
+  async function updateTalentIntelligence(){
+    try{
+      const el = document.getElementById('talentIntelligenceCount');
+      if(el){
+        // Example: rotate a small live count
+        const n = Math.max(1, (parseInt(el.textContent, 10) || 3) % 9 + 1);
+        el.textContent = String(n);
+      }
+      console.log('Talent intelligence updated');
+    }catch(e){ console.error('Error updating talent intelligence:', e); }
+  }
   
   // ===== Enhanced KPI Updates =====
   async function updateSidebarKpis(){
@@ -8187,13 +8583,23 @@
     activateAssistant(tab);
   }
   
-  // Enhanced navigation binding
+  // Enhanced navigation binding (click + keyboard)
   document.querySelectorAll('.nav-item').forEach(item => {
     if(item._bound) return;
     item._bound = true;
-    item.addEventListener('click', () => {
+    const activate = () => {
       const tab = item.dataset.tab;
+      if(!tab) return;
       activateAssistant(tab);
+      try{ item.focus({ preventScroll:true }); }catch(e){}
+    };
+    item.addEventListener('click', activate);
+    item.addEventListener('keydown', (e)=>{
+      const k = e.key;
+      if(k === 'Enter' || k === ' ' || k === 'Spacebar'){
+        e.preventDefault();
+        activate();
+      }
     });
   });
 
@@ -8441,6 +8847,9 @@
         const section = document.getElementById(sectionId);
         if (section) {
           section.classList.add('active');
+          if (sectionId === 'configPortfolioJobs') {
+            try { initPortfolioJobs(); } catch(err) { console.error('initPortfolioJobs', err); }
+          }
         }
       }
     });
@@ -9065,10 +9474,21 @@
     // Nav items → activate assistants
     document.querySelectorAll('.nav .nav-item').forEach(btn=>{
       if(btn._bound) return; btn._bound=true;
-      btn.addEventListener('click', ()=>{
+      const activate = ()=>{
         const tab = btn.dataset.tab;
+        if(!tab) return;
         activateAssistant(tab);
+        // Move keyboard focus to the active tab for accessibility
+        try{ btn.focus({ preventScroll: true }); }catch(e){}
         if(!isDesktop()) sidebar.classList.remove('open');
+      };
+      btn.addEventListener('click', activate);
+      btn.addEventListener('keydown', (e)=>{
+        const key = e.key;
+        if(key === 'Enter' || key === ' ' || key === 'Spacebar'){
+          e.preventDefault();
+          activate();
+        }
       });
     });
 
@@ -11639,7 +12059,7 @@ The Fund Team`
   </div>
 
     <!-- Portfolio Administration Panel -->
-    <div id="portfolio-admin" class="panel" style="display:none">
+  <div id="portfolio-admin" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-portfolio-admin">
       <div class="portfolio-admin-header" style="background: linear-gradient(135deg, #1e40af, #3b82f6); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -11834,7 +12254,7 @@ Add multiple emails, one per line"></textarea>
     </div>
 
     <!-- Fund Analytics Panel -->
-    <div id="fund-analytics" class="panel" style="display:none">
+  <div id="fund-analytics" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-fund-analytics">
       <div class="fund-analytics-header" style="background: linear-gradient(135deg, #059669, #0ea5e9); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -11937,6 +12357,70 @@ Add multiple emails, one per line"></textarea>
       </div>
     </div>
 
+    <!-- Talent Intelligence Panel -->
+  <div id="talent-intelligence" class="panel" style="display:none" role="tabpanel" aria-labelledby="tab-talent-intelligence">
+      <div style="background: linear-gradient(135deg, #0ea5e9, #8b5cf6); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <div>
+            <h1 style="margin:0 0 8px; font-size:26px; font-weight:700;">🧠 Talent Intelligence</h1>
+            <p style="margin:0; opacity:.9; font-size:14px;">AI insights across markets, roles, and skills to guide hiring strategy</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:#10b981; animation:pulse 2s infinite"></span>
+              <span style="font-size:12px; opacity:.9;">Live Signals</span>
+            </div>
+            <div style="font-size:11px; opacity:.7;">Refreshed just now</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:20px;">
+        <div class="metric-card" style="background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.35); border-radius:12px; padding:16px; text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:#38bdf8;">1,247</div>
+          <div style="font-size:12px; color:var(--muted);">Active Market Signals</div>
+        </div>
+        <div class="metric-card" style="background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.35); border-radius:12px; padding:16px; text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:#a78bfa;">+18%</div>
+          <div style="font-size:12px; color:var(--muted);">Demand for React</div>
+        </div>
+        <div class="metric-card" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); border-radius:12px; padding:16px; text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:#10b981;">-14%</div>
+          <div style="font-size:12px; color:var(--muted);">Time-to-Fill YoY</div>
+        </div>
+        <div class="metric-card" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:16px; text-align:center;">
+          <div style="font-size:24px; font-weight:700; color:#f59e0b;">92%</div>
+          <div style="font-size:12px; color:var(--muted);">Skills Match Quality</div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <h3 style="margin:0 0 12px;">Hot Skills & Market Shifts</h3>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+          <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px;">
+            <strong style="display:block; margin-bottom:6px;">Frontend</strong>
+            <div class="meter"><span style="width:78%"></span></div>
+            <div class="small muted">React + TS demand up 18%</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px;">
+            <strong style="display:block; margin-bottom:6px;">Data</strong>
+            <div class="meter"><span style="width:64%"></span></div>
+            <div class="small muted">LLM ops emerging in 22% of roles</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px;">
+            <strong style="display:block; margin-bottom:6px;">DevOps</strong>
+            <div class="meter"><span style="width:71%"></span></div>
+            <div class="small muted">Platform engineers in high demand</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px;">
+        <button class="btn-small" onclick="activateAssistant('fund-analytics')">View Fund Analytics</button>
+        <button class="btn-small" onclick="activateAssistant('candidate-analysis')">Open AI Analysis</button>
+      </div>
+    </div>
+  </div>
     <div id="imports" class="panel" style="display:none">
       <h2>ייבוא CSV</h2>
       <div id="importsWrap" style="position:relative">
@@ -11978,6 +12462,9 @@ Add multiple emails, one per line"></textarea>
           <div class="config-nav">
             <div class="config-nav-item active" data-section="users">
               👥 User Management
+            </div>
+            <div class="config-nav-item" data-section="portfolioJobs">
+              💼 Portfolio Jobs
             </div>
             <div class="config-nav-item" data-section="permissions">
               🔐 Permissions
@@ -12104,6 +12591,104 @@ Add multiple emails, one per line"></textarea>
                     <label style="display: flex; align-items: center; gap: 8px;"><input type="checkbox" checked> Browse job listings</label>
                     <label style="display: flex; align-items: center; gap: 8px;"><input type="checkbox" disabled> Access candidate profiles</label>
                     <label style="display: flex; align-items: center; gap: 8px;"><input type="checkbox" disabled> Share or download data</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Portfolio Jobs Section -->
+            <div id="configPortfolioJobs" class="config-section">
+              <div class="section-header">
+                <div class="section-title">Portfolio Open Positions</div>
+                <div class="section-description">View all open roles across portfolio companies and publish a branded public jobs page.</div>
+              </div>
+              <div class="panel" style="margin-bottom:16px">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:end">
+                  <div class="form-field" style="min-width:220px">
+                    <label class="form-label">Search</label>
+                    <input id="pjSearch" class="form-input" placeholder="Title, company, skills..." />
+                  </div>
+                  <div class="form-field" style="min-width:180px">
+                    <label class="form-label">Company</label>
+                    <select id="pjCompany" class="form-input"><option value="">All companies</option></select>
+                  </div>
+                  <div class="form-field" style="min-width:160px">
+                    <label class="form-label">City</label>
+                    <select id="pjCity" class="form-input"><option value="">All</option></select>
+                  </div>
+                  <div class="form-field">
+                    <label class="form-label">&nbsp;</label>
+                    <button id="pjRefresh" class="btn-small">🔄 Refresh</button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="users-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="width:36%">Job</th>
+                        <th style="width:18%">Company</th>
+                        <th style="width:16%">City</th>
+                        <th style="width:14%">Updated</th>
+                        <th style="width:16%">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pjTbody"><tr><td colspan="5" class="small muted">Loading...</td></tr></tbody>
+                  </table>
+                </div>
+                <div id="pjCount" class="small muted" style="margin-top:8px"></div>
+              </div>
+
+              <div class="panel" style="display:grid; gap:14px">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                  <div>
+                    <div style="font-weight:700">Branded Public Jobs Page</div>
+                    <div class="small muted">Generate a shareable, fund-branded portal listing all open roles. Links are hosted under /static/.</div>
+                  </div>
+                </div>
+                <div class="grid2">
+                  <div>
+                    <div style="margin-bottom:16px; padding:12px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); border-radius:8px;">
+                      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <span style="font-size:18px;">🚀</span>
+                        <strong style="color:#10b981;">See Demo Portal</strong>
+                      </div>
+                      <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Experience a professional fund portal with sample portfolio companies and open positions.</div>
+                      <button onclick="window.open('/demo-portal.html', '_blank')" style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;">View Live Demo →</button>
+                    </div>
+                    <div class="grid2">
+                      <div class="form-field">
+                        <label class="form-label">Fund Name</label>
+                        <input id="portalFundName" class="form-input" placeholder="Your Fund" />
+                      </div>
+                      <div class="form-field">
+                        <label class="form-label">Logo URL (optional)</label>
+                        <input id="portalLogo" class="form-input" placeholder="https://...logo.png" />
+                      </div>
+                    </div>
+                    <div class="grid2">
+                      <div class="form-field">
+                        <label class="form-label">Primary Color</label>
+                        <input id="portalPrimary" class="form-input" value="#10b981" />
+                      </div>
+                      <div class="form-field">
+                        <label class="form-label">Accent Color</label>
+                        <input id="portalAccent" class="form-input" value="#06b6d4" />
+                      </div>
+                    </div>
+                    <div class="form-field">
+                      <label class="form-label">Description (optional)</label>
+                      <input id="portalDesc" class="form-input" placeholder="Open positions across our portfolio" />
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                      <button id="btnPreviewPortal" class="btn-small">🔗 Preview Link</button>
+                      <button id="btnPublishPortal" class="btn-small">🌐 Publish</button>
+                      <span id="portalLinks" class="small muted"></span>
+                    </div>
+                  </div>
+                  <div>
+                    <div id="portalPreviewWrap" class="empty-state" style="min-height:220px">Generate a preview to see it here.</div>
                   </div>
                 </div>
               </div>
@@ -12327,6 +12912,211 @@ Add multiple emails, one per line"></textarea>
     });
   }
 
+  // ===== Portfolio Jobs: list + portal share =====
+  let _pjLoaded = false;
+  let _pjAll = [];
+  function initPortfolioJobs(){
+    if (_pjLoaded) return; _pjLoaded = true;
+    const q = document.getElementById('pjSearch');
+    const comp = document.getElementById('pjCompany');
+    const city = document.getElementById('pjCity');
+    const refresh = document.getElementById('pjRefresh');
+    if (q) q.addEventListener('input', filterPortfolioJobs);
+    if (comp) comp.addEventListener('change', filterPortfolioJobs);
+    if (city) city.addEventListener('change', filterPortfolioJobs);
+    if (refresh) refresh.addEventListener('click', loadPortfolioJobsList);
+    // Buttons
+    const bPrev = document.getElementById('btnPreviewPortal');
+    const bPub = document.getElementById('btnPublishPortal');
+    if (bPrev) bPrev.addEventListener('click', ()=> generatePortal('preview'));
+    if (bPub) bPub.addEventListener('click', ()=> generatePortal('public'));
+    loadPortfolioJobsList();
+  }
+  async function loadPortfolioJobsList(){
+    try{
+      const r = await apiFetch(`${API}/tenant/jobs?limit=200`);
+      if(!r.ok) throw new Error('Failed to load jobs');
+      const j = await r.json();
+      // normalize fields (company, city)
+      _pjAll = (j.results||[]).map(x=>({
+        id: x.job_id,
+        title: x.title,
+        company: x.company || x.company_name || 'Portfolio Company',
+        city: x.city || '',
+        updated_at: x.updated_at || 0,
+        status: (x.llm_success? 'OK' : (x.llm_used ? 'LLM' : 'New'))
+      }));
+      populatePortfolioFilters();
+      filterPortfolioJobs();
+    }catch(e){
+      const tb = document.getElementById('pjTbody');
+      if(tb) tb.innerHTML = `<tr><td colspan='5' class='small muted'>Failed to load jobs</td></tr>`;
+    }
+  }
+  function populatePortfolioFilters(){
+    try{
+      const comp = document.getElementById('pjCompany');
+      const city = document.getElementById('pjCity');
+      if(!comp || !city) return;
+      const comps = [...new Set(_pjAll.map(r=>r.company).filter(Boolean))].sort();
+      const cities = [...new Set(_pjAll.map(r=>r.city).filter(Boolean))].sort();
+      comp.innerHTML = `<option value="">All companies</option>` + comps.map(c=>`<option>${c}</option>`).join('');
+      city.innerHTML = `<option value="">All</option>` + cities.map(c=>`<option>${c}</option>`).join('');
+    }catch{}
+  }
+  function filterPortfolioJobs(){
+    const q = (document.getElementById('pjSearch')?.value||'').toLowerCase();
+    const comp = document.getElementById('pjCompany')?.value||'';
+    const city = document.getElementById('pjCity')?.value||'';
+    const rows = _pjAll.filter(r=>
+      (!q || `${r.title} ${r.company}`.toLowerCase().includes(q)) &&
+      (!comp || r.company===comp) && (!city || r.city===city)
+    );
+    const tb = document.getElementById('pjTbody');
+    if(!tb) return;
+    tb.innerHTML = rows.map(r=>{
+      const dt = r.updated_at ? new Date(r.updated_at*1000) : null;
+      const ds = dt ? dt.toLocaleDateString()+' '+dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+      return `<tr>
+        <td><strong>${escapeHtml(r.title||'')}</strong></td>
+        <td>${escapeHtml(r.company||'')}</td>
+        <td>${escapeHtml(r.city||'')}</td>
+        <td>${ds}</td>
+        <td><span class='badge' style='background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981'>${r.status}</span></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan='5' class='small muted'>No results</td></tr>`;
+    const c = document.getElementById('pjCount'); if(c) c.textContent = `${rows.length} jobs`;
+  }
+  async function generatePortal(visibility){
+    try{
+      const branding = {
+        fund_name: document.getElementById('portalFundName')?.value || 'PTX Fund',
+        logo_url: document.getElementById('portalLogo')?.value || null,
+        primary_color: document.getElementById('portalPrimary')?.value || '#10b981',
+        accent_color: document.getElementById('portalAccent')?.value || '#06b6d4',
+        description: document.getElementById('portalDesc')?.value || ''
+      };
+      const company = document.getElementById('pjCompany')?.value || undefined; // optional filter
+      const r = await apiFetch(`${API}/share/portal`, { method:'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ branding, visibility, company }) });
+      if(!r.ok){ toast('Failed to generate portal', 'error'); return; }
+      const j = await r.json();
+      const links = [];
+      if(j.preview_url) links.push(`<a target='_blank' href='${j.preview_url}'>Preview</a>`);
+      if(j.public_url) links.push(`<a target='_blank' href='${j.public_url}'>Public</a>`);
+      const wrap = document.getElementById('portalLinks'); if(wrap) wrap.innerHTML = links.join(' • ');
+      const prevWrap = document.getElementById('portalPreviewWrap');
+      if(prevWrap && j.preview_url){ prevWrap.innerHTML = `<iframe src='${j.preview_url}' style='width:100%;height:260px;border:1px solid var(--border);border-radius:12px;background:#000'></iframe>`; }
+      toast(`Generated portal with ${j.count||0} jobs`, 'ok');
+    }catch(e){ toast('Error generating portal', 'error'); }
+  }
+
+  // Advanced Counter Animation System for VC/Startup
+  function initCounterAnimations() {
+    const counters = document.querySelectorAll('.counter-animate');
+    
+    const animateCounter = (counter) => {
+      const target = parseInt(counter.getAttribute('data-target'));
+      const originalText = counter.textContent;
+      let current = 0;
+      const increment = target / 50;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        
+        // Format based on original text pattern
+        if (originalText.includes('$') && originalText.includes('M')) {
+          if (target === 90) {
+            counter.textContent = `$${Math.floor(current/10)*10}-${Math.floor(current/10)*10 + 10}M`;
+          } else {
+            counter.textContent = `$${Math.floor(current)}-${Math.floor(current) + 2}M`;
+          }
+        } else {
+          counter.textContent = `${Math.floor(current/10)*10}-${Math.floor(current/10)*10 + 40}`;
+        }
+      }, 30);
+    };
+
+    // Intersection Observer for counters
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !entry.target.classList.contains('animated')) {
+          entry.target.classList.add('animated');
+          setTimeout(() => animateCounter(entry.target), 200);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    counters.forEach(counter => {
+      counterObserver.observe(counter);
+    });
+  }
+
+  // Magnetic Button Effects
+  function initMagneticButtons() {
+    const magneticBtns = document.querySelectorAll('.magnetic-btn');
+    
+    magneticBtns.forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        
+        btn.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-3px)`;
+      });
+      
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transform = 'translate(0, 0)';
+      });
+    });
+  }
+
+  // Particle System Enhancement
+  function initParticleSystem() {
+    const particles = document.querySelectorAll('.particle');
+    
+    particles.forEach((particle, index) => {
+      // Add random glow effect
+      setInterval(() => {
+        if (Math.random() > 0.7) {
+          particle.style.boxShadow = '0 0 10px rgba(16,185,129,0.8)';
+          setTimeout(() => {
+            particle.style.boxShadow = 'none';
+          }, 300);
+        }
+      }, 2000 + index * 500);
+    });
+  }
+
+  // Parallax Scrolling Effects
+  function initParallaxEffects() {
+    let ticking = false;
+    
+    function updateParallax() {
+      const scrolled = window.pageYOffset;
+      const parallaxElements = document.querySelectorAll('.blob, .particle, .line');
+      
+      parallaxElements.forEach((element, index) => {
+        const speed = 0.1 + (index % 3) * 0.05;
+        const yPos = -(scrolled * speed);
+        element.style.transform = `translate3d(0, ${yPos}px, 0) ${element.style.transform || ''}`;
+      });
+      
+      ticking = false;
+    }
+    
+    function requestTick() {
+      if (!ticking) {
+        requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    }
+    
+    window.addEventListener('scroll', requestTick);
+  }
+
   // Enhanced Link Hover Effects
   function initLinkEffects() {
     const viewDemoLink = document.getElementById('viewDemo');
@@ -12349,6 +13139,12 @@ Add multiple emails, one per line"></textarea>
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize scroll animations
     initScrollReveal();
+    
+    // Initialize advanced VC/Startup animations
+    initCounterAnimations();
+    initMagneticButtons();
+    initParticleSystem();
+    initParallaxEffects();
     
     // Initialize enhanced interactions
     initLinkEffects();

@@ -1,0 +1,80 @@
+
+<!doctype html><html lang='en'><head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='width=device-width, initial-scale=1'/>
+    <title>Demo Fund – Portfolio Jobs</title>
+    <meta name='description' content='Demo'/>
+    <style>
+        :root{ --primary: #10b981; --accent: #06b6d4; --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --border:#1f2937; }
+        *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;}
+        header{position:sticky;top:0;z-index:10;background:rgba(17,24,39,.85);backdrop-filter:saturate(180%) blur(6px);border-bottom:1px solid var(--border);}
+        .container{max-width:1100px;margin:0 auto;padding:12px 18px;}
+        .brand{display:flex;gap:10px;align-items:center;font-weight:700;color:var(--text);text-decoration:none}
+        .sub{color:var(--muted);font-size:13px}
+        .filters{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px}
+        input,select{background:#0b1220;border:1px solid #334155;border-radius:8px;color:var(--text);padding:10px 12px}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+        .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+        .title{font-size:16px;font-weight:700;margin:0}
+        .company{font-size:13px;color:var(--muted)}
+        .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+        .apply{margin-top:8px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:8px;padding:10px 12px;cursor:pointer}
+        footer{border-top:1px solid var(--border);margin-top:16px;color:var(--muted);font-size:12px}
+    </style>
+</head><body>
+    <header><div class='container' style='display:flex;justify-content:space-between;align-items:center'>
+        <a class='brand' href='#'><strong style='font-size:18px'>Demo Fund</strong><span>Demo Fund Jobs</span></a>
+        <span class='sub'>Apply once. Be seen by all portfolio companies.</span>
+    </div></header>
+    <main class='container'>
+        <div class='filters'>
+            <input id='q' placeholder='Search title, skills, company' oninput='filter()'/>
+            <select id='loc' onchange='filter()'>
+                <option value=''>All locations</option>
+            </select>
+            <select id='comp' onchange='filter()'>
+                <option value=''>All companies</option>
+            </select>
+        </div>
+        <div id='count' class='sub'></div>
+        <div id='grid' class='grid'></div>
+    </main>
+    <footer class='container'>Generated link 16fd55ebb3. Powered by PTX.</footer>
+    <script>
+        const JOBS = [{"job_id": "68c2a1a5b7e9d399043a33f7", "title": "Data Engineer", "company_name": "Portfolio Company", "description": "Pipelines", "requirements": ["apache_airflow", "big_data", "cloud_data_services", "data_integration", "data_management", "data_pipeline_development", "data_processing", "etl_processes", "python", "software_development", "spark"], "location": "remote", "remote": true, "application_url": null, "company_website": null}, {"job_id": "68c2a192b7e9d399043a33ef", "title": "Senior React Engineer", "company_name": "Portfolio Company", "description": "Build UI", "requirements": ["front_end_development", "graphql", "react", "typescript", "user_interface_design", "web_application_development"], "location": "tel_aviv", "remote": true, "application_url": null, "company_website": null}];
+        const grid = document.getElementById('grid');
+        const count = document.getElementById('count');
+        const q = document.getElementById('q'); const loc = document.getElementById('loc'); const comp = document.getElementById('comp');
+        (function(){
+            var locs = Array.from(new Set(JOBS.map(function(j){ return j.location; }).filter(Boolean))).sort();
+            for(var i=0;i<locs.length;i++){ var l = locs[i]; var o=document.createElement('option'); o.value=l; o.textContent=l; loc.appendChild(o); }
+            var comps = Array.from(new Set(JOBS.map(function(j){ return j.company_name; }).filter(Boolean))).sort();
+            for(var k=0;k<comps.length;k++){ var c = comps[k]; var o2=document.createElement('option'); o2.value=c; o2.textContent=c; comp.appendChild(o2); }
+        })();
+        function card(j){
+            var initials = ((j.company_name||'?').slice(0,2).toUpperCase());
+            var title = (j.title||'');
+            var compn = (j.company_name||'');
+            var locn = (j.location||'—');
+            var remote = j.remote ? "<span>🌐 Remote</span>" : "";
+            return "<div class='card'>"
+                + "<div style='display:flex;gap:10px;align-items:center;'>"
+                + "<div style='width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700'>" + initials + "</div>"
+                + "<div><div class='title'>" + title + "</div><div class='company'>" + compn + "</div></div>"
+                + "</div>"
+                + "<div class='meta'><span>📍 " + locn + "</span>" + remote + "</div>"
+                + "<button class='apply' onclick='window.open(j.application_url||j.company_website||\"#\",\"_blank\")'>Apply</button>"
+                + "</div>";
+        }
+        function filter(){
+            var term=(q.value||'').toLowerCase(); var L=loc.value; var C=comp.value;
+            var rows = JOBS.filter(function(j){
+                var blob = [j.title, j.company_name, (j.requirements||[]).join(' ')].join(' ').toLowerCase();
+                return (!term || blob.indexOf(term) !== -1) && (!L || j.location===L) && (!C || j.company_name===C);
+            });
+            grid.innerHTML = rows.map(card).join('');
+            count.textContent = String(rows.length) + ' open positions';
+        }
+        filter();
+    </script>
+</body></html>

@@ -39,6 +39,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 from pydantic import BaseModel
+from string import Template
 from typing import List, Optional, Any
 import requests
 from .ingest_agent import (
@@ -527,6 +528,18 @@ def mobile_confirm_html():
     }
     raise HTTPException(status_code=404, detail=detail)
 
+@app.get("/demo-portal.html", response_class=HTMLResponse)
+def demo_portal_html():
+    content = _load_static_file("demo-portal.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "demo-portal.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
 # --- CORS (frontend served from a different port like 5173/5190) ---
 _ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")  # comma separated or '*'
 app.add_middleware(
@@ -771,6 +784,165 @@ class AnalyticsEvent(BaseModel):
     payload: Optional[dict[str, Any]] = None
 class LLMToggle(BaseModel):
     enabled: bool
+
+# ===== Public Portfolio Jobs Portal (preview/publish) =====
+class PortalBranding(BaseModel):
+        fund_name: str = "PTX Fund"
+        logo_url: Optional[str] = None
+        primary_color: Optional[str] = "#10b981"
+        accent_color: Optional[str] = "#06b6d4"
+        description: Optional[str] = None
+
+class PortalPublishRequest(BaseModel):
+        branding: PortalBranding
+        visibility: str = "preview"  # preview | public
+        company: Optional[str] = None  # optional filter to a single company
+
+def _build_portal_html(tenant_id: Optional[str], jobs: List[dict], branding: PortalBranding, link_id: str) -> str:
+                brand_logo = ("<img alt='" + branding.fund_name + " logo' src='" + branding.logo_url + "' style='height:28px'/>"
+                                            if branding.logo_url else "<strong style='font-size:18px'>" + branding.fund_name + "</strong>")
+                jobs_json = json.dumps(jobs)
+                desc = (branding.description or "Open positions across our portfolio companies").replace("'", "&#39;")
+                tmpl = Template("""
+<!doctype html><html lang='en'><head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='width=device-width, initial-scale=1'/>
+    <title>$FUND_NAME – Portfolio Jobs</title>
+    <meta name='description' content='$DESCRIPTION'/>
+    <style>
+        :root{ --primary: $PRIMARY; --accent: $ACCENT; --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --border:#1f2937; }
+        *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;}
+        header{position:sticky;top:0;z-index:10;background:rgba(17,24,39,.85);backdrop-filter:saturate(180%) blur(6px);border-bottom:1px solid var(--border);}
+        .container{max-width:1100px;margin:0 auto;padding:12px 18px;}
+        .brand{display:flex;gap:10px;align-items:center;font-weight:700;color:var(--text);text-decoration:none}
+        .sub{color:var(--muted);font-size:13px}
+        .filters{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px}
+        input,select{background:#0b1220;border:1px solid #334155;border-radius:8px;color:var(--text);padding:10px 12px}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+        .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+        .title{font-size:16px;font-weight:700;margin:0}
+        .company{font-size:13px;color:var(--muted)}
+        .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+        .apply{margin-top:8px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;border-radius:8px;padding:10px 12px;cursor:pointer}
+        footer{border-top:1px solid var(--border);margin-top:16px;color:var(--muted);font-size:12px}
+    </style>
+</head><body>
+    <header><div class='container' style='display:flex;justify-content:space-between;align-items:center'>
+        <a class='brand' href='#'>$BRAND_LOGO<span>$FUND_NAME Jobs</span></a>
+        <span class='sub'>Apply once. Be seen by all portfolio companies.</span>
+    </div></header>
+    <main class='container'>
+        <div class='filters'>
+            <input id='q' placeholder='Search title, skills, company' oninput='filter()'/>
+            <select id='loc' onchange='filter()'>
+                <option value=''>All locations</option>
+            </select>
+            <select id='comp' onchange='filter()'>
+                <option value=''>All companies</option>
+            </select>
+        </div>
+        <div id='count' class='sub'></div>
+        <div id='grid' class='grid'></div>
+    </main>
+    <footer class='container'>Generated link $LINK_ID. Powered by PTX.</footer>
+    <script>
+        const JOBS = $JOBS_JSON;
+        const grid = document.getElementById('grid');
+        const count = document.getElementById('count');
+        const q = document.getElementById('q'); const loc = document.getElementById('loc'); const comp = document.getElementById('comp');
+        (function(){
+            var locs = Array.from(new Set(JOBS.map(function(j){ return j.location; }).filter(Boolean))).sort();
+            for(var i=0;i<locs.length;i++){ var l = locs[i]; var o=document.createElement('option'); o.value=l; o.textContent=l; loc.appendChild(o); }
+            var comps = Array.from(new Set(JOBS.map(function(j){ return j.company_name; }).filter(Boolean))).sort();
+            for(var k=0;k<comps.length;k++){ var c = comps[k]; var o2=document.createElement('option'); o2.value=c; o2.textContent=c; comp.appendChild(o2); }
+        })();
+        function card(j){
+            var initials = ((j.company_name||'?').slice(0,2).toUpperCase());
+            var title = (j.title||'');
+            var compn = (j.company_name||'');
+            var locn = (j.location||'—');
+            var remote = j.remote ? "<span>🌐 Remote</span>" : "";
+            return "<div class='card'>"
+                + "<div style='display:flex;gap:10px;align-items:center;'>"
+                + "<div style='width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700'>" + initials + "</div>"
+                + "<div><div class='title'>" + title + "</div><div class='company'>" + compn + "</div></div>"
+                + "</div>"
+                + "<div class='meta'><span>📍 " + locn + "</span>" + remote + "</div>"
+                + "<button class='apply' onclick='window.open(j.application_url||j.company_website||\\"#\\",\\"_blank\\")'>Apply</button>"
+                + "</div>";
+        }
+        function filter(){
+            var term=(q.value||'').toLowerCase(); var L=loc.value; var C=comp.value;
+            var rows = JOBS.filter(function(j){
+                var blob = [j.title, j.company_name, (j.requirements||[]).join(' ')].join(' ').toLowerCase();
+                return (!term || blob.indexOf(term) !== -1) && (!L || j.location===L) && (!C || j.company_name===C);
+            });
+            grid.innerHTML = rows.map(card).join('');
+            count.textContent = String(rows.length) + ' open positions';
+        }
+        filter();
+    </script>
+</body></html>
+""")
+                return tmpl.safe_substitute({
+                        "FUND_NAME": branding.fund_name,
+                        "DESCRIPTION": desc,
+                        "PRIMARY": branding.primary_color or "#10b981",
+                        "ACCENT": branding.accent_color or "#06b6d4",
+                        "BRAND_LOGO": brand_logo,
+                        "LINK_ID": link_id,
+                        "JOBS_JSON": jobs_json,
+                })
+
+def _collect_portfolio_jobs(tenant_id: str, company: Optional[str]=None) -> List[dict]:
+        # Use existing tenant endpoint logic quickly
+        cur = db["jobs"].find({"tenant_id": tenant_id}, {
+                "title":1, "city_canonical":1, "remote":1, "job_description":1, "skill_set":1, "company_name":1, "application_url":1, "company_website":1
+        }).sort([("updated_at", -1)])
+        out: List[dict] = []
+        for d in cur:
+                comp = d.get("company_name") or "Portfolio Company"
+                if company and comp != company:
+                        continue
+                out.append({
+                        "job_id": str(d.get("_id")),
+                        "title": d.get("title"),
+                        "company_name": comp,
+                        "description": (d.get("job_description") or "")[:240],
+                        "requirements": d.get("skill_set") or [],
+                        "location": d.get("city_canonical"),
+                        "remote": bool(d.get("remote")),
+                        "application_url": d.get("application_url"),
+                        "company_website": d.get("company_website"),
+                })
+        return out
+
+@app.post("/share/portal")
+def create_portal_share(req: PortalPublishRequest, tenant_id: str = Depends(require_tenant)):
+        """Generate a static, shareable fund-branded jobs portal and return links.
+        visibility=preview: random non-indexed URL
+        visibility=public: stable /public/portal/{tenant_id}.html
+        """
+        link_id = uuid.uuid4().hex[:10]
+        jobs = _collect_portfolio_jobs(tenant_id, company=req.company)
+        html_doc = _build_portal_html(tenant_id, jobs, req.branding, link_id)
+        public_dir = Path(__file__).resolve().parent.parent / "frontend" / "public"
+        public_dir.mkdir(parents=True, exist_ok=True)
+        # preview file
+        preview_file = public_dir / f"portal_preview_{link_id}.html"
+        preview_file.write_text(html_doc, encoding="utf-8")
+        # public file (if requested)
+        public_url = None
+        if req.visibility == "public":
+                public_file = public_dir / f"portal_{tenant_id}.html"
+                public_file.write_text(html_doc, encoding="utf-8")
+                public_url = f"/static/portal_{tenant_id}.html"
+        return {
+                "preview_url": f"/static/{preview_file.name}",
+                "public_url": public_url,
+                "count": len(jobs),
+                "link_id": link_id,
+        }
 
 
 class AnalyticsBatch(BaseModel):
