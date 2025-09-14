@@ -4569,11 +4569,11 @@
           <div class="home-copy">
             <span class="pill scroll-reveal animate-float">🎯 PTX · Fund-Level Talent Network</span>
             <h1 class="scroll-reveal animate-glow-pulse">
-              <span class="accent typewriter">PTX</span> — Fund-Level Talent Network<br>
-              <span style="font-size: 0.8em; color: var(--text-secondary);" class="animate-slide-in">McKinsey-style Deep Dive</span>
+              <span class="accent typewriter">PTX</span> — Portfolio Talent Exchange<br>
+              <span style="font-size: 0.8em; color: var(--text-secondary);" class="animate-slide-in">Unite portfolio to hire as one</span>
             </h1>
             <p class="lead scroll-reveal">
-              Portfolio companies hire in silos. Up to 20–30% of rejected candidates are "silver medalists" who would fit elsewhere in the same fund, yet there is no systematic routing. PTX provides a fund-branded talent network operated by AI agents that capture, match, and route candidates across your portfolio with measurable ROI.
+Talent apply once across all portfolio companies, enabling candidate exchange to reduce time-to-hire. Bring ARR forward, unlock NAV uplift, and save millions in headhunter spend—while staying GDPR-compliant.
             </p>
             
             <div class="value-props scroll-reveal" style="margin: 24px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
@@ -9182,19 +9182,23 @@
       }catch(e){ if(hint) hint.textContent = `Signup failed: ${String(e&&e.message||e)}`; }
     };
 
-    // Finish: complete registration and redirect to portfolio dashboard
+    // Finish: complete registration and redirect to portal (logged-in)
     finish.onclick = async ()=>{
       const finishBtn = document.getElementById('regFinish');
       finishBtn.disabled = true;
       finishBtn.innerHTML = '<div class="loading"></div>Setting up workspace...';
-      
+
       try {
         // Save portfolio data and send invites
         if(_inv.length){
-          await apiFetch(`${API}/auth/invite-collaborators`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.token}`}, body: JSON.stringify({tenant_id: state.tenantId, emails: _inv})});
+          await apiFetch(`${API}/auth/invite-collaborators`, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${state.token}`}, 
+            body: JSON.stringify({tenant_id: state.tenantId, emails: _inv})
+          });
         }
-        
-        // Simulate saving portfolio companies
+
+        // Persist discovered/selected portfolio companies (if any)
         if(portfolioData.length > 0) {
           await apiFetch(`${API}/portfolio/import`, {
             method:'POST', 
@@ -9202,13 +9206,30 @@
             body: JSON.stringify({tenant_id: state.tenantId, companies: portfolioData})
           });
         }
-        
+
+        // Ensure minimal session data exists
+        try {
+          if(!state.profile){
+            const me = await apiFetch(`${API}/auth/me`, {headers:{'Authorization':`Bearer ${state.token}`}});
+            state.profile = me.ok ? await me.json() : null;
+          }
+          localStorage.setItem('apiKey', state.apiKey || '');
+          localStorage.setItem('tenantId', state.tenantId || '');
+          localStorage.setItem('token', state.token || '');
+        } catch(_) {}
+
+        // Close modal and route to portal, initialize logged-in UI
         close();
+        if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
         hideHome();
-        window.location.hash = 'portal';
-        activateAssistant('dashboard');
-        setTimeout(()=>activateAssistant('portfolio-admin'), 500);
-        
+        showPortfolioDashboard();
+        if(window.NavController && typeof NavController.showLoggedIn === 'function'){
+          NavController.showLoggedIn(state.profile || null);
+        }
+        // Default assistant and RT updates just like login
+        setTimeout(()=> activateAssistant('job-gap-analyzer'), 50);
+        setTimeout(startPortfolioRealTimeUpdates, 100);
+
       } catch(e) {
         finishBtn.disabled = false;
         finishBtn.innerHTML = 'Go to dashboard';
@@ -9632,7 +9653,10 @@
   if(location.hash !== '#portal') history.replaceState(null, '', '#portal');
   hideHome();
   showPortfolioDashboard();
-  activate('job-gap-analyzer');
+  if(window.NavController && typeof NavController.showLoggedIn === 'function'){
+    NavController.showLoggedIn(state.profile || null);
+  }
+  activateAssistant('job-gap-analyzer');
   startPortfolioRealTimeUpdates();
   hint.textContent = 'נוצר. ניתן להתחיל לעבוד.';
   }catch(e){ hint.textContent = `שגיאה בהרשמה: ${String(e && e.message || e).slice(0,140)}`; }
@@ -12514,7 +12538,19 @@ Add multiple emails, one per line"></textarea>
               
               <!-- Invite New User -->
               <div class="invite-section">
-                <h3 style="margin: 0 0 16px; color: var(--text); font-size: 18px;">📧 Invite New User</h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                  <h3 style="margin: 0; color: var(--text); font-size: 18px;">📧 Invite New User</h3>
+                  <a href="/static/demo-email-invitation.html" target="_blank" 
+                     style="display: inline-flex; align-items: center; gap: 6px; 
+                            background: rgba(16,185,129,0.1); color: #10b981; 
+                            text-decoration: none; padding: 8px 12px; border-radius: 6px; 
+                            font-size: 14px; font-weight: 500; border: 1px solid rgba(16,185,129,0.3);
+                            transition: all 0.3s ease;"
+                     onmouseover="this.style.background='rgba(16,185,129,0.2)'; this.style.transform='translateY(-1px)'"
+                     onmouseout="this.style.background='rgba(16,185,129,0.1)'; this.style.transform='translateY(0)'">
+                    👁️ Preview Email Template
+                  </a>
+                </div>
                 <div class="invite-form">
                   <div class="form-field">
                     <label class="form-label">Email Address</label>

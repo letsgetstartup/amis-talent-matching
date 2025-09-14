@@ -540,6 +540,19 @@ def demo_portal_html():
     }
     raise HTTPException(status_code=404, detail=detail)
 
+@app.get("/demo-email-invitation.html", response_class=HTMLResponse)
+def demo_email_invitation_html():
+    """Serve demo email invitation template for admin preview"""
+    content = _load_static_file("demo-email-invitation.html")
+    if content is not None:
+        return HTMLResponse(content)
+    detail = {
+        "error": "demo-email-invitation.html missing",
+        "searched_dirs": [str(p) for p in _CANDIDATE_FRONTEND_DIRS],
+        "frontend_public": str(_FRONTEND_PUBLIC) if _FRONTEND_PUBLIC else None
+    }
+    raise HTTPException(status_code=404, detail=detail)
+
 # --- CORS (frontend served from a different port like 5173/5190) ---
 _ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")  # comma separated or '*'
 app.add_middleware(
