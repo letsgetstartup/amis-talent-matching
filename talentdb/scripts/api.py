@@ -412,6 +412,19 @@ def agency_portal_html():
     }
     raise HTTPException(status_code=404, detail=detail)
 
+@app.get("/", response_class=HTMLResponse)
+def root_index():
+    """Primary landing page now serves agency-portal.html.
+
+    If the file is missing, we return a concise 500 style message instead of FastAPI default JSON.
+    This keeps existing deep links (/agency-portal.html) working while making / the canonical URL.
+    """
+    content = _load_static_file("agency-portal.html")
+    if content is not None:
+        return HTMLResponse(content)
+    # Fall back: indicate misconfiguration
+    return HTMLResponse("<h1>Portal not available</h1><p>agency-portal.html missing.</p>", status_code=500)
+
 @app.get("/terms.html", response_class=HTMLResponse)
 def terms_html():
     content = _load_static_file("terms.html")

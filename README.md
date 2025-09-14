@@ -33,3 +33,4 @@ curl -s http://127.0.0.1:8000/mcp/tools
 - Uvicorn workers are disabled in config (use a process manager like Gunicorn in prod if needed).
 - `/health` is a liveness probe; `/ready` should verify DB connectivity.
 - MCP is disabled by default; when enabled, API helpers try MCP first and gracefully fallback to native logic.
+ - The root path `/` now serves the Agency Portal (`agency-portal.html`). The legacy path `/agency-portal.html` is still available for backward compatibility.
