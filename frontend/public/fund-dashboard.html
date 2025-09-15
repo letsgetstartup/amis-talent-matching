@@ -1,0 +1,1218 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fund Dashboard - PTX Portfolio Talent Exchange</title>
+  <style>
+  :root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --secondary: #0ea5e9;
+    --accent: #10b981;
+    --background: #0b1220;
+    --surface: #111827;
+    --panel: #1f2937;
+    --border: #374151;
+    --glass-border: rgba(148,163,184,0.2);
+    --text: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --muted: #9ca3af;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --field-bg: #111827;
+    --field-border: #374151;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+    --headerH: 72px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 25% 25%, rgba(16,185,129,0.15) 0%, transparent 25%),
+      radial-gradient(circle at 75% 75%, rgba(14,165,233,0.1) 0%, transparent 25%),
+      linear-gradient(135deg, rgba(15,23,42,0.8) 0%, rgba(11,18,32,0.95) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Top Navigation */
+  .top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--headerH);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    z-index: 1000;
+  }
+
+  .top-nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+  }
+
+  .nav-brand {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .nav-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover {
+    background: rgba(148,163,184,0.1);
+    border-color: var(--primary);
+  }
+
+  .nav-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color: var(--primary);
+    color: white;
+  }
+
+  .nav-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(16,185,129,0.3);
+  }
+
+  .nav-btn.active {
+    background: rgba(16,185,129,0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* Main content spacing for fixed header */
+  body { padding-top: 80px; }
+
+  /* Hero Section */
+  .hero {
+    padding: 40px 0;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .hero h1 {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    background: linear-gradient(135deg, var(--text), var(--text-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero .accent {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero p.lead {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 800px;
+  }
+
+  /* Dashboard Grid */
+  .dashboard {
+    padding: 40px 0 80px;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* At-a-glance Panel */
+  .at-glance {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .at-glance h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .metric-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .metric-period {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Candidate Experience Card */
+  .experience-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .experience-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  .experience-metrics {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .experience-metric {
+    text-align: center;
+  }
+
+  .experience-metric .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .experience-metric .label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Workflows Panel */
+  .workflows {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .workflows h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .workflow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .workflow-item {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px 20px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .workflow-item:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--primary);
+  }
+
+  .workflow-item h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+
+  .workflow-item p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* Views Section */
+  .views-section {
+    margin-bottom: 40px;
+  }
+
+  .views-section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .views-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .view-tab {
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .view-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .view-tab:hover {
+    color: var(--text);
+  }
+
+  .view-content {
+    display: none;
+  }
+
+  .view-content.active {
+    display: block;
+  }
+
+  /* Company View */
+  .companies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .company-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s ease;
+  }
+
+  .company-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  }
+
+  .company-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .company-logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .company-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 4px;
+  }
+
+  .company-info .status {
+    font-size: 12px;
+    color: var(--primary);
+  }
+
+  .company-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .company-metric {
+    text-align: center;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+  }
+
+  .company-metric .value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 2px;
+  }
+
+  .company-metric .label {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Role Family View */
+  .role-families {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .role-family {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .role-family h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  .supply-demand {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .supply-demand .metric {
+    text-align: center;
+  }
+
+  .supply-demand .metric .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .supply-demand .metric .label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .heatmap {
+    height: 60px;
+    background: linear-gradient(90deg, 
+      rgba(239,68,68,0.3) 0%, 
+      rgba(245,158,11,0.3) 50%, 
+      rgba(16,185,129,0.3) 100%);
+    border-radius: 6px;
+    position: relative;
+  }
+
+  .heatmap::after {
+    content: "Supply vs Demand";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Data & Integrations */
+  .integrations-section {
+    margin-bottom: 40px;
+  }
+
+  .integrations-section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .integrations-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+
+  .integration-category {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .integration-category h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  .integration-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .integration-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+  }
+
+  .integration-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+  }
+
+  .integration-info h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 4px;
+  }
+
+  .integration-info p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  /* Implementation Timeline */
+  .implementation {
+    background: rgba(255,255,255,0.02);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .implementation h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+
+  .implementation p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin: 0 0 32px;
+  }
+
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(16,185,129,0.2);
+  }
+
+  .cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(16,185,129,0.35);
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 32px;
+    }
+    
+    .container {
+      padding: 0 16px;
+    }
+    
+    .metrics-grid,
+    .role-families,
+    .integrations-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .companies-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .views-tabs {
+      flex-wrap: wrap;
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="container">
+      <a href="/" class="nav-brand">PTX</a>
+      <div class="nav-actions">
+        <a href="/agent-network.html" class="nav-btn">Agent Network</a>
+        <a href="/roi-calculator.html" class="nav-btn">ROI Calculator</a>
+        <a href="/fund-dashboard.html" class="nav-btn active">Fund Dashboard</a>
+        <a href="/agency-portal.html" class="nav-btn">Agency Portal</a>
+        <a href="#" class="nav-btn primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1><span class="accent">Operational control and insight</span><br>for platform teams and fund operations</h1>
+      <p class="lead">
+        One pane of glass for portfolio-wide hiring.
+      </p>
+    </div>
+  </section>
+
+  <!-- Dashboard Section -->
+  <section class="dashboard">
+    <div class="container">
+      <div class="dashboard-grid">
+        <!-- At-a-glance Panel -->
+        <div class="at-glance">
+          <h2>At-a-glance</h2>
+          
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value">47</div>
+              <div class="metric-label">Recovered hires</div>
+              <div class="metric-period">YTD</div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-value">$2.1M</div>
+              <div class="metric-label">Agency spend avoided</div>
+              <div class="metric-period">YTD</div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-value">1,240</div>
+              <div class="metric-label">Vacancy days saved</div>
+              <div class="metric-period">QTD</div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-value">52 → 38</div>
+              <div class="metric-label">Time-to-fill (days)</div>
+              <div class="metric-period">Trending</div>
+            </div>
+          </div>
+
+          <div class="experience-card">
+            <h3>Candidate Experience</h3>
+            <div class="experience-metrics">
+              <div class="experience-metric">
+                <div class="value">< 24h</div>
+                <div class="label">Response SLA</div>
+              </div>
+              <div class="experience-metric">
+                <div class="value">8.4</div>
+                <div class="label">NPS Score</div>
+              </div>
+              <div class="experience-metric">
+                <div class="value">94%</div>
+                <div class="label">SLA Met</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workflows Panel -->
+        <div class="workflows">
+          <h2>Workflows you'll run</h2>
+          
+          <div class="workflow-list">
+            <div class="workflow-item">
+              <h4>Approve cross-portfolio referrals</h4>
+              <p>Push shortlists to portcos and track placement outcomes</p>
+            </div>
+            
+            <div class="workflow-item">
+              <h4>Set brand & comms policies</h4>
+              <p>Configure automated, respectful rejection messaging</p>
+            </div>
+            
+            <div class="workflow-item">
+              <h4>Configure governance</h4>
+              <p>Manage retention, consent, DSR, and audit rules</p>
+            </div>
+            
+            <div class="workflow-item">
+              <h4>Create initiatives</h4>
+              <p>Launch targeted hiring campaigns (e.g., "finance roles in Q4")</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Views Section -->
+  <section class="views-section">
+    <div class="container">
+      <h2>Views</h2>
+      
+      <div class="views-tabs">
+        <button class="view-tab active" data-view="companies">By Company</button>
+        <button class="view-tab" data-view="roles">By Role Family</button>
+        <button class="view-tab" data-view="geography">By Geography</button>
+        <button class="view-tab" data-view="source">By Source</button>
+      </div>
+
+      <!-- By Company View -->
+      <div class="view-content active" id="companies">
+        <div class="companies-grid">
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">A</div>
+              <div class="company-info">
+                <h4>Acme Corp</h4>
+                <div class="status">Active • Series B</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">12</div>
+                <div class="label">Open roles</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">3</div>
+                <div class="label">Matches</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">42d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">B</div>
+              <div class="company-info">
+                <h4>Beta Systems</h4>
+                <div class="status">Active • Series A</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">8</div>
+                <div class="label">Open roles</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">5</div>
+                <div class="label">Matches</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">38d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">G</div>
+              <div class="company-info">
+                <h4>Gamma Technologies</h4>
+                <div class="status">Active • Seed</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">15</div>
+                <div class="label">Open roles</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">2</div>
+                <div class="label">Matches</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">55d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- By Role Family View -->
+      <div class="view-content" id="roles">
+        <div class="role-families">
+          <div class="role-family">
+            <h4>Engineering</h4>
+            <div class="supply-demand">
+              <div class="metric">
+                <div class="value">142</div>
+                <div class="label">Supply</div>
+              </div>
+              <div class="metric">
+                <div class="value">89</div>
+                <div class="label">Demand</div>
+              </div>
+            </div>
+            <div class="heatmap"></div>
+          </div>
+
+          <div class="role-family">
+            <h4>GTM & Sales</h4>
+            <div class="supply-demand">
+              <div class="metric">
+                <div class="value">67</div>
+                <div class="label">Supply</div>
+              </div>
+              <div class="metric">
+                <div class="value">94</div>
+                <div class="label">Demand</div>
+              </div>
+            </div>
+            <div class="heatmap"></div>
+          </div>
+
+          <div class="role-family">
+            <h4>Operations</h4>
+            <div class="supply-demand">
+              <div class="metric">
+                <div class="value">34</div>
+                <div class="label">Supply</div>
+              </div>
+              <div class="metric">
+                <div class="value">28</div>
+                <div class="label">Demand</div>
+              </div>
+            </div>
+            <div class="heatmap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- By Geography View -->
+      <div class="view-content" id="geography">
+        <div class="companies-grid">
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">🇺🇸</div>
+              <div class="company-info">
+                <h4>North America</h4>
+                <div class="status">Primary market</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">45d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">$125K</div>
+                <div class="label">Avg salary</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">Strong</div>
+                <div class="label">Market signal</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">🇪🇺</div>
+              <div class="company-info">
+                <h4>Europe</h4>
+                <div class="status">Growing market</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">52d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">€85K</div>
+                <div class="label">Avg salary</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">Moderate</div>
+                <div class="label">Market signal</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- By Source View -->
+      <div class="view-content" id="source">
+        <div class="companies-grid">
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">🔄</div>
+              <div class="company-info">
+                <h4>Internal Mobility</h4>
+                <div class="status">Cross-portfolio moves</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">23</div>
+                <div class="label">YTD hires</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">95%</div>
+                <div class="label">Success rate</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">28d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">👥</div>
+              <div class="company-info">
+                <h4>Referrals</h4>
+                <div class="status">Employee networks</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">18</div>
+                <div class="label">YTD hires</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">88%</div>
+                <div class="label">Success rate</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">35d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="company-card">
+            <div class="company-header">
+              <div class="company-logo">🌐</div>
+              <div class="company-info">
+                <h4>PTX Network</h4>
+                <div class="status">Silver medalists</div>
+              </div>
+            </div>
+            <div class="company-metrics">
+              <div class="company-metric">
+                <div class="value">34</div>
+                <div class="label">YTD hires</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">82%</div>
+                <div class="label">Success rate</div>
+              </div>
+              <div class="company-metric">
+                <div class="value">41d</div>
+                <div class="label">Avg TTF</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data & Integrations Section -->
+  <section class="integrations-section">
+    <div class="container">
+      <h2>Data & integrations</h2>
+      
+      <div class="integrations-grid">
+        <div class="integration-category">
+          <h4>ATS Connectors</h4>
+          <div class="integration-list">
+            <div class="integration-item">
+              <div class="integration-icon">W</div>
+              <div class="integration-info">
+                <h5>Workday</h5>
+                <p>Ingest openings, statuses, and outcomes</p>
+              </div>
+            </div>
+            <div class="integration-item">
+              <div class="integration-icon">G</div>
+              <div class="integration-info">
+                <h5>Greenhouse</h5>
+                <p>Real-time job sync and candidate tracking</p>
+              </div>
+            </div>
+            <div class="integration-item">
+              <div class="integration-icon">L</div>
+              <div class="integration-info">
+                <h5>Lever</h5>
+                <p>Automated workflow integration</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="integration-category">
+          <h4>Data Export & BI</h4>
+          <div class="integration-list">
+            <div class="integration-item">
+              <div class="integration-icon">📊</div>
+              <div class="integration-info">
+                <h5>APIs & Webhooks</h5>
+                <p>Export to your data warehouse/BI</p>
+              </div>
+            </div>
+            <div class="integration-item">
+              <div class="integration-icon">🔐</div>
+              <div class="integration-info">
+                <h5>SSO & RBAC</h5>
+                <p>Fund Ops, Platform, and Portco roles</p>
+              </div>
+            </div>
+            <div class="integration-item">
+              <div class="integration-icon">🛡️</div>
+              <div class="integration-info">
+                <h5>Security & Compliance</h5>
+                <p>GDPR-aligned, audit trails, DPA available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Implementation Section -->
+  <section class="implementation" id="demo">
+    <div class="container">
+      <h2>Implementation</h2>
+      <p>
+        Typical onboarding measured in <strong>weeks</strong>, starting with a pilot cohort of portcos.
+        <br>Dedicated implementation support and playbooks for platform teams.
+      </p>
+      <a href="#demo-form" class="cta-primary request-demo-btn">
+        Request a Demo
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Demo Request Form -->
+  <section id="demo-form" style="padding:60px 0;background:rgba(255,255,255,0.02);">
+    <div class="container" style="max-width:860px;">
+      <h2 style="margin-top:0;font-size:34px;">Request a Live Demo</h2>
+      <p style="color:var(--text-secondary);margin:8px 0 28px;">We\'ll tailor a walkthrough based on portfolio size, ATS mix, and immediate hiring priorities.</p>
+      <form id="demoForm" style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+          <div>
+            <label for="demoFund">Fund / Firm</label>
+            <input id="demoFund" name="fund" required placeholder="Example Ventures" />
+          </div>
+          <div>
+            <label for="demoEmail">Work Email</label>
+            <input id="demoEmail" name="email" type="email" required placeholder="you@fund.com" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+          <div>
+            <label for="demoPortcos">Portfolio Companies</label>
+            <input id="demoPortcos" name="portcos" type="number" min="1" required placeholder="35" />
+          </div>
+          <div>
+            <label for="demoATS">ATS Mix (optional)</label>
+            <input id="demoATS" name="ats" placeholder="Workday, Greenhouse, Lever" />
+          </div>
+        </div>
+        <div>
+          <label for="demoFocus">Key Focus Areas</label>
+          <textarea id="demoFocus" name="focus" rows="3" placeholder="Cross-portfolio matching, governance automation..."></textarea>
+        </div>
+        <button type="submit" class="cta-primary" style="border:none;justify-content:center;display:inline-flex;gap:6px;">Submit Request</button>
+        <div id="demoStatus" style="display:none;font-size:14px"></div>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    // Tab switching functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const tabs = document.querySelectorAll('.view-tab');
+      const contents = document.querySelectorAll('.view-content');
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          const targetView = this.getAttribute('data-view');
+
+          // Remove active class from all tabs and contents
+          tabs.forEach(t => t.classList.remove('active'));
+          contents.forEach(c => c.classList.remove('active'));
+
+          // Add active class to clicked tab and corresponding content
+          this.classList.add('active');
+          document.getElementById(targetView).classList.add('active');
+        });
+      });
+    });
+
+    // Smooth scroll for anchor links
+    document.addEventListener('click', function(e){
+      const link = e.target.closest('a[href^="#"]');
+      if(link && link.getAttribute('href') !== '#'){
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(el){
+          e.preventDefault();
+          el.scrollIntoView({behavior:'smooth', block:'start'});
+        }
+      }
+    });
+
+    // Request demo button convenience (scrolls to form)
+    document.querySelectorAll('.request-demo-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const form = document.getElementById('demo-form');
+        if(form){ e.preventDefault(); form.scrollIntoView({behavior:'smooth'}); }
+      });
+    });
+
+    // Demo form submission simulation
+    const demoForm = document.getElementById('demoForm');
+    if(demoForm){
+      demoForm.addEventListener('submit', e=>{
+        e.preventDefault();
+        const status = document.getElementById('demoStatus');
+        status.style.display='block';
+        status.style.color='var(--muted)';
+        status.textContent='Submitting...';
+        const data = Object.fromEntries(new FormData(demoForm).entries());
+        setTimeout(()=>{
+          status.style.color='var(--success)';
+          status.textContent='✅ Demo request received. We\'ll reply with scheduling options shortly.';
+          demoForm.reset();
+        }, 900);
+        console.log('Demo Request', data);
+      });
+    }
+
+    // Make top Get Started / primary nav button scroll if #demo-form exists
+    const primaryNav = document.querySelector('.nav-btn.primary');
+    if(primaryNav){
+      primaryNav.addEventListener('click', function(e){
+        const form = document.getElementById('demo-form');
+        if(form){ e.preventDefault(); form.scrollIntoView({behavior:'smooth'}); }
+      });
+    }
+  </script>
+</body>
+</html>

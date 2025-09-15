@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Network - PTX Portfolio Talent Exchange</title>
+  <style>
+  :root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --secondary: #0ea5e9;
+    --accent: #10b981;
+    --background: #0b1220;
+    --surface: #111827;
+    --panel: #1f2937;
+    --border: #374151;
+    --glass-border: rgba(148,163,184,0.2);
+    --text: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --muted: #9ca3af;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --field-bg: #111827;
+    --field-border: #374151;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+    --headerH: 72px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 25% 25%, rgba(16,185,129,0.15) 0%, transparent 25%),
+      radial-gradient(circle at 75% 75%, rgba(14,165,233,0.1) 0%, transparent 25%),
+      linear-gradient(135deg, rgba(15,23,42,0.8) 0%, rgba(11,18,32,0.95) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Top Navigation */
+  .top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--headerH);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    z-index: 1000;
+  }
+
+  .top-nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+  }
+
+  .nav-brand {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .nav-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover {
+    background: rgba(148,163,184,0.1);
+    border-color: var(--primary);
+  }
+
+  .nav-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color: var(--primary);
+    color: white;
+  }
+
+  .nav-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(16,185,129,0.3);
+  }
+
+  /* Main content spacing for fixed header */
+  body { padding-top: 80px; }
+
+  /* Hero Section */
+  .hero {
+    padding: 80px 0 120px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hero-background {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .floating-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+
+  .particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .particle:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+  .particle:nth-child(2) { top: 60%; left: 85%; animation-delay: 2s; }
+  .particle:nth-child(3) { top: 80%; left: 15%; animation-delay: 4s; }
+  .particle:nth-child(4) { top: 30%; left: 70%; animation-delay: 1s; }
+  .particle:nth-child(5) { top: 50%; left: 40%; animation-delay: 3s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
+  }
+
+  .hero h1 {
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 24px;
+    background: linear-gradient(135deg, var(--text), var(--text-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero .accent {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero p.lead {
+    font-size: 20px;
+    color: var(--text-secondary);
+    margin: 0 0 40px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(16,185,129,0.2);
+  }
+
+  .cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(16,185,129,0.35);
+  }
+
+  /* Key Outcomes Section */
+  .outcomes {
+    padding: 80px 0;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .outcomes h2 {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: var(--text);
+  }
+
+  .outcomes .subtitle {
+    text-align: center;
+    font-size: 18px;
+    color: var(--muted);
+    margin: 0 0 60px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+  }
+
+  .metric-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+  }
+
+  .metric-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(16,185,129,0.3);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+
+  .metric-value {
+    font-size: 36px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .metric-label {
+    font-size: 16px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* How it Works Section */
+  .how-it-works {
+    padding: 80px 0;
+  }
+
+  .how-it-works h2 {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 700;
+    margin: 0 0 60px;
+    color: var(--text);
+  }
+
+  .agents-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .agents-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .agent-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+    transition: all 0.3s ease;
+  }
+
+  .agent-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(16,185,129,0.3);
+    background: rgba(255,255,255,0.05);
+  }
+
+  .agent-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .agent-card h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+
+  .agent-card p {
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Benefits Section */
+  .benefits {
+    padding: 80px 0;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 60px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .benefits-grid {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+  }
+
+  .benefits-section h3 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 24px;
+  }
+
+  .benefit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .benefit-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .benefit-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--primary);
+    border-radius: 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .benefit-icon::before {
+    content: "✓";
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .benefit-text {
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .benefit-text strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Integrations Section */
+  .integrations {
+    padding: 80px 0;
+  }
+
+  .integrations h2 {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 700;
+    margin: 0 0 60px;
+    color: var(--text);
+  }
+
+  .integration-categories {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .integration-categories {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .integration-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+  }
+
+  .integration-card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  .integration-card p {
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Security Section */
+  .security {
+    padding: 80px 0;
+    background: rgba(255,255,255,0.02);
+    text-align: center;
+  }
+
+  .security h2 {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .security-features {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .security-features {
+      flex-direction: column;
+      gap: 20px;
+    }
+  }
+
+  .security-feature {
+    color: var(--text-secondary);
+    font-size: 16px;
+  }
+
+  /* Final CTA Section */
+  .final-cta {
+    padding: 80px 0;
+    text-align: center;
+  }
+
+  .final-cta h2 {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0 0 40px;
+    color: var(--text);
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 36px;
+    }
+    
+    .hero p.lead {
+      font-size: 18px;
+    }
+    
+    .outcomes h2,
+    .how-it-works h2,
+    .integrations h2 {
+      font-size: 32px;
+    }
+    
+    .container {
+      padding: 0 16px;
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="container">
+      <a href="/" class="nav-brand">PTX</a>
+      <div class="nav-actions">
+        <a href="/agent-network.html" class="nav-btn">Agent Network</a>
+        <a href="/roi-calculator.html" class="nav-btn">ROI Calculator</a>
+        <a href="/fund-dashboard.html" class="nav-btn">Fund Dashboard</a>
+        <a href="/agency-portal.html" class="nav-btn">Agency Portal</a>
+        <a href="#" class="nav-btn primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-background">
+      <div class="floating-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+      </div>
+    </div>
+    
+    <div class="container">
+      <h1><span class="accent">Unite your portfolio</span><br>to hire as one</h1>
+      <p class="lead">
+        Candidates apply once to the fund and are considered across all portfolio companies.
+      </p>
+      <a href="#get-started" class="cta-primary">
+        Get Started
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Key Outcomes Section -->
+  <section class="outcomes">
+    <div class="container">
+      <h2>Key outcomes</h2>
+      <p class="subtitle">Typical results for funds with 30–40 portfolio companies</p>
+      
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">$90–100M</div>
+          <div class="metric-label">NAV uplift from faster scaling and lower failure risk</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$10–12M</div>
+          <div class="metric-label">annual cost savings vs. agency + vacancy drag</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">140–180</div>
+          <div class="metric-label">recovered hires/year from cross-portfolio matching</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works Section -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2>How it works</h2>
+      
+      <div class="agents-grid">
+        <div class="agent-card">
+          <div class="agent-number">1</div>
+          <h3>Job Ingestion Agents</h3>
+          <p>Normalize openings from multiple ATSs into one portfolio-wide marketplace.</p>
+        </div>
+        
+        <div class="agent-card">
+          <div class="agent-number">2</div>
+          <h3>Rejection Intercept Agents</h3>
+          <p>Capture silver-medalist candidates at rejection and re-route them to relevant roles across sister companies.</p>
+        </div>
+        
+        <div class="agent-card">
+          <div class="agent-number">3</div>
+          <h3>Matching Agents (LLM + embeddings)</h3>
+          <p>Explainable, cross-role matching with transparent scoring and gap analysis.</p>
+        </div>
+        
+        <div class="agent-card">
+          <div class="agent-number">4</div>
+          <h3>Governance Agents</h3>
+          <p>Branded, respectful comms; GDPR-aligned retention; candidate consent and DSR workflows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits Section -->
+  <section class="benefits">
+    <div class="container">
+      <div class="benefits-grid">
+        <div class="benefits-section">
+          <h3>Why funds use it</h3>
+          <div class="benefit-list">
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Compounding network effect:</strong> every "rejected" candidate becomes a shared asset.
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Lower cost to hire:</strong> reduced agency dependency and time-to-fill.
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Portfolio intelligence:</strong> one view of talent supply/demand, skills heatmaps, and hiring risk.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="benefits-section">
+          <h3>Why portfolio companies love it</h3>
+          <div class="benefit-list">
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Pre-qualified pipeline</strong> from sister companies
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Faster time-to-market</strong> for product and GTM teams
+              </div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon"></div>
+              <div class="benefit-text">
+                <strong>Employer-brand lift</strong> via transparent, respectful candidate experience
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Integrations Section -->
+  <section class="integrations">
+    <div class="container">
+      <h2>Integrations</h2>
+      
+      <div class="integration-categories">
+        <div class="integration-card">
+          <h4>ATS</h4>
+          <p>Works with leading systems (e.g., Workday, Greenhouse, Lever)</p>
+        </div>
+        
+        <div class="integration-card">
+          <h4>SSO & Admin</h4>
+          <p>Role-based access for fund ops, platform, and portco recruiters</p>
+        </div>
+        
+        <div class="integration-card">
+          <h4>APIs & Webhooks</h4>
+          <p>for data export and BI</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Section -->
+  <section class="security">
+    <div class="container">
+      <h2>Security & Compliance</h2>
+      <div class="security-features">
+        <div class="security-feature">GDPR-aligned by design, DPA available</div>
+        <div class="security-feature">Data minimization, audit logs, configurable retention windows</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA Section -->
+  <section class="final-cta">
+    <div class="container">
+      <h2>Get started — Add your fund and unlock NAV uplift, cost savings, and recovered hires.</h2>
+      <a href="#get-started" class="cta-primary get-started-btn">
+        Get Started
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Get Started Section -->
+  <section id="get-started" class="final-cta" style="background:rgba(255,255,255,0.03);padding-top:40px;">
+    <div class="container" style="max-width:840px;">
+      <h2 style="margin-bottom:20px;">Apply for Early Access</h2>
+      <p style="margin-top:0;color:var(--text-secondary);font-size:16px;">Tell us a little about your fund to begin the onboarding process. We'll follow up with a tailored ROI model and pilot proposal.</p>
+      <form id="earlyAccessForm" style="display:flex;flex-direction:column;gap:16px;margin-top:24px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <label for="fundName">Fund Name</label>
+            <input id="fundName" name="fundName" required placeholder="Example Capital" />
+          </div>
+          <div>
+            <label for="contactEmail">Work Email</label>
+            <input id="contactEmail" type="email" name="contactEmail" required placeholder="you@fund.com" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <label for="portfolioSize">Portfolio Companies</label>
+            <input id="portfolioSize" name="portfolioSize" type="number" min="1" required placeholder="32" />
+          </div>
+          <div>
+            <label for="avgHires">Avg Annual Hires / Portco</label>
+            <input id="avgHires" name="avgHires" type="number" min="1" required placeholder="25" />
+          </div>
+        </div>
+        <div>
+          <label for="priorityRoles">Priority Role Families (optional)</label>
+            <input id="priorityRoles" name="priorityRoles" placeholder="Engineering, GTM, Finance..." />
+        </div>
+        <div>
+          <label for="goals">Primary Goals</label>
+          <textarea id="goals" name="goals" rows="3" placeholder="Reduce agency dependence, faster GTM hiring, portfolio intelligence..."></textarea>
+        </div>
+        <button type="submit" class="cta-primary" style="border:none;justify-content:center;">Request Access</button>
+        <div id="formStatus" style="display:none;font-size:14px;"></div>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    // Smooth scroll for in-page anchors
+    document.addEventListener('click', function(e){
+      const a = e.target.closest('a[href^="#"]');
+      if(a && a.getAttribute('href') !== '#'){
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(el){
+          e.preventDefault();
+          el.scrollIntoView({behavior:'smooth', block:'start'});
+        }
+      }
+    });
+
+    // Make nav Get Started button functional
+    document.querySelectorAll('.nav-btn.primary, .get-started-btn').forEach(btn=>{
+      btn.addEventListener('click', function(e){
+        const target = document.getElementById('get-started');
+        if(target){
+          e.preventDefault();
+          target.scrollIntoView({behavior:'smooth'});
+        }
+      });
+    });
+
+    // Basic form handling (simulated submit)
+    const form = document.getElementById('earlyAccessForm');
+    if(form){
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const status = document.getElementById('formStatus');
+        status.style.display='block';
+        status.style.color='var(--muted)';
+        status.textContent='Submitting...';
+        const data = Object.fromEntries(new FormData(form).entries());
+        // Simulate async
+        setTimeout(()=>{
+          status.style.color='var(--success)';
+          status.textContent='✅ Request received. We\'ll reach out within 1 business day with a tailored ROI model.';
+          form.reset();
+        }, 900);
+        console.log('Early Access Submission', data);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROI Calculator - PTX Portfolio Talent Exchange</title>
+  <style>
+  :root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+    --secondary: #0ea5e9;
+    --accent: #10b981;
+    --background: #0b1220;
+    --surface: #111827;
+    --panel: #1f2937;
+    --border: #374151;
+    --glass-border: rgba(148,163,184,0.2);
+    --text: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --muted: #9ca3af;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --field-bg: #111827;
+    --field-border: #374151;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+    --headerH: 72px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--background);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 25% 25%, rgba(16,185,129,0.15) 0%, transparent 25%),
+      radial-gradient(circle at 75% 75%, rgba(14,165,233,0.1) 0%, transparent 25%),
+      linear-gradient(135deg, rgba(15,23,42,0.8) 0%, rgba(11,18,32,0.95) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Top Navigation */
+  .top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--headerH);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
+    z-index: 1000;
+  }
+
+  .top-nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+  }
+
+  .nav-brand {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .nav-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .nav-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover {
+    background: rgba(148,163,184,0.1);
+    border-color: var(--primary);
+  }
+
+  .nav-btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color: var(--primary);
+    color: white;
+  }
+
+  .nav-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(16,185,129,0.3);
+  }
+
+  .nav-btn.active {
+    background: rgba(16,185,129,0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* Main content spacing for fixed header */
+  body { padding-top: 80px; }
+
+  /* Hero Section */
+  .hero {
+    padding: 60px 0;
+    text-align: center;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .hero h1 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 20px;
+    background: linear-gradient(135deg, var(--text), var(--text-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero .accent {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero p.lead {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin: 0 0 40px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Calculator Layout */
+  .calculator-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    padding: 60px 0;
+  }
+
+  @media (max-width: 1024px) {
+    .calculator-layout {
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+  }
+
+  /* Input Panel */
+  .input-panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .input-panel h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .form-section {
+    margin-bottom: 32px;
+  }
+
+  .form-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-field label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .form-field input,
+  .form-field select {
+    background: var(--field-bg);
+    border: 1px solid var(--field-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+  }
+
+  .form-field input:focus,
+  .form-field select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+  }
+
+  .form-field input::placeholder {
+    color: var(--muted);
+  }
+
+  .import-btn {
+    background: rgba(16,185,129,0.1);
+    color: var(--primary);
+    border: 1px solid rgba(16,185,129,0.3);
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-top: 16px;
+  }
+
+  .import-btn:hover {
+    background: rgba(16,185,129,0.2);
+  }
+
+  /* Results Panel */
+  .results-panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 32px;
+    position: sticky;
+    top: 100px;
+  }
+
+  .results-panel h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: var(--text);
+  }
+
+  .results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .result-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+  }
+
+  .result-value {
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .result-label {
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .result-range {
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(0,0,0,0.2);
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+
+  /* Actions */
+  .actions-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .actions-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .action-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+  }
+
+  .action-btn svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+  }
+
+  /* Methodology Section */
+  .methodology {
+    padding: 80px 0;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .methodology h2 {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0 0 40px;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .methodology-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .methodology-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .methodology-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .methodology-card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+
+  .methodology-card p {
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .hero h1 {
+      font-size: 36px;
+    }
+    
+    .hero p.lead {
+      font-size: 16px;
+    }
+    
+    .container {
+      padding: 0 16px;
+    }
+    
+    .results-panel {
+      position: static;
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="container">
+      <a href="/" class="nav-brand">PTX</a>
+      <div class="nav-actions">
+        <a href="/agent-network.html" class="nav-btn">Agent Network</a>
+        <a href="/roi-calculator.html" class="nav-btn active">ROI Calculator</a>
+        <a href="/fund-dashboard.html" class="nav-btn">Fund Dashboard</a>
+        <a href="/agency-portal.html" class="nav-btn">Agency Portal</a>
+        <a href="#" class="nav-btn primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1><span class="accent">Quantify fund-level impact</span><br>before you pilot</h1>
+      <p class="lead">
+        Model NAV uplift, cost savings, and recovered hires based on your portfolio.
+      </p>
+    </div>
+  </section>
+
+  <!-- Calculator Section -->
+  <section class="calculator">
+    <div class="container">
+      <div class="calculator-layout">
+        <!-- Input Panel -->
+        <div class="input-panel">
+          <h2>Inputs</h2>
+          
+          <div class="form-section">
+            <h3>Portfolio Overview</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="portfolio-size">Portfolio size</label>
+                <input type="number" id="portfolio-size" placeholder="30" min="1" max="200">
+              </div>
+              <div class="form-field">
+                <label for="avg-hires">Annual hires/company</label>
+                <input type="number" id="avg-hires" placeholder="25" min="1" max="500">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Current Hiring Costs</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="agency-usage">Agency usage (%)</label>
+                <input type="number" id="agency-usage" placeholder="40" min="0" max="100">
+              </div>
+              <div class="form-field">
+                <label for="agency-fee">Typical agency fee (%)</label>
+                <input type="number" id="agency-fee" placeholder="20" min="5" max="50">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="avg-salary">Average salary ($)</label>
+                <input type="number" id="avg-salary" placeholder="120000" min="30000" max="500000">
+              </div>
+              <div class="form-field">
+                <label for="vacancy-cost">Vacancy cost/day ($)</label>
+                <input type="number" id="vacancy-cost" placeholder="800" min="100" max="5000">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Time-to-Fill</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="current-ttf">Current (days)</label>
+                <input type="number" id="current-ttf" placeholder="65" min="10" max="180">
+              </div>
+              <div class="form-field">
+                <label for="target-ttf">Target (days)</label>
+                <input type="number" id="target-ttf" placeholder="45" min="5" max="120">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Recovery Parameters</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="recovery-rate">Recovery rate (%)</label>
+                <input type="number" id="recovery-rate" placeholder="15" min="5" max="50">
+              </div>
+              <div class="form-field">
+                <label for="retention-window">Data retention (months)</label>
+                <select id="retention-window">
+                  <option value="6">6 months</option>
+                  <option value="12" selected>12 months</option>
+                  <option value="24">24 months</option>
+                  <option value="36">36 months</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button class="import-btn">
+            📊 Import from ATS
+          </button>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="results-panel">
+          <h2>Outputs</h2>
+          
+          <div class="results-grid">
+            <div class="result-card">
+              <div class="result-value" id="recovered-hires">112</div>
+              <div class="result-label">Recovered hires/year</div>
+              <div class="result-range">Range: 85-140 hires</div>
+            </div>
+
+            <div class="result-card">
+              <div class="result-value" id="cost-savings">$8.4M</div>
+              <div class="result-label">Annual cost savings</div>
+              <div class="result-range">Agency avoidance + vacancy reduction</div>
+            </div>
+
+            <div class="result-card">
+              <div class="result-value" id="ttf-improvement">20</div>
+              <div class="result-label">Days saved (time-to-fill)</div>
+              <div class="result-range">65 → 45 days average</div>
+            </div>
+
+            <div class="result-card">
+              <div class="result-value" id="nav-impact">$72M</div>
+              <div class="result-label">NAV/ARR impact</div>
+              <div class="result-range">Modeled for portfolio mix</div>
+            </div>
+          </div>
+
+          <div class="actions-section">
+            <h3>What you can do here</h3>
+            <div class="action-buttons">
+              <a href="#" class="action-btn">
+                <span>Download board-ready PDF</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </a>
+              
+              <a href="#" class="action-btn">
+                <span>Export CSV model</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </a>
+              
+              <a href="#" class="action-btn">
+                <span>Share read-only link</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Methodology Section -->
+  <section class="methodology">
+    <div class="container">
+      <h2>Methodology (plain English)</h2>
+      
+      <div class="methodology-grid">
+        <div class="methodology-card">
+          <h4>Recovered Hires</h4>
+          <p>We estimate recovered hires from intercepted silver-medalists × match rate across sister companies.</p>
+        </div>
+        
+        <div class="methodology-card">
+          <h4>Cost Savings</h4>
+          <p>Cost savings combine avoided agency fees and reduced vacancy cost from faster fills.</p>
+        </div>
+        
+        <div class="methodology-card">
+          <h4>NAV/ARR Uplift</h4>
+          <p>NAV/ARR uplift reflects accelerated hiring for revenue teams and reduced failure risk for critical roles.</p>
+        </div>
+        
+        <div class="methodology-card">
+          <h4>Sensitivity Analysis</h4>
+          <p>All results show ranges; assumptions are editable.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Get Started Anchor -->
+  <section id="get-started" style="padding:60px 0;background:rgba(255,255,255,0.02);">
+    <div class="container" style="max-width:820px;">
+      <h2 style="margin-top:0;font-size:34px;">Get Started</h2>
+      <p style="color:var(--text-secondary);margin-top:8px;">Provide a few details and we'll reach out with a tailored ROI validation worksheet and pilot plan.</p>
+      <form id="roiLeadForm" style="display:flex;flex-direction:column;gap:16px;margin-top:28px;">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Fund / Firm</label>
+            <input name="fund" required placeholder="Example Capital" />
+          </div>
+          <div class="form-field">
+            <label>Work Email</label>
+            <input name="email" required type="email" placeholder="you@fund.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Portfolio Companies</label>
+            <input name="portcos" required type="number" min="1" placeholder="34" />
+          </div>
+          <div class="form-field">
+            <label>Primary Objective</label>
+            <select name="objective">
+              <option value="cost">Reduce agency cost</option>
+              <option value="speed">Accelerate hiring speed</option>
+              <option value="insight">Portfolio intelligence</option>
+              <option value="governance">Governance & compliance</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Comments (optional)</label>
+          <textarea rows="3" name="notes" placeholder="We want to pilot with 5 GTM heavy companies..."></textarea>
+        </div>
+        <button class="nav-btn primary" type="submit" style="justify-content:center;display:inline-flex;align-items:center;gap:6px;font-size:15px;">Request Pilot Access</button>
+        <div id="roiLeadStatus" style="display:none;font-size:14px"></div>
+      </form>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha256-bEwK8BPVKx/aRXefxWWEXUOYaL6VLdystD5nq2EaRV0=" crossorigin="anonymous"></script>
+  <script>
+    // Simple calculator logic
+    function updateCalculations() {
+      const portfolioSize = parseInt(document.getElementById('portfolio-size').value) || 30;
+      const avgHires = parseInt(document.getElementById('avg-hires').value) || 25;
+      const agencyUsage = parseInt(document.getElementById('agency-usage').value) || 40;
+      const agencyFee = parseInt(document.getElementById('agency-fee').value) || 20;
+      const avgSalary = parseInt(document.getElementById('avg-salary').value) || 120000;
+      const vacancyCost = parseInt(document.getElementById('vacancy-cost').value) || 800;
+      const currentTtf = parseInt(document.getElementById('current-ttf').value) || 65;
+      const targetTtf = parseInt(document.getElementById('target-ttf').value) || 45;
+      const recoveryRate = parseInt(document.getElementById('recovery-rate').value) || 15;
+
+      // Calculations
+      const totalAnnualHires = portfolioSize * avgHires;
+      const recoveredHires = Math.round(totalAnnualHires * (recoveryRate / 100));
+      const agencyHires = Math.round(totalAnnualHires * (agencyUsage / 100));
+      const agencySavings = agencyHires * avgSalary * (agencyFee / 100);
+      const ttfImprovement = currentTtf - targetTtf;
+      const vacancySavings = totalAnnualHires * ttfImprovement * vacancyCost;
+      const totalCostSavings = agencySavings + vacancySavings;
+      const navImpact = totalCostSavings * 8.5; // Rough multiplier for NAV impact
+
+      // Update display
+      document.getElementById('recovered-hires').textContent = recoveredHires;
+      document.getElementById('cost-savings').textContent = `$${(totalCostSavings / 1000000).toFixed(1)}M`;
+      document.getElementById('ttf-improvement').textContent = ttfImprovement;
+      document.getElementById('nav-impact').textContent = `$${(navImpact / 1000000).toFixed(0)}M`;
+    }
+
+    // Add event listeners to all inputs
+    document.addEventListener('DOMContentLoaded', function() {
+      const inputs = document.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', updateCalculations);
+      });
+      
+      // Initial calculation
+      updateCalculations();
+    });
+  </script>
+  <script>
+    // Smooth scroll anchor handling
+    document.addEventListener('click', function(e){
+      const link = e.target.closest('a[href^="#"]');
+      if(link && link.getAttribute('href') !== '#'){
+        const id = link.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(el){
+          e.preventDefault();
+          el.scrollIntoView({behavior:'smooth',block:'start'});
+        }
+      }
+    });
+
+    // Restore original calculation logic (copied from earlier script to avoid truncation by edit abstraction)
+    (function(){
+      function calc(){
+        const g = id=>parseInt(document.getElementById(id).value)||0;
+        const portfolioSize = g('portfolio-size')||30;
+        const avgHires = g('avg-hires')||25;
+        const agencyUsage = g('agency-usage')||40;
+        const agencyFee = g('agency-fee')||20;
+        const avgSalary = g('avg-salary')||120000;
+        const vacancyCost = g('vacancy-cost')||800;
+        const currentTtf = g('current-ttf')||65;
+        const targetTtf = g('target-ttf')||45;
+        const recoveryRate = g('recovery-rate')||15;
+        const totalAnnualHires = portfolioSize * avgHires;
+        const recoveredHires = Math.round(totalAnnualHires * (recoveryRate / 100));
+        const agencyHires = Math.round(totalAnnualHires * (agencyUsage / 100));
+        const agencySavings = agencyHires * avgSalary * (agencyFee / 100);
+        const ttfImprovement = currentTtf - targetTtf;
+        const vacancySavings = totalAnnualHires * ttfImprovement * vacancyCost;
+        const totalCostSavings = agencySavings + vacancySavings;
+        const navImpact = totalCostSavings * 8.5;
+        document.getElementById('recovered-hires').textContent = recoveredHires;
+        document.getElementById('cost-savings').textContent = `$${(totalCostSavings / 1e6).toFixed(1)}M`;
+        document.getElementById('ttf-improvement').textContent = ttfImprovement;
+        document.getElementById('nav-impact').textContent = `$${(navImpact / 1e6).toFixed(0)}M`;
+      }
+      document.addEventListener('input', e=>{ if(e.target.matches('input, select')) calc(); });
+      calc();
+    })();
+
+    // ROI Lead form submission simulation
+    const roiForm = document.getElementById('roiLeadForm');
+    if(roiForm){
+      roiForm.addEventListener('submit', e=>{
+        e.preventDefault();
+        const status = document.getElementById('roiLeadStatus');
+        status.style.display='block';
+        status.style.color='var(--muted)';
+        status.textContent='Submitting...';
+        const data = Object.fromEntries(new FormData(roiForm).entries());
+        setTimeout(()=>{
+          status.style.color='var(--success)';
+          status.textContent='✅ Received. We\'ll send a tailored pilot worksheet shortly.';
+          roiForm.reset();
+        }, 900);
+        console.log('ROI Lead Submission', data);
+      });
+    }
+
+    // Action buttons functionality
+    function exportCSV(){
+      const rows = [
+        ['Metric','Value'],
+        ['Recovered Hires', document.getElementById('recovered-hires').textContent],
+        ['Cost Savings', document.getElementById('cost-savings').textContent],
+        ['Time-to-Fill Improvement (days)', document.getElementById('ttf-improvement').textContent],
+        ['NAV/ARR Impact', document.getElementById('nav-impact').textContent]
+      ];
+      const csv = rows.map(r=>r.join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ptx-roi-model.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadPDF(){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(18); doc.text('PTX ROI Model', 14, 20);
+      doc.setFontSize(12);
+      const yStart = 32;
+      const metrics = [
+        ['Recovered Hires', document.getElementById('recovered-hires').textContent],
+        ['Cost Savings', document.getElementById('cost-savings').textContent],
+        ['Time-to-Fill Improvement', document.getElementById('ttf-improvement').textContent + ' days'],
+        ['NAV/ARR Impact', document.getElementById('nav-impact').textContent]
+      ];
+      metrics.forEach((m,i)=> doc.text(`${m[0]}: ${m[1]}`, 14, yStart + i*8));
+      doc.save('ptx-roi-model.pdf');
+    }
+
+    function shareLink(){
+      const shareUrl = window.location.origin + window.location.pathname + '?shared=1';
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(shareUrl).then(()=>{
+          alert('Shareable link copied to clipboard: ' + shareUrl);
+        });
+      } else {
+        prompt('Copy link:', shareUrl);
+      }
+    }
+
+    // Replace anchors with functional buttons
+    document.querySelectorAll('.action-buttons a').forEach((el,i)=>{
+      el.setAttribute('role','button');
+      el.href='javascript:void(0)';
+      if(i===0) el.addEventListener('click', downloadPDF);
+      if(i===1) el.addEventListener('click', exportCSV);
+      if(i===2) el.addEventListener('click', shareLink);
+    });
+
+    // Make top Get Started nav button scroll if present
+    const navStart = document.querySelector('.nav-btn.primary');
+    if(navStart){
+      navStart.addEventListener('click', function(e){
+        const target = document.getElementById('get-started');
+        if(target){ e.preventDefault(); target.scrollIntoView({behavior:'smooth'}); }
+      });
+    }
+  </script>
+</body>
+</html>
