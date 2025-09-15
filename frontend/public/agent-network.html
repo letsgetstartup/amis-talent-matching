@@ -30,15 +30,35 @@
   }
 
   * { box-sizing: border-box; }
+  /*
+    Mobile white flash / overscroll background fix:
+    - Provide background on html (in case body height < viewport or during rubber‑band overscroll on iOS)
+    - Use min-height:100vh (and 100dvh when supported) so pseudo background overlay always covers
+    - Disable background painting gaps via overscroll-behavior & ensure momentum scroll color stability
+    - Add -webkit-text-size-adjust to prevent font scaling side-effects
+  */
+  html {
+    background: var(--background);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    color-scheme: dark; /* hint UA for proper form control colors */
+  }
 
   body {
     margin: 0;
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: var(--background);
+    background: var(--background); /* fallback solid color under fixed overlay */
     color: var(--text);
     line-height: 1.6;
     overflow-x: hidden;
+    min-height: 100vh; /* ensure body spans viewport */
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none; /* prevent white rubber-band background showing */
+  }
+
+  @supports (height: 100dvh) {
+    body { min-height: 100dvh; }
   }
 
   body::before {
