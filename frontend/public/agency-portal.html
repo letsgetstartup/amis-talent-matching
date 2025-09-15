@@ -71,6 +71,19 @@
   
   *{box-sizing:border-box}
   
+  /* Mobile scroll background stability fix:
+     Ensures no white flash on iOS/Android overscroll by giving <html> an explicit
+     background and disabling the rubber-band overscroll area from revealing
+     the UA default background. See issue description. */
+  html {
+    background: var(--bg); /* fallback solid (gradients applied on body) */
+    min-height: 100%;
+    overscroll-behavior: none; /* prevent bounce revealing underlying bg */
+    -webkit-text-size-adjust: 100%; /* consistency on iOS */
+  }
+  
+  /* Keep body gradients; guarantee full viewport coverage */
+  
   body{
     margin:0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
