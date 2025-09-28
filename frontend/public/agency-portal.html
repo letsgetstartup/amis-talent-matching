@@ -1588,15 +1588,78 @@
   .step-number{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);font-size:11px;font-weight:600}
   .step-pill.active .step-number{background:#10b981;color:#fff}
   .step-pill.completed .step-number{background:#fff;color:#10b981}
-  .wizard-actions{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#1f2937;border:1px solid #334155;color:#e5e7eb;cursor:pointer}
+  .wizard-actions{display:flex;justify-content:flex-start;gap:12px;margin-top:12px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:#1f2937;border:1px solid #334155;color:#e5e7eb;cursor:pointer;transition:all 0.3s ease}
   .btn.primary{background:#2563eb;border-color:#3b82f6}
+  .btn.next-prominent{background:linear-gradient(135deg,#10b981,#059669);border:none;color:#fff;font-weight:600;padding:12px 20px;box-shadow:0 4px 16px rgba(16,185,129,0.3);transform:translateY(0);font-size:14px}
+  .btn.next-prominent:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,0.4);background:linear-gradient(135deg,#059669,#047857)}
+  .btn:hover{background:#374151;border-color:#4b5563}
   .btn[disabled]{opacity:.6;cursor:not-allowed}
   .field{display:flex;flex-direction:column;margin:8px 0}
   .field label{font-size:13px;color:#cbd5e1;margin:0 0 6px;font-weight:500}
   .field input,.field select{background:#0b1020;border:1px solid #223150;border-radius:10px;color:#e5e7eb;padding:12px;transition:border-color 0.3s ease}
   .field input:focus,.field select:focus{outline:none;border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.1)}
   .hint{font-size:12px;color:#9ca3af;margin-top:6px}
+  
+  /* Custom Checkbox Styles */
+  .custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    cursor: pointer;
+  }
+  
+  .custom-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid #334155;
+    border-radius: 4px;
+    background: #0b1020;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+  
+  .custom-checkbox input[type="checkbox"]:checked {
+    background: #10b981;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  }
+  
+  .custom-checkbox input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  .custom-checkbox input[type="checkbox"]:hover {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+  
+  .custom-checkbox span {
+    font-size: 14px;
+    color: #cbd5e1;
+    line-height: 1.4;
+  }
+  
+  .custom-checkbox span a {
+    color: #10b981;
+    text-decoration: none;
+  }
+  
+  .custom-checkbox span a:hover {
+    text-decoration: underline;
+  }
   
   /* Portfolio Import Styles */
   .fund-integration-step{padding:20px 0}
@@ -4730,6 +4793,7 @@ Talent apply once across all portfolio companies, enabling candidate exchange to
             <div class="footer-brand">
               <div class="nav-brand">PTX</div>
               <p class="footer-tagline">Portfolio Talent Exchange - Transforming fund-level hiring through AI-orchestrated talent networks</p>
+              <p class="footer-contact">Contact us: a@scoreagents.com</p>
             </div>
             <div class="footer-links">
               <div class="footer-section">
@@ -4811,7 +4875,7 @@ Talent apply once across all portfolio companies, enabling candidate exchange to
           </div>
           <div class="field"><label for="rEmail">Work Email</label><input id="rEmail" placeholder="name@fund.com" autocomplete="email" inputmode="email"></div>
           <div class="field"><label for="rPass">Password</label><input id="rPass" type="password" placeholder="Create a strong password" autocomplete="new-password"></div>
-          <label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px"><input type="checkbox" id="rTerms" style="margin-top:2px"><span>I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.</span></label>
+          <label class="custom-checkbox"><input type="checkbox" id="rTerms"><span>I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.</span></label>
           <div class="hint" id="rHint1"></div>
         </div>
 
@@ -4922,11 +4986,9 @@ Talent apply once across all portfolio companies, enabling candidate exchange to
         </div>
         <div class="wizard-actions">
           <button class="btn" id="regBack" disabled>Back</button>
-          <div style="display:flex;gap:8px">
-            <button class="btn" id="regNext">Next</button>
-            <button class="btn primary" id="regCreate" style="display:none">Create account</button>
-            <button class="btn primary" id="regFinish" style="display:none">Go to dashboard</button>
-          </div>
+          <button class="btn next-prominent" id="regNext">Next →</button>
+          <button class="btn primary" id="regCreate" style="display:none">Create account</button>
+          <button class="btn primary" id="regFinish" style="display:none">Go to dashboard</button>
         </div>
       </div>
     </div>
