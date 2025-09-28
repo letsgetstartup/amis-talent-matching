@@ -350,6 +350,77 @@ if _FRONTEND_PUBLIC and _FRONTEND_PUBLIC.exists():
 else:
     _FRONTEND_PUBLIC = None  # normalize
 
+_FAVICON_DIR: Path | None = None
+if _FRONTEND_PUBLIC:
+    try:
+        candidate = _FRONTEND_PUBLIC / "favicons"
+        if candidate.exists():
+            _FAVICON_DIR = candidate
+            try:
+                app.mount("/favicons", StaticFiles(directory=candidate, html=False), name="favicons-static")
+            except Exception:
+                pass
+    except Exception:
+        _FAVICON_DIR = None
+
+
+def _resolve_favicon_asset(name: str) -> Path | None:
+    """Return the filesystem path for a favicon asset if present."""
+    candidates: list[Path] = []
+    if _FAVICON_DIR:
+        candidates.append(_FAVICON_DIR / name)
+    if _FRONTEND_PUBLIC:
+        candidates.append(_FRONTEND_PUBLIC / name)
+    for path in candidates:
+        try:
+            if path.exists():
+                return path
+        except Exception:
+            continue
+    return None
+
+
+def _serve_favicon(name: str, media_type: str) -> FileResponse:
+    asset = _resolve_favicon_asset(name)
+    if asset is None:
+        raise HTTPException(status_code=404, detail={"error": f"{name} missing"})
+    return FileResponse(asset, media_type=media_type)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_root():
+    return _serve_favicon("favicon.ico", "image/x-icon")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon():
+    return _serve_favicon("apple-touch-icon.png", "image/png")
+
+
+@app.get("/android-chrome-192x192.png", include_in_schema=False)
+def android_chrome_192():
+    return _serve_favicon("android-chrome-192x192.png", "image/png")
+
+
+@app.get("/android-chrome-512x512.png", include_in_schema=False)
+def android_chrome_512():
+    return _serve_favicon("android-chrome-512x512.png", "image/png")
+
+
+@app.get("/favicon-32x32.png", include_in_schema=False)
+def favicon_32():
+    return _serve_favicon("favicon-32x32.png", "image/png")
+
+
+@app.get("/favicon-16x16.png", include_in_schema=False)
+def favicon_16():
+    return _serve_favicon("favicon-16x16.png", "image/png")
+
+
+@app.get("/site.webmanifest", include_in_schema=False)
+def site_manifest():
+    return _serve_favicon("site.webmanifest", "application/manifest+json")
+
 def _load_static_file(fname: str) -> str | None:
     if _FRONTEND_PUBLIC and (_FRONTEND_PUBLIC / fname).exists():
         try:
