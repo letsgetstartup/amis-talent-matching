@@ -34,3 +34,14 @@ curl -s http://127.0.0.1:8000/mcp/tools
 - `/health` is a liveness probe; `/ready` should verify DB connectivity.
 - MCP is disabled by default; when enabled, API helpers try MCP first and gracefully fallback to native logic.
  - The root path `/` now serves the Agency Portal (`agency-portal.html`). The legacy path `/agency-portal.html` is still available for backward compatibility.
+
+## Greenhouse redirect optimisation
+
+When candidates reject positions via Greenhouse links we redirect them back to the public portal with filters pre-populated. To avoid over-filtering and improve job discovery, the redirect now:
+
+- Computes skill popularity per tenant (cached for 1 hour).
+- Selects only the top three most popular skills present on the rejected job.
+- Preserves the job city filter when available.
+- Supports both legacy `/portal/{slug}` and dynamic `/portal/dynamic/{slug}` portals via dedicated redirect endpoints.
+
+You can force a cache refresh after bulk job imports by calling `talentdb.scripts.api.clear_skill_frequency_cache()` or restarting the service.

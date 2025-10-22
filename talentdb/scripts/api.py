@@ -14,16 +14,19 @@ GET /candidates, /jobs -> list ids
 MongoDB ONLY (all file/json dynamic persistence removed by policy).
 """
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, Response, UploadFile, File
+import csv
 import json
 import logging
 import os
 import time
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, StreamingResponse, PlainTextResponse
+import io
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, StreamingResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pathlib import Path
 import uuid
+from threading import RLock
 
 # Load environment variables from talentdb/.env
 try:
@@ -38,9 +41,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from string import Template
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple, Dict, TypedDict
+import re
+import urllib.parse
 import requests
 from .ingest_agent import (
     ingest_files,
@@ -157,6 +163,7 @@ from .routers_mobile import router as mobile_router
 from .auth import require_tenant, optional_tenant_id
 from .security_audit import audit_log, log_data_access, get_security_events, get_violation_summary
 from .routers_discussions import router as discussions_router
+from .routers_vc_portal import router as tenants_router
 from datetime import datetime
 from bson import ObjectId as _ObjectId
 
@@ -311,6 +318,7 @@ app.include_router(tenant_jobs_router)
 app.include_router(mobile_router)
 app.include_router(mapping_router)
 app.include_router(discussions_router)
+app.include_router(tenants_router)
 
 """Static / Frontend mounting.
 We historically had two possible locations for the frontend:
@@ -331,6 +339,404 @@ try:
             _CANDIDATE_FRONTEND_DIRS.append(_p)
 except Exception:
     pass
+
+# --- SPA (React) build mounting & route fallbacks for client-side routing ---
+try:
+    _REPO_ROOT = Path(__file__).resolve().parents[2]
+    _FRONTEND_DIST = _REPO_ROOT / "frontend" / "dist"
+    _DIST_INDEX = _FRONTEND_DIST / "index.html"
+    if _FRONTEND_DIST.exists() and _DIST_INDEX.exists():
+        # Serve built asset folders (Vite outputs /assets/* by default)
+        try:
+            app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets", html=False), name="dist-assets")
+        except Exception:
+            pass
+        # Explicit SPA routes that should return index.html so the React Router can handle them client-side.
+        from fastapi.responses import HTMLResponse
+
+        def _spa_index_html() -> HTMLResponse:
+            try:
+                return HTMLResponse(_DIST_INDEX.read_text(encoding="utf-8"))
+            except Exception:
+                return HTMLResponse("<html><body><h3>Frontend build present but index.html unreadable.</h3></body></html>", status_code=500)
+
+        @app.get("/registration", include_in_schema=False)
+        async def spa_registration():  # pragma: no cover - simple file serve
+            return _spa_index_html()
+
+        @app.get("/portal/{slug}", include_in_schema=False)
+        async def spa_portal(slug: str):  # pragma: no cover
+            return _spa_index_html()
+
+        @app.get("/portal/dynamic/{slug}", include_in_schema=False)
+        async def spa_portal_dynamic(slug: str):  # pragma: no cover
+            return _spa_index_html()
+
+        @app.get("/admin/users", include_in_schema=False)
+        async def spa_admin_users():  # pragma: no cover
+            return _spa_index_html()
+
+        @app.get("/admin/tenants/{tenant_id}", include_in_schema=False)
+        async def spa_admin_tenant(tenant_id: str):  # pragma: no cover
+            return _spa_index_html()
+    else:
+        # Provide a lightweight diagnostic endpoint so hitting /registration explains the missing build.
+        from fastapi.responses import JSONResponse
+
+        @app.get("/registration", include_in_schema=False)
+        async def spa_registration_missing_build():  # pragma: no cover
+            return JSONResponse({
+                "error": "frontend_build_missing",
+                "detail": "Vite dist build not found. Run 'npm run build' inside ./frontend then restart the server.",
+            }, status_code=503)
+except Exception:
+    # Never let SPA mounting break API startup.
+    pass
+
+
+_SKILL_FREQUENCY_CACHE: Dict[str, Tuple[Dict[str, int], float]] = {}
+_SKILL_FREQUENCY_CACHE_LOCK = RLock()
+_DEFAULT_SKILL_FREQ_TTL_SECONDS = 3600
+
+
+def _skill_frequency_cache_key(tenant_id: str) -> str:
+    return f"skill-frequency::{tenant_id}"
+
+
+def clear_skill_frequency_cache(tenant_id: Optional[str] = None) -> None:
+    """Invalidate cached skill-frequency data for one or all tenants."""
+    with _SKILL_FREQUENCY_CACHE_LOCK:
+        if tenant_id:
+            _SKILL_FREQUENCY_CACHE.pop(_skill_frequency_cache_key(str(tenant_id)), None)
+        else:
+            _SKILL_FREQUENCY_CACHE.clear()
+
+
+def get_tenant_skill_frequencies(tenant_id: str, ttl_seconds: int = _DEFAULT_SKILL_FREQ_TTL_SECONDS) -> Dict[str, int]:
+    """Return a cached mapping of skill -> occurrence count across a tenant's jobs."""
+    tenant_key = str(tenant_id or "").strip()
+    if not tenant_key:
+        return {}
+
+    cache_key = _skill_frequency_cache_key(tenant_key)
+    now = time.time()
+
+    with _SKILL_FREQUENCY_CACHE_LOCK:
+        cached = _SKILL_FREQUENCY_CACHE.get(cache_key)
+        if cached and (now - cached[1]) < max(ttl_seconds, 0):
+            return dict(cached[0])
+
+    pipeline = [
+        {"$match": {"tenant_id": tenant_key, "skill_set": {"$exists": True, "$ne": []}}},
+        {"$project": {"skill_set": 1}},
+        {"$unwind": "$skill_set"},
+        {"$group": {"_id": "$skill_set", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+
+    freq_map: Dict[str, int] = {}
+    try:
+        for row in db["jobs"].aggregate(pipeline):
+            skill_name = row.get("_id")
+            count = row.get("count")
+            if not isinstance(skill_name, str):
+                continue
+            cleaned = skill_name.strip()
+            if not cleaned:
+                continue
+            try:
+                freq_map[cleaned] = int(count or 0)
+            except Exception:
+                continue
+    except Exception:
+        logger.exception("Failed to aggregate tenant skill frequencies", extra={"tenant_id": tenant_key})
+        return {}
+
+    with _SKILL_FREQUENCY_CACHE_LOCK:
+        _SKILL_FREQUENCY_CACHE[cache_key] = (freq_map, now)
+
+    return dict(freq_map)
+
+
+def select_top_skills(job_skills: List[str], frequency_map: Dict[str, int], top_n: int = 3) -> List[str]:
+    """Select up to top_n skills ordered by frequency (desc) with deterministic tie-breaking."""
+    if top_n <= 0:
+        return []
+
+    unique_skills: List[str] = []
+    seen: set[str] = set()
+    order_index: Dict[str, int] = {}
+    for skill in job_skills:
+        if not isinstance(skill, str):
+            continue
+        cleaned = skill.strip()
+        if not cleaned:
+            continue
+        normalized = cleaned.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        unique_skills.append(cleaned)
+        order_index[cleaned] = len(unique_skills) - 1
+
+    if not unique_skills:
+        return []
+
+    if not frequency_map:
+        return unique_skills[:top_n]
+
+    lower_frequency_map: Dict[str, int] = {k.lower(): v for k, v in frequency_map.items()}
+
+    def _freq_lookup(skill_name: str) -> int:
+        return frequency_map.get(skill_name, lower_frequency_map.get(skill_name.lower(), 0))
+
+    sorted_skills = sorted(
+        unique_skills,
+        key=lambda skill_name: (-_freq_lookup(skill_name), order_index.get(skill_name, 0)),
+    )
+
+    return sorted_skills[:top_n]
+
+
+class _RedirectSearchPlan(TypedDict):
+    decoded: str
+    search_variants: List[Tuple[str, str, bool]]
+
+
+_TENANT_CACHE: Dict[str, dict] = {}
+_TENANT_CACHE_LOCK = RLock()
+
+
+def _get_tenant_by_id_cached(tenant_id: str) -> Optional[dict]:
+    if not tenant_id:
+        return None
+    with _TENANT_CACHE_LOCK:
+        cached = _TENANT_CACHE.get(tenant_id)
+    if cached is not None:
+        return cached
+    try:
+        obj_id = ObjectId(tenant_id)
+    except Exception:
+        return None
+    tenant = db["tenants"].find_one({"_id": obj_id})
+    if tenant:
+        with _TENANT_CACHE_LOCK:
+            _TENANT_CACHE[tenant_id] = tenant
+    return tenant
+
+
+def clear_tenant_cache() -> None:
+    with _TENANT_CACHE_LOCK:
+        _TENANT_CACHE.clear()
+
+
+def _build_redirect_search_plan(gh_url: str) -> Optional[_RedirectSearchPlan]:
+    try:
+        decoded = urllib.parse.unquote(gh_url or "")
+    except Exception:
+        decoded = gh_url or ""
+
+    if not decoded.strip():
+        return None
+
+    parsed = urllib.parse.urlparse(decoded)
+    canonical_path = (parsed.path or "").rstrip("/")
+    canonical_url = ""
+    if parsed.scheme and parsed.netloc and canonical_path:
+        canonical_url = urllib.parse.urlunparse(
+            (parsed.scheme, parsed.netloc, canonical_path, "", "", "")
+        )
+
+    job_segment = ""
+    if canonical_path and "/jobs/" in canonical_path:
+        job_segment = canonical_path.split("/jobs/")[-1]
+        if "/" in job_segment:
+            job_segment = job_segment.split("/")[0]
+    if job_segment:
+        job_segment = job_segment.split("?")[0].split("#")[0].strip()
+
+    if not job_segment:
+        query_values = urllib.parse.parse_qs(parsed.query)
+        for key in ("gh_jid", "jid", "job_id", "jobid"):
+            values = query_values.get(key)
+            if values and values[0].strip():
+                job_segment = values[0].strip()
+                break
+
+    if not job_segment and decoded.strip():
+        job_segment = decoded.strip()
+
+    if not job_segment:
+        return None
+
+    numeric_fragment = ""
+    slug_fragment = ""
+    candidate_source = job_segment
+    if candidate_source and candidate_source.isdigit():
+        numeric_fragment = candidate_source
+    elif candidate_source:
+        match = re.match(r"^(?P<numeric>\d+)(?:[-_]+(?P<slug>.+))?$", candidate_source)
+        if match:
+            numeric_fragment = match.group("numeric") or ""
+            slug_fragment = (match.group("slug") or "").strip()
+        else:
+            slug_fragment = candidate_source
+        if not numeric_fragment:
+            digits = re.findall(r"\d{6,}", candidate_source)
+            if digits:
+                numeric_fragment = digits[0]
+        if not slug_fragment:
+            slug_fragment = re.sub(r"^[0-9]+[-_]*", "", candidate_source).strip()
+    if not numeric_fragment:
+        digits = re.findall(r"\d{6,}", canonical_path)
+        if digits:
+            numeric_fragment = digits[0]
+
+    search_variants: List[Tuple[str, str, bool]] = []
+    seen: set[Tuple[str, str, bool]] = set()
+
+    def _add_search(field: str, value: str, use_regex: bool = False) -> None:
+        if not value:
+            return
+        key = (field, value, use_regex)
+        if key in seen:
+            return
+        seen.add(key)
+        search_variants.append((field, value, use_regex))
+
+    _add_search("external_job_id", job_segment, False)
+    if slug_fragment and slug_fragment != job_segment:
+        _add_search("external_job_id", slug_fragment, False)
+    _add_search("external_job_id", canonical_url, False)
+    _add_search("application_url", canonical_url, False)
+    if numeric_fragment:
+        _add_search("external_job_id", numeric_fragment, False)
+        _add_search("external_job_id", numeric_fragment, True)
+        _add_search("application_url", numeric_fragment, True)
+    if slug_fragment:
+        _add_search("external_job_id", slug_fragment, True)
+        _add_search("application_url", slug_fragment, True)
+
+    return {"decoded": decoded, "search_variants": search_variants}
+
+
+def _find_redirect_job(search_variants: List[Tuple[str, str, bool]], tenant_id: Optional[str] = None) -> Optional[dict]:
+    for field, value, use_regex in search_variants:
+        filter_doc: Dict[str, Any] = {}
+        if tenant_id:
+            filter_doc["tenant_id"] = tenant_id
+        if use_regex:
+            filter_doc[field] = {"$regex": re.escape(value), "$options": "i"}
+        else:
+            filter_doc[field] = value
+        job = db["jobs"].find_one(filter_doc)
+        if job:
+            return job
+    return None
+
+
+def _finalize_greenhouse_redirect(job: dict, tenant_id: str, tenant_slug: str, base_target: str) -> RedirectResponse:
+    location = (job.get("city") or "").strip()
+    skills_raw = job.get("skill_set") or []
+    all_skills: List[str] = []
+    for skill in skills_raw:
+        if isinstance(skill, str):
+            cleaned = skill.strip()
+            if cleaned:
+                all_skills.append(cleaned)
+
+    skill_frequencies = get_tenant_skill_frequencies(tenant_id)
+    skills = select_top_skills(all_skills, skill_frequencies, top_n=3)
+
+    try:
+        logger.info(
+            "greenhouse_redirect_selection tenant=%s job=%s skills=%s",
+            tenant_slug,
+            job.get("_id"),
+            skills,
+        )
+    except Exception:
+        pass
+
+    params: List[Tuple[str, str]] = []
+    if location:
+        params.append(("location", location))
+    if skills:
+        params.append(("skills", ",".join(skills)))
+
+    if not params:
+        return RedirectResponse(base_target, status_code=302)
+
+    query = urllib.parse.urlencode(params, safe=",", quote_via=urllib.parse.quote)
+    return RedirectResponse(f"{base_target}?{query}", status_code=302)
+
+
+def _resolve_greenhouse_redirect(tenant_slug: str, gh_url: str, base_target: str) -> RedirectResponse:
+    """Shared implementation for Greenhouse job redirect endpoints."""
+    try:
+        search_plan = _build_redirect_search_plan(gh_url)
+        if not search_plan:
+            return RedirectResponse(base_target, status_code=302)
+
+        tenant = db["tenants"].find_one({"slug": tenant_slug})
+        if not tenant or not tenant.get("_id"):
+            return RedirectResponse(base_target, status_code=302)
+
+        tenant_id = str(tenant.get("_id"))
+        job = _find_redirect_job(search_plan["search_variants"], tenant_id=tenant_id)
+        if not job:
+            return RedirectResponse(base_target, status_code=302)
+
+        return _finalize_greenhouse_redirect(job, tenant_id, tenant_slug, base_target)
+    except Exception:
+        logger.exception(
+            "Failed to resolve Greenhouse redirect",
+            extra={"tenant_slug": tenant_slug, "gh_url": gh_url},
+        )
+        return RedirectResponse(base_target, status_code=302)
+
+
+@app.get("/portal/redirect/{gh_url:path}", include_in_schema=False)
+def greenhouse_portal_auto_redirect(gh_url: str):
+    """Redirect Greenhouse rejection links when tenant slug is missing."""
+    base_target = "/portal"
+    try:
+        search_plan = _build_redirect_search_plan(gh_url)
+        if not search_plan:
+            return RedirectResponse(base_target, status_code=302)
+
+        job = _find_redirect_job(search_plan["search_variants"], tenant_id=None)
+        if not job:
+            return RedirectResponse(base_target, status_code=302)
+
+        tenant_id = str(job.get("tenant_id") or "").strip()
+        if not tenant_id:
+            return RedirectResponse(base_target, status_code=302)
+
+        tenant = _get_tenant_by_id_cached(tenant_id)
+        if not tenant:
+            return RedirectResponse(base_target, status_code=302)
+
+        tenant_slug = tenant.get("slug") or tenant_id
+        base_target = f"/portal/{tenant_slug}"
+        return _finalize_greenhouse_redirect(job, tenant_id, tenant_slug, base_target)
+    except Exception:
+        logger.exception("Failed to auto-resolve Greenhouse redirect", extra={"gh_url": gh_url})
+        return RedirectResponse(base_target, status_code=302)
+
+
+@app.get("/portal/{tenant_slug}/redirect/{gh_url:path}", include_in_schema=False)
+def greenhouse_portal_redirect(tenant_slug: str, gh_url: str):
+    """Redirect Greenhouse rejection links to the legacy portal with filters."""
+    base_target = f"/portal/{tenant_slug}"
+    return _resolve_greenhouse_redirect(tenant_slug, gh_url, base_target)
+
+
+@app.get("/portal/dynamic/{tenant_slug}/redirect/{gh_url:path}", include_in_schema=False)
+def greenhouse_portal_dynamic_redirect(tenant_slug: str, gh_url: str):
+    """Redirect Greenhouse rejection links to the dynamic portal with filters."""
+    base_target = f"/portal/dynamic/{tenant_slug}"
+    return _resolve_greenhouse_redirect(tenant_slug, gh_url, base_target)
 
 _FRONTEND_PUBLIC: Path | None = None
 if _CANDIDATE_FRONTEND_DIRS:
@@ -435,6 +841,74 @@ def _load_static_file(fname: str) -> str | None:
             except Exception:
                 continue
     return None
+
+
+_JOB_UPLOAD_TEMPLATE_HEADERS: list[str] = [
+    "external_job_id",
+    "title",
+    "description",
+    "city",
+    "must_have",
+    "nice_to_have",
+    "remote",
+    "company_name",
+    "application_url",
+    "company_website",
+    "profession",
+    "occupation_field",
+]
+
+_JOB_UPLOAD_TEMPLATE_SAMPLE_ROWS: list[list[str]] = [
+    [
+        "SAMPLE-001",
+        "Senior Backend Engineer",
+        "Own scalable API services across the portfolio.",
+        "New York, NY",
+        "Python|FastAPI|PostgreSQL",
+        "AWS|Docker",
+        "true",
+        "Acme Ventures",
+        "https://example.com/apply/backend",
+        "https://acme.example",
+        "Engineering",
+        "Backend",
+    ],
+    [
+        "SAMPLE-002",
+        "Product Manager",
+        "Drive product discovery and go-to-market execution.",
+        "Remote",
+        "Roadmapping|Stakeholder Management",
+        "Data Analysis|A/B Testing",
+        "true",
+        "Innovate Labs",
+        "https://example.com/apply/pm",
+        "https://innovate.example",
+        "Product",
+        "Management",
+    ],
+]
+
+
+def _build_job_upload_template_csv() -> str:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(_JOB_UPLOAD_TEMPLATE_HEADERS)
+    for row in _JOB_UPLOAD_TEMPLATE_SAMPLE_ROWS:
+        writer.writerow(row)
+    return buffer.getvalue()
+
+
+_JOB_UPLOAD_TEMPLATE_CSV = _build_job_upload_template_csv()
+
+
+@app.get("/job_upload_template.csv", include_in_schema=False)
+def job_upload_template_csv():
+    headers = {
+        "Content-Disposition": 'attachment; filename="job_upload_template.csv"',
+        "Cache-Control": "no-store",
+    }
+    return Response(content=_JOB_UPLOAD_TEMPLATE_CSV, media_type="text/csv", headers=headers)
 
 @app.get("/recommend.html", response_class=HTMLResponse)
 def recommend_html():

@@ -1,0 +1,293 @@
+﻿Production-Ready Greenhouse Email Redirect Feature – Implementation Guide
+This guide describes how to implement a new Greenhouse rejection email redirect feature in the PTX application, covering backend and frontend changes with a phase-by-phase approach. Each phase includes design decisions aligned with the PTX project structure and best practices, along with success criteria and testing steps.
+Phase 1: Backend – Add Redirect Route in FastAPI
+Goal: Introduce a new FastAPI route that captures the Greenhouse job URL from the email link and triggers a redirect with filter parameters.
+Route Definition: Define a GET endpoint at /portal/{tenant_slug}/redirect/{gh_url}. Use FastAPI’s path converter to capture the entire Greenhouse URL (including slashes) as a single parameter. For example:
+
+@app.get("/portal/{tenant_slug}/redirect/{gh_url:path}")
+def redirect_to_portal(tenant_slug: str, gh_url: str):
+    ...
+*  Using the :path converter ensures gh_url can contain forward slashes (e.g. https://.../jobs/1234) without breaking routingfastapi.tiangolo.com.
+
+* Placement and Integration: Add this route to the appropriate router or directly to the FastAPI app. Since it’s a portal-related utility, you might create a small router (prefix /portal/{tenant_slug}) for clarity. Ensure it’s included in main.py similar to existing routersGitHub (e.g., app.include_router(portal.router)). Mark this route with include_in_schema=False if you want to hide it from public API docs, as it’s mainly a UI redirect helper.
+
+* No Auth Dependencies: Do not require authentication or tenant JWT for this route – it should be publicly accessible. In the current design, routes like /jobs enforce a tenant via Depends(require_tenant), which relies on a logged-in userGitHub. Our new portal redirect route should not use require_tenant (since the email recipient may not be logged in) to allow open access. We will securely handle tenant context using the tenant_slug path.
+
+* Success Criteria: Launch the dev server and navigate to a sample URL (use a dummy tenant and job URL) – e.g. GET /portal/demo-tenant/redirect/https://job-boards.greenhouse.io/acme/jobs/12345. The endpoint should be recognized (no 404), and reach our handler logic (we can log or temporarily return the inputs for verification).
+
+* Testing: Write a unit test (or use an interactive docs try-out) for the new route: simulate a request with a valid tenant_slug and a sample encoded gh_url. Assert that the response is a redirect (status 302/307) to the expected /portal/{tenant_slug}?... URL once phases 2–3 are done. (At this phase, just ensure the route is mounted correctly.)
+
+Copilot Prompt (example): “FastAPI route /portal/{tenant_slug}/redirect/{gh_url:path} that logs tenant_slug and gh_url for now.”
+Phase 2: Backend – Extract Greenhouse Job ID and Query MongoDB
+Goal: Implement logic to parse the Greenhouse URL and find the corresponding job in MongoDB, retrieving its location and required skills.
+Parse the Greenhouse URL: In the route handler, extract the job identifier from the gh_url string. Greenhouse job board URLs typically contain an ID at the end. For example, in https://job-boards.greenhouse.io/atbayjobs/jobs/7390395003, the segment after /jobs/ is the job’s external ID. We can find this by searching for "/jobs/" in the string and slicing the remainder. Be sure to strip any trailing URL query or fragment if present. For safety, perform URL decoding in case the entire URL was percent-encoded.
+
+Example logic:
+
+import urllib.parse
+gh_decoded = urllib.parse.unquote(gh_url)
+# Assume format contains "/jobs/<ID>"
+job_id_str = gh_decoded.split("/jobs/")[-1]
+if "?" in job_id_str:
+    job_id_str = job_id_str.split("?")[0]
+external_id = job_id_str.strip()
+   *  If the URL format ever differs (e.g. Greenhouse embed links), adjust parsing accordingly, or use regex for robustness.
+
+   * Find the Tenant in DB: Use tenant_slug to identify the tenant’s database record. The PTX tenants collection currently stores a tenant name (and an _id) but no explicit slug field in seed dataGitHub. In production, the slug might be stored or derivable from name. We should:
+
+      * If a slug field exists for tenants, query db.tenants.find_one({"slug": tenant_slug}).
+
+      * If not, and slug is a transformed name (e.g. “Acme Inc” -> “acme-inc”), apply that transform to find by name. In our example, wqer-sdf-com appears to be a tenant-specific identifier (possibly a sanitized domain).
+
+      * If tenant is not found, return a 404 HTTPException for safety (no such tenant).
+
+Query Jobs Collection: With tenant_id (ObjectId) and the extracted external_id, query the jobs collection. The jobs data model stores an external_job_id for jobs imported from external sourcesGitHubGitHub. We will leverage this:
+
+job = db.jobs.find_one({
+    "tenant_id": tenant_obj["_id"], 
+    "external_job_id": external_id
+})
+         *  This uses the unique index on (tenant_id, external_job_id)GitHub, ensuring at most one matchGitHub. If no job is found, handle gracefully:
+
+            * Option 1: Return a 404 response (since the link is invalid or job no longer exists).
+
+            * Option 2: Redirect to /portal/{tenant_slug} with no filters, so the user still lands on the portal (perhaps showing a generic list). Option 2 provides a better UX (no dead-end), so we lean towards redirecting even if the job isn’t found, but maybe with no query params or a message.
+
+               * Data Extraction: If the job is found, extract:
+
+                  * Location: Likely stored as job["city"] (e.g. "Tel Aviv"). In PTX, the job creation code uses city fieldGitHub. We will use that as the location filter.
+
+                  * Required Skills: Combine the job’s “must have” and “nice to have” skills into one list. The DB stores these under requirements.must_have_skills and requirements.nice_to_have_skills (each an array of {name: <skill>}) as well as a consolidated skill_set listGitHub. We can simply use the skill_set field which contains all unique required skills in lowercaseGitHub. For example, if the job requires React and Node.js, skill_set might be ["react", "node.js"].
+
+                     * Consider capitalizing skills for display if needed. (The system lowercases skills for normalizationGitHub, but the email example shows "React" and "Node.js". We can capitalize each skill name’s first letter or use the original casing if available. This is a minor UI detail.)
+
+                        * Success Criteria: Given a known Greenhouse URL for a job that exists in our DB, the query returns the correct job document. We can test this with a temporary stub: e.g., insert a sample job with external_job_id="7390395003" and city="Tel Aviv", skill_set=["react","node.js"] for a test tenant. Then call the route and ensure our code identifies the job and retrieves “Tel Aviv” and [“react","node.js"] correctly.
+
+                        * Testing: Write unit tests for the parsing logic and DB query:
+
+                           * Feed various gh_url examples into the parsing function (including encoded URLs, or ones with query params) and assert the extracted external_id is correct.
+
+                           * Use a test Mongo instance or mock: insert a job and ensure db.jobs.find_one({...}) returns it when searched by external_job_id.
+
+                           * Simulate the route handler end-to-end by providing tenant_slug and gh_url; verify behavior for found vs not-found job (e.g., check if it raises 404 or sets up redirect data).
+
+Copilot Prompt (example): “Within /portal/{tenant_slug}/redirect handler: parse gh_url to get job ID, find tenant by slug in Mongo, then find job by tenant_id & external_job_id.”
+Phase 3: Backend – Redirect to Portal with Query Parameters
+Goal: Once job data is obtained, construct a redirect response that sends the user’s browser to the tenant’s portal page with pre-filled query parameters for location and skills.
+                              * Construct the Target URL: Following the format in the example, the redirect target should be:
+/portal/<tenant_slug>?location=<URL-encoded location>&skills=<comma-separated skill list>
+ For instance: /portal/wqer-sdf-com?location=Tel%20Aviv&skills=React,Node.js
+
+ Implementation notes:
+
+                                 * Use urllib.parse.quote to URL-encode the location string and the comma-separated skills string. (Spaces in location become %20, etc.)
+
+                                 * Join skills by comma. If using lowercase skill_set, consider converting to Title Case or original capitalization for nicer appearance (optional).
+
+Example code:
+
+from fastapi import HTTPException
+from fastapi.responses import RedirectResponse
+
+
+if not job:
+    # If job not found, redirect to base portal (no filters) or raise 404
+    return RedirectResponse(f"/portal/{tenant_slug}")
+location = job.get("city") or ""
+skills = [s.get("name") for s in job.get("requirements", {}).get("must_have_skills", [])] 
+         + [s.get("name") for s in job.get("requirements", {}).get("nice_to_have_skills", [])]
+skills = [s.strip() for s in skills if s]  # clean and combine
+# Or simply: skills = job.get("skill_set", [])
+loc_param = urllib.parse.quote(location)
+skills_param = urllib.parse.quote(",".join(skills))
+target_url = f"/portal/{tenant_slug}?location={loc_param}&skills={skills_param}"
+return RedirectResponse(target_url, status_code=302)
+                                    *  We choose HTTP 302 Found for a standard redirect. (302 vs 307: since this is a GET, either is fine; 302 is commonly used for browser navigation.)
+
+                                       * Attach Query Params: Verify that if location or skills are empty, the query string is still well-formed. For example, if a job has no specific skills list, we might omit the skills param to avoid an empty value. In our use case, Greenhouse jobs will have some required skills, so this likely isn’t an issue.
+
+                                       * Clean Architecture Consideration: The redirect route does minimal processing (parsing and DB lookup). If logic grows, consider refactoring parsing or DB queries into helper functions or a service module (e.g., a JobService.find_by_external_id(tenant_slug, ext_id) that returns the job or None). Given our scope, inlining is acceptable and clear.
+
+                                       * Success Criteria: Hitting the redirect endpoint in a browser should seamlessly forward the user to the new URL with query parameters. For example, a request to .../portal/demo-tenant/redirect/https://.../jobs/7390395003 should result in an HTTP redirect. In the browser network inspector, you’d see a 302 response with Location: /portal/demo-tenant?location=Tel%20Aviv&skills=React,Node.js. The browser should then load /portal/demo-tenant?location=Tel%20Aviv&skills=React,Node.js.
+
+                                       * Testing: Besides manual browser testing:
+
+                                          * Use FastAPI’s TestClient in a unit test to GET the redirect URL. Assert the response status is 302 and the headers["location"] matches the expected query string (order of params can vary, so parse and check values).
+
+                                          * Test with edge cases: location containing spaces or special characters (e.g., "New York" -> %20 encoding, “C#” or “C++” in skills, etc.) to ensure encoding works.
+
+                                          * If job not found, ensure no crash – either a 302 to base portal or a 404 as decided. (Our design chooses redirect to base portal for UX).
+
+Phase 4: Frontend – Add Portal Page Route and Parse Query Params
+Goal: Update the React frontend to handle the /portal/:tenantSlug route, parse incoming query parameters, and prepare to filter the job list accordingly.
+New Route for Portal: In the React Router configuration, add a route for the tenant’s portal page. For example, in App.tsx (or wherever routes are defined), introduce:
+
+<Route path="/portal/:tenantSlug" element={<PortalJobsPage />} />
+                                             *  placing it above the catch-all (path="*"). This ensures /portal/* URLs are recognized. In the current code, any unknown route redirects to loginGitHub, so without this change /portal/... would not load the portal page. Adding this route enables public access to job listings by tenant.
+
+                                             * New PortalJobsPage Component: Create a PortalJobsPage (or PublicJobsPage) component to display jobs for a given tenant. This component will be similar to the existing RecruiterJobsPage but without requiring auth. Key points:
+
+                                                * Fetch Jobs: We need to retrieve the list of jobs for the tenant. Since this page is public (candidate-facing), we cannot call the existing protected /jobs API (it requires a tokenGitHub). Solution: Implement a new public API endpoint (e.g., /portal/{tenant_slug}/jobs) that returns jobs for that tenant without auth. This could reuse similar logic to /jobs but scoped by tenant slug (and maybe limited fields). If adding a new endpoint is out of scope, one might temporarily remove auth on the GET /jobs when forCandidate or rely on pre-loaded data – but the clean approach is a dedicated public route.
+
+For now, assume we have an endpoint to fetch jobs by tenant. We can create it in the backend:
+
+@app.get("/portal/{tenant_slug}/jobs")
+def list_jobs_public(tenant_slug: str):
+    # lookup tenant_id by slug
+    # return list of jobs (id, title, city, skill_set, etc.) for that tenant
+                                                   *  This would return similar data as /jobs but without requiring a user token. It should be safe to expose job info publicly (job title, location, required skills – nothing sensitive).
+
+                                                      * Use TenantSlug from URL: The component can get tenantSlug from the URL via useParams() (if using React Router v6). This will be used to call the appropriate API (/portal/tenantSlug/jobs).
+
+                                                      * State for Jobs: Use React useState to store the list of jobs and useEffect to fetch jobs on component mount (and whenever tenantSlug changes).
+
+Parse Query Parameters: Within PortalJobsPage, use useLocation() from react-router to access the query string (location.search). Example:
+
+const { search } = useLocation();
+const query = new URLSearchParams(search);
+const locationFilter = query.get("location");   // e.g. "Tel Aviv"
+const skillsFilterStr = query.get("skills");    // e.g. "React,Node.js"
+const skillsFilter = skillsFilterStr ? skillsFilterStr.split(",") : [];
+                                                         *  This should run on initial render. We can store these filters in state (e.g. const [activeLocation, setActiveLocation] = useState(locationFilter) etc.) or directly use them for filtering logic (see Phase 5).
+
+                                                         * Pre-populate Filter UI: If we have filter controls (checkboxes, buttons for each skill/location), we should initialize their selected state based on these values. For example, if using checkboxes for skills, mark “React” and “Node.js” as checked by default when rendering. We’ll cover UI in Phase 5.
+
+                                                         * Success Criteria: The /portal/<tenantSlug> page loads without requiring login, fetches job data, and correctly reads any provided query filters. We can verify by manually navigating to a URL like http://localhost:3000/portal/demo-tenant?location=Tel%20Aviv&skills=React,Node.js:
+
+                                                            * The page should not redirect to login (meaning our route is working).
+
+                                                            * In React DevTools or console, confirm that locationFilter === "Tel Aviv" and skillsFilter array contains ["React", "Node.js"] on mount.
+
+                                                            * Ensure the jobs data is fetched (perhaps visible in Network tab calling the new public jobs API).
+
+                                                               * Testing: Write a unit test for the query parsing logic (e.g., feed a sample ?location=Tel%20Aviv&skills=React,Node.js into URLSearchParams and assert the values). If using React Testing Library, render <PortalJobsPage> with a router context and a sample location, then check that the state or UI reflects the query params (e.g., filters are set). Also test that changing the URL (simulate navigation with different query) updates the filters accordingly (if implementing that reactivity).
+
+Phase 5: Frontend – Implement Filter UI and Client-Side Job Filtering
+Goal: Provide an interactive UI for location and skill filters on the portal page, highlight the filters that are active, and filter the list of job cards accordingly.
+                                                                  * Filter UI Elements: Design a simple filter bar or sidebar. For example:
+
+                                                                     * Location filter: a dropdown or list of locations (derived from the jobs list). Alternatively, if there aren’t many, show a list of location buttons. When a location is selected, highlight it.
+
+                                                                     * Skills filter: a list of skill checkboxes or toggle buttons (pills). Each skill in the tenant’s jobs could be available as a filter option. For the initial implementation, it might suffice to show only the skills relevant to the current job filters (to avoid an exhaustive list). However, a more complete solution is to gather all unique skills from the jobs data (e.g., collect all values in all jobs’ skill_set).
+
+Highlight Active Filters: Use CSS styling to differentiate selected filters. For example, an active skill pill could have a filled background. If using checkboxes, you might style the label differently when checked. The “screenshot” mentioned likely shows active filters in a different color. We can emulate that with a state:
+
+const [selectedLocation, setSelectedLocation] = useState(locationFilter || "");
+const [selectedSkills, setSelectedSkills] = useState(skillsFilter);
+ And then, in the JSX:
+
+<button 
+  className={selectedLocation === loc ? "filter-btn active" : "filter-btn"} 
+  onClick={() => setSelectedLocation(loc)}>
+  {loc}
+</button>
+ for each location loc, and similarly for skills:
+
+<button 
+  className={selectedSkills.includes(skill) ? "skill-btn active" : "skill-btn"} 
+  onClick={() => toggleSkill(skill)}>
+  {skill}
+</button>
+                                                                        *  where toggleSkill will add/remove the skill from selectedSkills. The exact implementation can vary (checkbox inputs vs button toggles), but ensure the ones from the query (locationFilter, skillsFilter) start in the “active” state. This achieves the auto-populate & highlight requirement.
+
+                                                                        * Filter Logic: Filter the list of job cards client-side based on selected filters:
+
+                                                                           * If a selectedLocation is set, only include jobs where job.city === selectedLocation (matching case as stored, e.g., “Tel Aviv”).
+
+If one or more selectedSkills are set, include jobs that meet the skill criteria. A straightforward approach is to require that each selected skill is in the job’s skill set (an AND filter). For example:
+
+const filteredJobs = jobs.filter(job => {
+  const matchesLocation = !selectedLocation || job.city === selectedLocation;
+  const matchesSkills = selectedSkills.length === 0 || selectedSkills.every(
+    skill => job.skill_set?.map(s => s.toLowerCase()).includes(skill.toLowerCase())
+  );
+  return matchesLocation && matchesSkills;
+});
+                                                                              *  This assumes job.skill_set is included in the fetched data (which we should ensure in the backend’s public jobs API). We use every to require all selected skills be present in the job’s skills (conjunctive filter). If the product desired an OR filter (any skill), use some() instead. Here, an AND filter aligns with highlighting multiple filters as a narrower search.
+
+                                                                              * The filtering can be done directly in the JSX render (mapping filteredJobs) or in state (update filteredJobs state whenever filters change). Simpler: compute on the fly in render or a useMemo.
+
+                                                                                 * Update UI Live: When the user toggles a filter (e.g. clicks a skill pill):
+
+                                                                                    * Update the state (selectedSkills or selectedLocation).
+
+                                                                                    * The component will re-render, and filteredJobs will change accordingly to show only matching jobs.
+
+Optionally, update the URL query string to reflect the new filters (so the URL stays in sync if they copy/share it). This can be done with useNavigate to push a new location:
+
+const navigate = useNavigate();
+useEffect(() => {
+  const params = new URLSearchParams();
+  if (selectedLocation) params.set("location", selectedLocation);
+  if (selectedSkills.length) params.set("skills", selectedSkills.join(","));
+  navigate(`?${params.toString()}`, { replace: true });
+}, [selectedLocation, selectedSkills]);
+                                                                                       *  This step ensures the query params mirror the current selections (making the filters shareable and the back button work as expected). Use { replace: true } to avoid adding history entries for every toggle.
+
+                                                                                          * Rendering Job Cards: Finally, display the filtered list of jobs. This could be a list of job title, location, etc., similar to the existing RecruiterJobsPage which simply lists themGitHub. You can enhance it by showing required skills as well (since on the public portal, candidates might want to see which skills are needed). For now, ensure that only the matching jobs are shown and maybe indicate the active filters above the list (e.g., “Showing Tel Aviv jobs requiring React, Node.js”).
+
+                                                                                          * Success Criteria:
+
+                                                                                             * When navigating to the portal page with query params, the filters appear pre-selected and the job list is filtered accordingly (e.g., only Tel Aviv React+Node.js jobs are listed, and the filter UI highlights “Tel Aviv”, “React”, “Node.js”).
+
+                                                                                             * Interacting with filters updates the list in real-time. Selecting/deselecting filters changes the displayed jobs and the filter highlight state.
+
+                                                                                             * Clearing all filters (perhaps by a “reset filters” button or manually toggling off) shows the full job list for the tenant.
+
+                                                                                             * The URL query string updates as filters change (optional but recommended), and using the browser’s back/forward restores previous filter states.
+
+                                                                                                * Testing:
+
+                                                                                                   * Write component tests to ensure that given a set of jobs in state and certain selected filters, the rendered output only contains jobs that meet the criteria. For instance, if selectedLocation is "Tel Aviv", all job entries in the DOM should have "Tel Aviv" in their location field.
+
+                                                                                                   * Test that initial state with query params yields the correct filtered output (simulate mounting the component with window.location.search set to a query string; verify filter UI default state).
+
+                                                                                                   * Test the toggle functions: simulate clicking a skill filter and verify the job list shrinks or grows as expected, and that the corresponding element receives an active class.
+
+                                                                                                   * If implementing URL updates, test that navigate is called with correct query strings when filters change.
+
+Phase 6: End-to-End Testing and Validation
+Goal: Verify the entire feature flow in an integrated manner and ensure production readiness aspects (performance, security, error handling) are covered.
+                                                                                                      * Integration Test Flow:
+
+                                                                                                         * Deploy the updated backend and frontend.
+
+                                                                                                         * In a browser (or automated test), click a Greenhouse rejection email link (which points to the new /portal/<tenant>/redirect/<gh_url> on your app). For testing, you can simulate this by manually visiting that URL.
+
+                                                                                                         * The browser should be redirected (server-side) to the /portal/<tenant>?location=X&skills=Y,Z page.
+
+                                                                                                         * The frontend application should load without requiring login, parse the query, and show a filtered list of jobs.
+
+                                                                                                         * Confirm that the jobs shown indeed have the required location and skills.
+
+                                                                                                            * Performance: The added overhead is minimal – one additional DB lookup on the backend, and filtering a list on the frontend. Ensure that the jobs list fetched isn’t too large (consider paginating if a tenant has hundreds of jobs, though initial scope can assume manageable counts). The client-side filtering is O(n) on the number of jobs, which is fine for typical job board sizes.
+
+                                                                                                            * Security:
+
+                                                                                                               * The backend route should validate inputs. We did basic validation by checking the tenant exists and job exists. All input comes from the URL; ensure using parameterization and safe parsing avoids any injection risk (the Mongo query uses the external_id which is fine as a string, and we convert tenant_slug to an ObjectId after DB lookup). The redirect URL is constructed to the same host (no open redirect to external domain), so phishing risk is minimal. We explicitly do not redirect the user directly to the Greenhouse URL – instead we keep them on our site, which is the intended design.
+
+                                                                                                               * The new public jobs API (if implemented) should only expose non-sensitive fields. Do not include candidate lists or internal IDs beyond what’s needed for the portal. Likely just job title, location, and maybe job ID or external ID for linking to a job details page (future feature).
+
+                                                                                                               * Authentication is intentionally bypassed here for read-only public info. Ensure that any other secure data paths remain protected (we only opened specific endpoints).
+
+                                                                                                                  * Clean Architecture & Maintainability:
+
+                                                                                                                     * Code should be organized (perhaps the parsing logic and redirect building are small enough to keep in route function, but you could put them in a helper for testability).
+
+                                                                                                                     * Use clear naming: e.g., function handle_greenhouse_redirect() or similar.
+
+                                                                                                                     * Add comments or docstrings in the code explaining the purpose of this route, since it’s a bit unconventional (parsing an external URL).
+
+                                                                                                                     * Add relevant configuration if needed (for example, if any settings are needed for greenhouse URL patterns, though hardcoding parsing is fine here).
+
+                                                                                                                        * Documentation: Update the project README or documentation to mention this feature, so others know that by clicking the special email links, users will be guided to the tenant’s job portal with filters applied. Also, update any environment or config if the Greenhouse board base URL or patterns might vary by tenant (in this implementation we assume the link contains everything needed).
+
+                                                                                                                        * User Acceptance Testing: Have a test candidate (without an account) click the link and ensure they see the intended filtered jobs. Also test with different jobs/tenants:
+
+                                                                                                                           * If a job is in a different location or requires different skills, the query should reflect that and the UI respond accordingly.
+
+                                                                                                                           * Try a case with one skill vs multiple skills (e.g., if a job only had one required skill, ensure the skills param is just one value and the UI handles a single-item list).
+
+                                                                                                                           * Verify that if the link is used after the job was removed or the slug is wrong, the user isn’t stuck: e.g., they get to the portal page (perhaps with all jobs listed because filters didn’t apply).
+
+By completing these phases, we ensure the Greenhouse rejection email link feature is robust, user-friendly, and integrated with PTX’s architecture. Users will seamlessly transition from the email to a tailored view of the job portal, improving the likelihood that they engage with other relevant opportunities on the platform.

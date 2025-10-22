@@ -26,6 +26,9 @@ class JobCreate(BaseModel):
     # New raw fields from CSV/table
     profession: Optional[str] = None
     occupation_field: Optional[str] = None
+    company_name: Optional[str] = None
+    application_url: Optional[str] = None
+    company_website: Optional[str] = None
 
 
 @router.post("")
@@ -62,6 +65,12 @@ def create_job(req: JobCreate, tenant_id: str = Depends(require_tenant)):
         rec["profession"] = req.profession
     if req.occupation_field is not None:
         rec["occupation_field"] = req.occupation_field
+    if req.company_name is not None:
+        rec["company_name"] = req.company_name
+    if req.application_url is not None:
+        rec["application_url"] = req.application_url
+    if req.company_website is not None:
+        rec["company_website"] = req.company_website
     # Uniqueness per tenant on external_job_id
     existing = db["jobs"].find_one({"tenant_id": tenant_id, "external_job_id": req.external_job_id})
     if existing:
@@ -89,7 +98,8 @@ def get_job(job_id: str, tenant_id: str = Depends(require_tenant)):
     out = {k: doc.get(k) for k in [
         "title","city_canonical","job_requirements","external_job_id","agency_email",
         "job_description","requirements","seniority","llm_used_on_enrich","llm_success_on_enrich",
-        "mandatory_requirements","synthetic_skills","profession","occupation_field","required_profession","field_of_occupation"
+        "mandatory_requirements","synthetic_skills","profession","occupation_field","required_profession","field_of_occupation",
+        "company_name","application_url","company_website"
     ]}
     out["job_id"] = job_id
     return out
@@ -171,6 +181,9 @@ async def create_jobs_batch_csv(
                 # Raw fields from table
                 "profession": ["profession"],
                 "occupation_field": ["occupation_field","occupation field"],
+                "company_name": ["company_name","company","employer","חברה","שם חברה"],
+                "application_url": ["application_url","apply_url","apply link","application link","link","url"],
+                "company_website": ["company_website","website","site","company site","אתר חברה"],
             }
             # Optional format-specific extensions
             if fmt and fmt.lower() == "agency_template":
@@ -262,6 +275,10 @@ async def create_jobs_batch_csv(
             remote_val = str(remote_val).lower()
             remote = True if remote_val in ("true", "1", "yes", "y", "כן") else False if remote_val in ("false", "0", "no", "n", "לא") else None
 
+            company_name = _pick(row, alias_map["company_name"]) if "company_name" in alias_map else None
+            application_url = _pick(row, alias_map["application_url"]) if "application_url" in alias_map else None
+            company_website = _pick(row, alias_map["company_website"]) if "company_website" in alias_map else None
+
             # Optional occupation field (raw string from table)
             occ_raw = _pick(row, alias_map["occupation_field"]) if "occupation_field" in alias_map else None
 
@@ -297,6 +314,12 @@ async def create_jobs_batch_csv(
                     occ_raw = _pick(row, alias_map["occupation_field"]) if "occupation_field" in alias_map else None
                     if occ_raw is not None:
                         upd["occupation_field"] = occ_raw
+                    if company_name is not None:
+                        upd["company_name"] = company_name
+                    if application_url is not None:
+                        upd["application_url"] = application_url
+                    if company_website is not None:
+                        upd["company_website"] = company_website
                     db["jobs"].update_one({"_id": existing["_id"]}, {"$set": upd})
                     results.append({"row": rownum, "external_job_id": external_id, "status": "updated", "job_id": str(existing["_id"])})
                     created_job_ids.append(str(existing["_id"]))
@@ -329,6 +352,12 @@ async def create_jobs_batch_csv(
             occ_raw = _pick(row, alias_map["occupation_field"]) if "occupation_field" in alias_map else None
             if occ_raw is not None:
                 rec["occupation_field"] = occ_raw
+            if company_name is not None:
+                rec["company_name"] = company_name
+            if application_url is not None:
+                rec["application_url"] = application_url
+            if company_website is not None:
+                rec["company_website"] = company_website
             ins = db["jobs"].insert_one(rec)
             jid = str(ins.inserted_id)
             results.append({"row": rownum, "external_job_id": external_id, "status": "created", "job_id": jid})

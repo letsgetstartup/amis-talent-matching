@@ -1996,6 +1996,11 @@ def create_indexes():
             created.append(name)
         except Exception:
             pass
+        try:
+            name = db["tenants"].create_index("slug", unique=True)
+            created.append(name)
+        except Exception:
+            pass
         # New derivative fields for fast matching
         try:
             name = db["candidates"].create_index("skills_fingerprint")

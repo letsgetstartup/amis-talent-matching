@@ -6,7 +6,7 @@ import axios from 'axios';
 // - In production without proxy: default to same-host:8000 unless overridden.
 // Prefer VITE_API_BASE when set. In dev (Vite on :5173) default to relative base '' so the Vite proxy forwards to 8080. Otherwise fallback to same-host:8000.
 const VITE_BASE = (typeof window !== 'undefined' ? ((import.meta as any)?.env?.VITE_API_BASE as string | undefined) : undefined);
-const API_BASE: string = VITE_BASE
+export const API_BASE: string = VITE_BASE
   ? VITE_BASE
   : (typeof window !== 'undefined' && /:5173$/.test(window.location.host))
     ? ''
@@ -85,4 +85,39 @@ export async function uploadCandidate(file: File){
   fd.append('file', file);
   const r = await axios.post(`${API_BASE}/upload/candidate`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   return r.data as { share_id:string; candidate_id:string; status:string; llm_success:boolean };
+}
+
+function authHeaders(extra: Record<string, string> = {}) {
+  if (typeof window === 'undefined') {
+    return extra;
+  }
+  const token = window.localStorage?.getItem('token');
+  if (token) {
+    return { Authorization: `Bearer ${token}`, ...extra };
+  }
+  return extra;
+}
+
+export async function apiGet<T = any>(path: string): Promise<T> {
+  const response = await axios.get(`${API_BASE}${path}`, { headers: authHeaders() });
+  return response.data as T;
+}
+
+export async function apiPost<T = any>(path: string, body: unknown): Promise<T> {
+  const response = await axios.post(`${API_BASE}${path}`, body, { headers: authHeaders({ 'Content-Type': 'application/json' }) });
+  return response.data as T;
+}
+
+export async function apiUpload<T = any>(path: string, file: File): Promise<T> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await axios.post(`${API_BASE}${path}`, formData, {
+    headers: authHeaders(),
+  });
+  return response.data as T;
+}
+
+export async function apiDelete<T = any>(path: string): Promise<T> {
+  const response = await axios.delete(`${API_BASE}${path}`, { headers: authHeaders() });
+  return response.data as T;
 }

@@ -24,6 +24,24 @@ VITE_API_BASE=http://localhost:8001
 
 Open http://localhost:5173
 
+## Dynamic Portal Page
+
+- Route: `/portal/dynamic/:slug`
+- Mirrors the existing portfolio UI but keeps filters in sync with the browser URL for deep-linking and shareable searches.
+- Unknown query string keys are preserved so the page can coexist with marketing tracking parameters.
+
+### Supported query parameters
+
+| Key | Description | Example |
+| --- | --- | --- |
+| `q` | Full-text search applied to title, company, description, and requirements. | `q=react%20engineer` |
+| `location` | Exact job location; best-effort canonicalization against the portal data. | `location=Tel%20Aviv` |
+| `company` | Exact company name filter; canonicalized against available companies. | `company=Acme` |
+| `type` | Job modality (`remote` \| `onsite`). Any other value is ignored. | `type=remote` |
+| `skills` | Comma-separated normalized skills (underscores and case-insensitive). | `skills=react,node_js` |
+
+Defaults are omitted from the URL. Filters automatically sync back to the UI when navigating via the browser back/forward buttons or when loading a bookmarked URL.
+
 ## Production Build
 ```
 npm run build
