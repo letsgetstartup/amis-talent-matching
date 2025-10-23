@@ -1,0 +1,16 @@
+{
+  "name": "amis-talent-matching",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "build": "npm run build --workspace frontend",
+    "test": "npm run test --workspace frontend",
+    "heroku-prebuild": "npm install --prefix frontend --include=dev",
+    "heroku-postbuild": "npm run build --prefix frontend"
+  }
+}

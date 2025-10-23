@@ -3251,65 +3251,78 @@ def generate_personal_letter(req: PersonalLetterRequest, tenant_id: str | None =
     # Compose prompt using dynamic function. If there are no job matches, we'll still ask the LLM to produce
     # a concise generic-opening letter based on candidate data only. Deterministic fallback is used ONLY if LLM is unavailable.
 
+    def _compose_deterministic_letter() -> dict:
+        """Build a deterministic Hebrew letter that works even with zero job matches."""
+        top = matches_export[:2]
+        name = cand_export.get('full_name') or 'Candidate'
+        city = (cand_export.get('city') or '').strip() or 'לא צוינה'
+        lines: list[str] = []
+        lines.append(f"היי {name} 👋")
+        lines.append("")
+        lines.append("תודה רבה על הגשת המועמדות למשרה שפרסמנו בחברת הגיוס דנאל!")
+        lines.append("")
+        if top:
+            lines.append(f"בדקנו את הפרופיל שלך, והוא מתאים למספר הזדמנויות שבחרנו במיוחד עבורך – בהתאמה לניסיון שלך ולמיקום המגורים ({city}):")
+            lines.append("")
+            for j in top:
+                title = j.get('title') or 'משרה'
+                jcity = (j.get('city') or '').replace('_',' ').strip()
+                req = (j.get('job_must_requirements') or [])[:3]
+                if len(req) < 3:
+                    req += (j.get('job_needed_requirements') or [])[: (3-len(req))]
+                req_txt = ', '.join([r for r in req if r])
+                dist_km = j.get('distance_km')
+                minutes = None
+                if isinstance(dist_km, (int, float)):
+                    try:
+                        minutes = max(1, round(float(dist_km) / 55 * 60))
+                    except Exception:
+                        minutes = None
+                loc_line = f"• מיקום: {jcity}" if jcity else "• מיקום: —"
+                if dist_km is not None and minutes is not None and city:
+                    loc_line = f"• מיקום: {jcity or '—'} – כ־{dist_km} ק\"מ (~{minutes} דק') מ {city}"
+                fit = (j.get('candidate_fit_must') or j.get('skill_overlap') or [])[:3]
+                fit_txt = ', '.join(fit) if fit else 'התאמה כללית לכישורים שלך'
+                lines.append(f"{title} – הזדמנות מתאימה")
+                lines.append(f"• תיאור המשרה: התאמה על בסיס הכישורים והניסיון שלך")
+                lines.append(f"• דרישות התפקיד: {req_txt}" if req_txt else "• דרישות התפקיד: —")
+                lines.append(loc_line)
+                lines.append(f"• למה זה טוב עבורך: חפיפה לכישורים מרכזיים ({fit_txt})")
+                lines.append("→ נשמח אם תשלח קורות חיים או תגיב כאן שנמשיך בתהליך")
+                lines.append("")
+        else:
+            key_skills = cand_export.get('skills', [])[:3]
+            skills_txt = ', '.join(key_skills) if key_skills else 'הניסיון והיכולות שלך'
+            lines.append("כרגע אין לנו משרה ספציפית להציג, אבל אנחנו ממשיכים לחפש עבורך התאמות מדויקות.")
+            lines.append(f"נעדכן אותך ברגע שנאתר הזדמנות שמחזקת את {skills_txt} וממוקמת באזור {city}.")
+            lines.append("")
+            lines.append("בינתיים אשמח לשמור איתך על קשר ולשמוע על העדפות נוספות שיכולות לעזור לנו לדייק את החיפוש.")
+            lines.append("")
+        lines.append("יום נעים ובהצלחה,")
+        lines.append("אבירם")
+
+        letter_txt = "\n".join(lines).strip()
+        key_strengths = (matches_export[0].get('candidate_fit_must') or matches_export[0].get('skill_overlap') or [])[:3] if top else cand_export.get('skills', [])[:3]
+        market_positioning = (matches_export[0].get('title') or 'התאמה למשרה מובילה')[:120] if top else (cand_export.get('title') or 'התאמה מקצועית')
+        confidence_boost = "הפרופיל שלך מציג כישורי ליבה רלוונטיים להזדמנויות הקריירה שלנו"
+        next_steps = ["אשר/י המשך הגשה", "קבע/י שיחת היכרות"]
+        word_count = len([w for w in letter_txt.split() if w])
+        return {
+            "letter_content": letter_txt,
+            "key_strengths": key_strengths,
+            "market_positioning": market_positioning,
+            "confidence_boost": confidence_boost,
+            "next_steps": next_steps,
+            "word_count": word_count,
+        }
+
     # If LLM client isn't available (e.g., tests/offline), build a deterministic letter as fallback
     try:
         from .ingest_agent import _OPENAI_AVAILABLE as _LLM_OK
     except Exception:
         _LLM_OK = False
     if not _LLM_OK:
-        # Deterministic, Hebrew template using top 2 matches; no hallucinations
-        top = matches_export[:2]
-        name = cand_export.get('full_name') or 'Candidate'
-        city = (cand_export.get('city') or '').strip() or 'לא צוינה'
-        lines = []
-        lines.append(f"היי {name} 👋")
-        lines.append("")
-        lines.append("תודה רבה על הגשת המועמדות למשרה שפרסמנו בחברת הגיוס דנאל!")
-        lines.append("")
-        lines.append(f"בדקנו את הפרופיל שלך, והוא מתאים למספר הזדמנויות נוספות שבחרנו במיוחד עבורך – בהתאמה לניסיון שלך ולמיקום המגורים ({city}):")
-        lines.append("")
-        for j in top:
-            title = j.get('title') or 'משרה'
-            jcity = (j.get('city') or '').replace('_',' ').strip()
-            # Build short requirements sentence from must/needed
-            req = (j.get('job_must_requirements') or [])[:3]
-            if len(req) < 3:
-                req += (j.get('job_needed_requirements') or [])[: (3-len(req))]
-            req_txt = ', '.join([r for r in req if r])
-            # Distance formatting
-            dist_km = j.get('distance_km')
-            minutes = None
-            if isinstance(dist_km, (int, float)):
-                try:
-                    minutes = max(1, round(float(dist_km) / 55 * 60))
-                except Exception:
-                    minutes = None
-            loc_line = f"• מיקום: {jcity}"
-            if dist_km is not None and minutes is not None and city:
-                loc_line = f"• מיקום: {jcity} – כ־{dist_km} ק\"מ (~{minutes} דק') מ {city}"
-            # Fit line from overlaps
-            fit = (j.get('candidate_fit_must') or j.get('skill_overlap') or [])[:3]
-            fit_txt = ', '.join(fit) if fit else 'התאמה כללית לכישורים שלך'
-            lines.append(f"{title} – הזדמנות מתאימה")
-            lines.append(f"• תיאור המשרה: התאמה על בסיס הכישורים והניסיון שלך")
-            lines.append(f"• דרישות התפקיד: {req_txt}" if req_txt else "• דרישות התפקיד: —")
-            lines.append(loc_line)
-            lines.append(f"• למה זה טוב עבורך: חפיפה לכישורים מרכזיים ({fit_txt})")
-            lines.append("→ נשמח אם תשלח קורות חיים או תגיב כאן שנמשיך בתהליך")
-            lines.append("")
-        lines.append("יום נעים ובהצלחה,")
-        lines.append("אבירם")
-
-        letter_txt = "\n".join(lines).strip()
-        basic = {
-            "letter_content": letter_txt,
-            "key_strengths": (matches_export[0].get('candidate_fit_must') or matches_export[0].get('skill_overlap') or [])[:3] if matches_export else cand_export.get('skills', [])[:3],
-            "market_positioning": (matches_export[0].get('title') or 'התאמה למשרה מובילה')[:120] if matches_export else (cand_export.get('title') or 'התאמה מקצועית'),
-            "confidence_boost": "הפרופיל שלך מציג כישורי ליבה רלוונטיים להזדמנויות שלהלן",
-            "next_steps": ["אשר/י המשך הגשה", "קבע/י שיחת היכרות"],
-            "word_count": 0,
-        }
-        basic["word_count"] = len([w for w in letter_txt.split() if w])
+        basic = _compose_deterministic_letter()
         payload = {"letter": basic, "cached": False, "candidate_name": cand_export.get("full_name", ""), "match_count": len(matches_export)}
         _LETTER_CACHE[key] = {"data": payload, "_ts": now}
         try:
@@ -3391,7 +3404,11 @@ def generate_personal_letter(req: PersonalLetterRequest, tenant_id: str | None =
     # Validate output structure and job mentions
     letter_text = js_out.get("letter_content", "") if isinstance(js_out, dict) else ""
     base_valid = isinstance(js_out, dict) and _letter_validate(js_out)
-    job_valid = _mentions_jobs(letter_text, matches_export) if base_valid else False
+    if base_valid and not (letter_text or "").strip():
+        base_valid = False
+    job_valid = True
+    if base_valid and matches_export:
+        job_valid = _mentions_jobs(letter_text, matches_export)
     # Auto-fill missing fields if possible BEFORE final acceptance
     if base_valid:
         # key_strengths
@@ -3462,54 +3479,7 @@ def generate_personal_letter(req: PersonalLetterRequest, tenant_id: str | None =
             print('[WARN] Accepting letter with lax job mention validation (collapse heuristic)')
         else:
             # Deterministic fallback when LLM output is invalid
-            top = matches_export[:2]
-            name = cand_export.get('full_name') or 'Candidate'
-            city = (cand_export.get('city') or '').strip() or 'לא צוינה'
-            lines = []
-            lines.append(f"היי {name} 👋")
-            lines.append("")
-            lines.append("תודה רבה על הגשת המועמדות למשרה שפרסמנו בחברת הגיוס דנאל!")
-            lines.append("")
-            lines.append(f"בדקנו את הפרופיל שלך, והוא מתאים למספר הזדמנויות נוספות שבחרנו במיוחד עבורך – בהתאמה לניסיון שלך ולמיקום המגורים ({city}):")
-            lines.append("")
-            for j in top:
-                title = j.get('title') or 'משרה'
-                jcity = (j.get('city') or '').replace('_',' ').strip()
-                req = (j.get('job_must_requirements') or [])[:3]
-                if len(req) < 3:
-                    req += (j.get('job_needed_requirements') or [])[: (3-len(req))]
-                req_txt = ', '.join([r for r in req if r])
-                dist_km = j.get('distance_km')
-                minutes = None
-                if isinstance(dist_km, (int, float)):
-                    try:
-                        minutes = max(1, round(float(dist_km) / 55 * 60))
-                    except Exception:
-                        minutes = None
-                loc_line = f"• מיקום: {jcity}"
-                if dist_km is not None and minutes is not None and city:
-                    loc_line = f"• מיקום: {jcity} – כ־{dist_km} ק\"מ (~{minutes} דק') מ {city}"
-                fit = (j.get('candidate_fit_must') or j.get('skill_overlap') or [])[:3]
-                fit_txt = ', '.join(fit) if fit else 'התאמה כללית לכישורים שלך'
-                lines.append(f"{title} – הזדמנות מתאימה")
-                lines.append(f"• תיאור המשרה: התאמה על בסיס הכישורים והניסיון שלך")
-                lines.append(f"• דרישות התפקיד: {req_txt}" if req_txt else "• דרישות התפקיד: —")
-                lines.append(loc_line)
-                lines.append(f"• למה זה טוב עבורך: חפיפה לכישורים מרכזיים ({fit_txt})")
-                lines.append("→ נשמח אם תשלח קורות חיים או תגיב כאן שנמשיך בתהליך")
-                lines.append("")
-            lines.append("יום נעים ובהצלחה,")
-            lines.append("אבירם")
-
-            letter_txt = "\n".join(lines).strip()
-            js_out = {
-                "letter_content": letter_txt,
-                "key_strengths": (matches_export[0].get('candidate_fit_must') or matches_export[0].get('skill_overlap') or [])[:3] if matches_export else cand_export.get('skills', [])[:3],
-                "market_positioning": (matches_export[0].get('title') or 'התאמה למשרה מובילה')[:120] if matches_export else (cand_export.get('title') or 'התאמה מקצועית'),
-                "confidence_boost": "הפרופיל שלך מציג כישורי ליבה רלוונטיים להזדמנויות שלהלן",
-                "next_steps": ["אשר/י המשך הגשה", "קבע/י שיחת היכרות"],
-                "word_count": len([w for w in letter_txt.split() if w])
-            }
+            js_out = _compose_deterministic_letter()
     
     payload = {"letter": js_out, "cached": False, "candidate_name": cand_export.get("full_name", ""), "match_count": len(matches_export)}
     # --- Post-process letter content to ensure candidate city present & add mobile job links ---

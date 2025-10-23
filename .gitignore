@@ -90,3 +90,4 @@ htmlcov/
 # Frontend
 node_modules/
 frontend_build/ - This directory is created by scripts/package_frontend.py for deployment
+frontend/dist/
