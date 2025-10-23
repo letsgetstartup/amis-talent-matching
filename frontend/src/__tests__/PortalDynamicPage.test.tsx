@@ -74,8 +74,13 @@ describe('PortalDynamicPage', () => {
     });
 
     expect(await screen.findByDisplayValue('Tel Aviv')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'React' })).toHaveStyle('color: #10b981');
-  expect(screen.getByTestId('location-search').textContent).toBe('?location=Tel+Aviv&type=remote&skills=react%2Cnode_js');
+    const skillsTrigger = screen.getByRole('button', { name: 'Required Skills' });
+    fireEvent.click(skillsTrigger);
+    const reactOption = await screen.findByRole('option', { name: /React/ });
+    const nodeOption = screen.getByRole('option', { name: /Node.js/ });
+    expect(reactOption).toHaveAttribute('aria-selected', 'true');
+    expect(nodeOption).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('location-search').textContent).toBe('?location=Tel+Aviv&type=remote&skills=react%2Cnode_js');
   });
 
   it('synchronizes user interactions with the URL search params', async () => {
@@ -97,8 +102,10 @@ describe('PortalDynamicPage', () => {
       expect(screen.getByTestId('location-search').textContent).toBe('?q=react&location=Tel+Aviv');
     });
 
-    const reactSkill = screen.getByRole('button', { name: 'React' });
-    fireEvent.click(reactSkill);
+  const skillsTrigger = screen.getByRole('button', { name: 'Required Skills' });
+  fireEvent.click(skillsTrigger);
+  const reactOption = await screen.findByRole('option', { name: /React/ });
+  fireEvent.click(reactOption);
     await waitFor(() => {
       expect(screen.getByTestId('location-search').textContent).toBe('?q=react&location=Tel+Aviv&skills=react');
     });

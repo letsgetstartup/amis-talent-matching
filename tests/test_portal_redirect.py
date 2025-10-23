@@ -18,6 +18,15 @@ def reset_skill_frequency_cache():
     clear_tenant_cache()
 
 
+@pytest.fixture(autouse=True)
+def cleanup_chatbot_collections():
+    db["portal_chat_seeds"].delete_many({})
+    db["portal_conversations"].delete_many({})
+    yield
+    db["portal_chat_seeds"].delete_many({})
+    db["portal_conversations"].delete_many({})
+
+
 @pytest.fixture
 def client():
     with TestClient(app) as test_client:
@@ -211,6 +220,45 @@ def test_auto_redirect_falls_back_when_job_missing(client):
     response = client.get(f"/portal/redirect/{gh_url}", allow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "/portal"
+
+
+def test_redirect_includes_chat_seed_and_seed_endpoint(client, tenant_record):
+    gh_id = "555667788"
+    _insert_job(
+        tenant_record["id"],
+        external_job_id=gh_id,
+        city="Herzliya",
+        skill_set=["Python", "LLMs", "FastAPI"],
+    )
+    gh_url = _encode_path(f"https://job-boards.greenhouse.io/acme/jobs/{gh_id}")
+    response = client.get(
+        f"/portal/{tenant_record['slug']}/redirect/{gh_url}",
+        allow_redirects=False,
+    )
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert location.startswith(f"/portal/{tenant_record['slug']}")
+    _, query = location.split("?", 1)
+    params = dict(urllib.parse.parse_qsl(query))
+    chat_seed = params.get("chat_seed")
+    assert chat_seed, "redirect should include chat_seed parameter"
+
+    seed_doc = db["portal_chat_seeds"].find_one({"_id": chat_seed})
+    assert seed_doc is not None
+    assert seed_doc.get("portal_slug") == tenant_record["slug"]
+    assert seed_doc.get("tenant_id") == str(tenant_record["id"])
+
+    seed_response = client.get(f"/portal/chat/seed/{chat_seed}")
+    assert seed_response.status_code == 200
+    payload = seed_response.json()
+    assert payload["portal_slug"] == tenant_record["slug"]
+    assert payload["highlighted_job_ids"], "seed should highlight at least one job"
+
+    # Seed consumption should delete the record
+    assert db["portal_chat_seeds"].find_one({"_id": chat_seed}) is None
+
+    second_attempt = client.get(f"/portal/chat/seed/{chat_seed}")
+    assert second_attempt.status_code == 404
 
 
 def test_dynamic_portal_redirect_mirrors_skill_selection(client, tenant_record):

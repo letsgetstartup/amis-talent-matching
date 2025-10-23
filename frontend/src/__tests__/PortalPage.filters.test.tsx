@@ -74,26 +74,32 @@ describe('PortalPage redirect filters', () => {
     expect(await screen.findByText('React Engineer')).toBeInTheDocument();
     expect(screen.queryByText('Python Engineer')).not.toBeInTheDocument();
 
-    const highlightedSkill = screen.getByRole('button', { name: 'React' });
-    expect(highlightedSkill).toHaveStyle('color: #10b981');
+    const skillsTrigger = screen.getByRole('button', { name: 'Required Skills' });
+    fireEvent.click(skillsTrigger);
+  const reactOption = await screen.findByRole('option', { name: /React/ });
+  const nodeOption = screen.getByRole('option', { name: /Node.js/ });
+  expect(reactOption).toHaveAttribute('aria-selected', 'true');
+  expect(nodeOption).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByDisplayValue('Tel Aviv')).toBeInTheDocument();
     expect(screen.getByTestId('location-search').textContent).toBe('?location=Tel%20Aviv&skills=React,Node.js');
   });
 
   it('normalizes underscored skills from query string', async () => {
-  renderWithRouter('/portal/demo?skills=react,node_js');
+    renderWithRouter('/portal/demo?skills=react,node_js');
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/tenants/public/portal/demo'), expect.anything());
     });
 
-    const reactSkill = await screen.findByRole('button', { name: 'React' });
-    const nodeSkill = screen.getByRole('button', { name: 'Node.js' });
-    expect(reactSkill).toHaveStyle('color: #10b981');
-    expect(nodeSkill).toHaveStyle('color: #10b981');
+  const skillsTrigger = screen.getByRole('button', { name: 'Required Skills' });
+  fireEvent.click(skillsTrigger);
+    const reactOption = await screen.findByRole('option', { name: /React/ });
+    const nodeOption = screen.getByRole('option', { name: /Node.js/ });
+    expect(reactOption).toHaveAttribute('aria-selected', 'true');
+    expect(nodeOption).toHaveAttribute('aria-selected', 'true');
 
     await waitFor(() => {
-  expect(screen.getByTestId('location-search').textContent).toBe('?skills=react,node_js');
+      expect(screen.getByTestId('location-search').textContent).toBe('?skills=react,node_js');
     });
 
     expect(screen.getByText('React Engineer')).toBeInTheDocument();
@@ -107,10 +113,10 @@ describe('PortalPage redirect filters', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/tenants/public/portal/demo'), expect.anything());
     });
 
-  expect(await screen.findByDisplayValue('python')).toBeInTheDocument();
-  expect(screen.getByDisplayValue('Beta')).toBeInTheDocument();
-  const typeSelect = screen.getByDisplayValue('On-site');
-  expect(typeSelect).toHaveValue('onsite');
+    expect(await screen.findByDisplayValue('python')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Beta')).toBeInTheDocument();
+    const typeSelect = screen.getByDisplayValue('On-site');
+    expect(typeSelect).toHaveValue('onsite');
 
     expect(screen.getByText('Python Engineer')).toBeInTheDocument();
     expect(screen.queryByText('React Engineer')).not.toBeInTheDocument();
@@ -124,16 +130,18 @@ describe('PortalPage redirect filters', () => {
       expect(screen.getByText('React Engineer')).toBeInTheDocument();
     });
 
-    const reactPill = screen.getByRole('button', { name: 'React' });
-    fireEvent.click(reactPill);
+    const skillsTrigger = screen.getByRole('button', { name: 'Required Skills' });
+    fireEvent.click(skillsTrigger);
+    const reactOption = await screen.findByRole('option', { name: /React/ });
+    fireEvent.click(reactOption);
 
     await waitFor(() => {
       expect(screen.getByTestId('location-search').textContent).toBe('?skills=react');
     });
-  expect(screen.getByText('React Engineer')).toBeInTheDocument();
-  expect(screen.queryByText('Python Engineer')).not.toBeInTheDocument();
+    expect(screen.getByText('React Engineer')).toBeInTheDocument();
+    expect(screen.queryByText('Python Engineer')).not.toBeInTheDocument();
 
-    fireEvent.click(reactPill);
+    fireEvent.click(reactOption);
     await waitFor(() => {
       expect(screen.getByTestId('location-search').textContent).toBe('');
     });

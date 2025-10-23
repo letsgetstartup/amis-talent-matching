@@ -87,5 +87,6 @@ htmlcov/
 .DS_Store
 .uvicorn.pid
 
-# Frontend build (included in deployment but not tracked in dev)
-# frontend_build/ - This directory is created by scripts/package_frontend.py for deployment
+# Frontend
+node_modules/
+frontend_build/ - This directory is created by scripts/package_frontend.py for deployment

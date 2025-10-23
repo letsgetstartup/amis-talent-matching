@@ -164,6 +164,8 @@ from .auth import require_tenant, optional_tenant_id
 from .security_audit import audit_log, log_data_access, get_security_events, get_violation_summary
 from .routers_discussions import router as discussions_router
 from .routers_vc_portal import router as tenants_router
+from .routers_portal_chatbot import router as portal_chat_router
+from .services.portal_chatbot import PortalChatSeedStore
 from datetime import datetime
 from bson import ObjectId as _ObjectId
 
@@ -258,6 +260,7 @@ async def lifespan(app: FastAPI):  # pragma: no cover
     # teardown logic (none for now)
 
 app = FastAPI(title="TalentDB API", version="0.1.2", lifespan=lifespan)
+_CHAT_SEED_STORE = PortalChatSeedStore()
 
 # Add security middleware
 @app.middleware("http")
@@ -319,6 +322,7 @@ app.include_router(mobile_router)
 app.include_router(mapping_router)
 app.include_router(discussions_router)
 app.include_router(tenants_router)
+app.include_router(portal_chat_router)
 
 """Static / Frontend mounting.
 We historically had two possible locations for the frontend:
@@ -635,7 +639,13 @@ def _find_redirect_job(search_variants: List[Tuple[str, str, bool]], tenant_id: 
     return None
 
 
-def _finalize_greenhouse_redirect(job: dict, tenant_id: str, tenant_slug: str, base_target: str) -> RedirectResponse:
+def _finalize_greenhouse_redirect(
+    job: dict,
+    tenant_id: str,
+    tenant_slug: str,
+    base_target: str,
+    external_source: str | None = None,
+) -> RedirectResponse:
     location = (job.get("city") or "").strip()
     skills_raw = job.get("skill_set") or []
     all_skills: List[str] = []
@@ -664,6 +674,31 @@ def _finalize_greenhouse_redirect(job: dict, tenant_id: str, tenant_slug: str, b
     if skills:
         params.append(("skills", ",".join(skills)))
 
+    # Seed chatbot auto-greeting for redirected visitors
+    chat_seed: Optional[str] = None
+    try:
+        job_id_str = str(job.get("_id")) if job.get("_id") else None
+        suggested = _CHAT_SEED_STORE.build_suggestions(
+            tenant_id=tenant_id,
+            exclude_job_id=job.get("_id"),
+        )
+        suggested_ids = []
+        if job_id_str:
+            suggested_ids.append(job_id_str)
+        suggested_ids.extend([item.get("job_id") for item in suggested if item.get("job_id")])
+        chat_seed = _CHAT_SEED_STORE.create_seed(
+            portal_slug=tenant_slug,
+            tenant_id=tenant_id,
+            external_url=external_source,
+            inferred_job_ids=[job_id_str] if job_id_str else None,
+            suggested_job_ids=list(dict.fromkeys([jid for jid in suggested_ids if jid])),
+        )
+    except Exception:
+        logger.exception("chat_seed_generation_failed", extra={"tenant": tenant_slug})
+
+    if chat_seed:
+        params.append(("chat_seed", chat_seed))
+
     if not params:
         return RedirectResponse(base_target, status_code=302)
 
@@ -687,7 +722,13 @@ def _resolve_greenhouse_redirect(tenant_slug: str, gh_url: str, base_target: str
         if not job:
             return RedirectResponse(base_target, status_code=302)
 
-        return _finalize_greenhouse_redirect(job, tenant_id, tenant_slug, base_target)
+        return _finalize_greenhouse_redirect(
+            job,
+            tenant_id,
+            tenant_slug,
+            base_target,
+            external_source=search_plan.get("decoded"),
+        )
     except Exception:
         logger.exception(
             "Failed to resolve Greenhouse redirect",
@@ -719,7 +760,13 @@ def greenhouse_portal_auto_redirect(gh_url: str):
 
         tenant_slug = tenant.get("slug") or tenant_id
         base_target = f"/portal/{tenant_slug}"
-        return _finalize_greenhouse_redirect(job, tenant_id, tenant_slug, base_target)
+        return _finalize_greenhouse_redirect(
+            job,
+            tenant_id,
+            tenant_slug,
+            base_target,
+            external_source=search_plan.get("decoded"),
+        )
     except Exception:
         logger.exception("Failed to auto-resolve Greenhouse redirect", extra={"gh_url": gh_url})
         return RedirectResponse(base_target, status_code=302)

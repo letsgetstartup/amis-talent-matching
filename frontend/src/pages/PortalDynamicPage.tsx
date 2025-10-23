@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_BASE } from '../api';
 import useUrlSyncedFilters from '../hooks/useUrlSyncedFilters';
@@ -7,6 +7,7 @@ import {
   canonicalizeFromList,
   normalizeToken,
 } from '../utils/urlFilters';
+import MultiSelectDropdown from '../components/MultiSelectDropdown';
 
 interface PortalJob {
   job_id: string;
@@ -141,6 +142,40 @@ const PortalDynamicPage: React.FC = () => {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [data]);
 
+  const handleSkillSelectionChange = useCallback(
+    (skills: string[]) => {
+      const canonical = skills
+        .map((skill) => canonicalizeFromList(skill, allSkills))
+        .filter((skill): skill is string => Boolean(skill));
+      const deduped = canonical.filter(
+        (skill, index, self) =>
+          self.findIndex((value) => normalizeToken(value) === normalizeToken(skill)) === index
+      );
+      setFilters(
+        (prev) => {
+          const nextSkills = deduped;
+          if (!nextSkills.length) {
+            if (prev.skills.length === 0) {
+              return prev;
+            }
+            return { ...prev, skills: [] };
+          }
+          const prevNormalized = prev.skills.map((skill) => normalizeToken(skill));
+          const nextNormalized = nextSkills.map((skill) => normalizeToken(skill));
+          if (
+            prevNormalized.length === nextNormalized.length &&
+            prevNormalized.every((value, idx) => value === nextNormalized[idx])
+          ) {
+            return prev;
+          }
+          return { ...prev, skills: nextSkills };
+        },
+        { flush: true, replace: true }
+      );
+    },
+    [allSkills, setFilters]
+  );
+
   useEffect(() => {
     if (!filters.location || !locations.length) {
       return;
@@ -191,20 +226,6 @@ const PortalDynamicPage: React.FC = () => {
     }
     updateFilters({ skills: uniqueCanonicalSkills }, { flush: true, replace: true });
   }, [filters.skills, allSkills, updateFilters]);
-
-  const toggleSkill = (skill: string) => {
-    const normalizedSkill = normalizeToken(skill);
-    if (!normalizedSkill) {
-      return;
-    }
-    setFilters((prev) => {
-      const exists = prev.skills.some((item) => normalizeToken(item) === normalizedSkill);
-      if (exists) {
-        return { ...prev, skills: prev.skills.filter((item) => normalizeToken(item) !== normalizedSkill) };
-      }
-      return { ...prev, skills: [...prev.skills, skill] };
-    }, { flush: true, replace: true });
-  };
 
   if (loading) {
     return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Loading portal…</div>;
@@ -330,50 +351,17 @@ const PortalDynamicPage: React.FC = () => {
 
           {allSkills.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#94a3b8' }}>Required Skills</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {allSkills.map((skill) => {
-                  const active = filters.skills.some((item) => normalizeToken(item) === normalizeToken(skill));
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 20,
-                        border: active ? '1px solid rgba(16,185,129,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                        background: active ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)',
-                        color: active ? '#10b981' : '#e5e7eb',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {skill}
-                    </button>
-                  );
-                })}
-                {filters.skills.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => updateFilters({ skills: [] }, { flush: true, replace: true })}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      background: 'rgba(255,255,255,0.03)',
-                      color: '#94a3b8',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Clear skills
-                  </button>
-                )}
-              </div>
+              <MultiSelectDropdown
+                label="Required Skills"
+                options={allSkills}
+                selected={filters.skills}
+                onChange={handleSkillSelectionChange}
+                placeholder="Filter by skills…"
+                searchable
+                clearable
+                selectAllOption
+                maxHeight="280px"
+              />
             </div>
           )}
 

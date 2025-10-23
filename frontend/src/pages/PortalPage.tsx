@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { API_BASE } from '../api';
+import MultiSelectDropdown from '../components/MultiSelectDropdown';
+import PortalChatbot from '../components/chat/PortalChatbot';
+import type { PortalChatFilterAction } from '../types/chat';
 
 const normalizeToken = (value: string): string =>
   value
@@ -82,6 +85,7 @@ const PortalPage: React.FC = () => {
   const [company, setCompany] = useState<string>('');
   const [type, setType] = useState<string>('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [highlightedJobIds, setHighlightedJobIds] = useState<string[]>([]);
   const lastSearchAppliedRef = useRef<string | null>(null);
   const skipNextSyncRef = useRef(false);
   const pendingNavigationRef = useRef<number | undefined>(undefined);
@@ -168,6 +172,11 @@ const PortalPage: React.FC = () => {
     return () => controller.abort();
   }, [slug]);
 
+  const chatSeedToken = useMemo(() => {
+    const params = new URLSearchParams(search || '');
+    return params.get('chat_seed');
+  }, [search]);
+
   const filters = useMemo(
     () => ({ query, location, company, type, skills: selectedSkills }),
     [query, location, company, type, selectedSkills]
@@ -201,6 +210,25 @@ const PortalPage: React.FC = () => {
     });
   }, [data, filters]);
 
+  useEffect(() => {
+    if (!highlightedJobIds.length || typeof window === 'undefined') {
+      return;
+    }
+    const target = document.getElementById(`portal-job-card-${highlightedJobIds[0]}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        (target as HTMLElement).focus({ preventScroll: true });
+      } catch {
+        (target as HTMLElement).focus();
+      }
+    }
+    const timer = window.setTimeout(() => {
+      setHighlightedJobIds([]);
+    }, 10000);
+    return () => window.clearTimeout(timer);
+  }, [highlightedJobIds]);
+
   const locations = useMemo(() => {
     if (!data) return [] as string[];
     return Array.from(new Set((data.jobs || []).map((job) => job.location).filter(Boolean) as string[])).sort();
@@ -223,6 +251,311 @@ const PortalPage: React.FC = () => {
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [data]);
+
+  const handleSkillSelectionChange = useCallback(
+    (skills: string[]) => {
+      if (!skills.length) {
+        setSelectedSkills([]);
+        return;
+      }
+      const canonical = skills
+        .map((skill) => canonicalizeFromList(skill, allSkills))
+        .filter((skill): skill is string => Boolean(skill));
+      if (!canonical.length) {
+        setSelectedSkills([]);
+        return;
+      }
+      const deduped = canonical.filter(
+        (skill, index, self) =>
+          self.findIndex((value) => normalizeToken(value) === normalizeToken(skill)) === index
+      );
+      setSelectedSkills((prev) => {
+        const prevNormalized = prev.map((skill) => normalizeToken(skill));
+        const nextNormalized = deduped.map((skill) => normalizeToken(skill));
+        if (
+          prevNormalized.length === nextNormalized.length &&
+          prevNormalized.every((value, idx) => value === nextNormalized[idx])
+        ) {
+          return prev;
+        }
+        return deduped;
+      });
+    },
+    [allSkills]
+  );
+
+  const handleChatbotFilterActions = useCallback(
+    (actions: PortalChatFilterAction[]) => {
+      if (!actions?.length) {
+        return;
+      }
+
+      let mutated = false;
+
+      const ensureString = (value: unknown): string => {
+        if (typeof value === 'string') {
+          return value;
+        }
+        if (typeof value === 'number') {
+          return String(value);
+        }
+        return '';
+      };
+
+      const parseSkillValues = (value: unknown): string[] => {
+        if (Array.isArray(value)) {
+          return value.filter((item): item is string => typeof item === 'string');
+        }
+        const stringValue = ensureString(value);
+        return stringValue ? [stringValue] : [];
+      };
+
+      const prepareSkills = (values: string[]): string[] => {
+        if (!values.length) {
+          return [];
+        }
+        const normalized = new Set<string>();
+        const prepared: string[] = [];
+        values.forEach((raw) => {
+          const trimmed = sanitizeQueryValue(raw);
+          if (!trimmed) {
+            return;
+          }
+          const canonicalSource = allSkills.length ? allSkills : values;
+          const canonical = canonicalizeFromList(trimmed, canonicalSource) || trimmed;
+          const key = normalizeToken(canonical);
+          if (!key || normalized.has(key)) {
+            return;
+          }
+          normalized.add(key);
+          prepared.push(canonical);
+        });
+        return prepared;
+      };
+
+      actions.forEach((action) => {
+        const key = action.filter_key;
+        const actionType = action.type ?? 'set';
+        switch (key) {
+          case 'query': {
+            if (actionType === 'clear') {
+              setQuery((prev) => {
+                if (!prev) {
+                  return prev;
+                }
+                mutated = true;
+                return '';
+              });
+              break;
+            }
+            const nextValue = sanitizeQueryValue(ensureString(action.value));
+            setQuery((prev) => {
+              if (prev === nextValue) {
+                return prev;
+              }
+              mutated = true;
+              return nextValue;
+            });
+            break;
+          }
+          case 'location': {
+            if (actionType === 'clear') {
+              setLocation((prev) => {
+                if (!prev) {
+                  return prev;
+                }
+                mutated = true;
+                return '';
+              });
+              break;
+            }
+            const rawValue = ensureString(action.value);
+            const canonical = (rawValue && locations.length
+              ? canonicalizeFromList(rawValue, locations)
+              : rawValue) || '';
+            setLocation((prev) => {
+              if (prev === canonical) {
+                return prev;
+              }
+              mutated = true;
+              return canonical;
+            });
+            break;
+          }
+          case 'company': {
+            if (actionType === 'clear') {
+              setCompany((prev) => {
+                if (!prev) {
+                  return prev;
+                }
+                mutated = true;
+                return '';
+              });
+              break;
+            }
+            const rawValue = ensureString(action.value);
+            const canonical = (rawValue && companies.length
+              ? canonicalizeFromList(rawValue, companies)
+              : rawValue) || '';
+            setCompany((prev) => {
+              if (prev === canonical) {
+                return prev;
+              }
+              mutated = true;
+              return canonical;
+            });
+            break;
+          }
+          case 'type': {
+            if (actionType === 'clear') {
+              setType((prev) => {
+                if (!prev) {
+                  return prev;
+                }
+                mutated = true;
+                return '';
+              });
+              break;
+            }
+            let value = ensureString(action.value).toLowerCase();
+            if (!value && typeof action.value === 'boolean') {
+              value = action.value ? 'remote' : 'onsite';
+            }
+            if (value === 'on-site') {
+              value = 'onsite';
+            }
+            if (value !== 'remote' && value !== 'onsite') {
+              value = '';
+            }
+            setType((prev) => {
+              if (prev === value) {
+                return prev;
+              }
+              mutated = true;
+              return value;
+            });
+            break;
+          }
+          case 'skills': {
+            if (actionType === 'clear') {
+              setSelectedSkills((prev) => {
+                if (!prev.length) {
+                  return prev;
+                }
+                mutated = true;
+                return [];
+              });
+              break;
+            }
+            const parsedValues = prepareSkills(parseSkillValues(action.value));
+            if (!parsedValues.length) {
+              if (actionType === 'set') {
+                setSelectedSkills((prev) => {
+                  if (!prev.length) {
+                    return prev;
+                  }
+                  mutated = true;
+                  return [];
+                });
+              }
+              break;
+            }
+            if (actionType === 'remove') {
+              const removals = new Set(parsedValues.map((skill) => normalizeToken(skill)));
+              setSelectedSkills((prev) => {
+                if (!prev.length) {
+                  return prev;
+                }
+                const next = prev.filter((skill) => !removals.has(normalizeToken(skill)));
+                if (next.length === prev.length) {
+                  return prev;
+                }
+                mutated = true;
+                return next;
+              });
+              break;
+            }
+            if (actionType === 'add') {
+              setSelectedSkills((prev) => {
+                const existing = new Set(prev.map((skill) => normalizeToken(skill)));
+                let localMutated = false;
+                const next = [...prev];
+                parsedValues.forEach((skill) => {
+                  const key = normalizeToken(skill);
+                  if (!key || existing.has(key)) {
+                    return;
+                  }
+                  existing.add(key);
+                  next.push(skill);
+                  localMutated = true;
+                });
+                if (!localMutated) {
+                  return prev;
+                }
+                mutated = true;
+                return next;
+              });
+              break;
+            }
+            setSelectedSkills((prev) => {
+              const next = [...parsedValues];
+              const prevNormalized = prev.map((skill) => normalizeToken(skill));
+              const nextNormalized = next.map((skill) => normalizeToken(skill));
+              if (
+                prevNormalized.length === nextNormalized.length &&
+                prevNormalized.every((value, idx) => value === nextNormalized[idx])
+              ) {
+                return prev;
+              }
+              mutated = true;
+              return next;
+            });
+            break;
+          }
+          default:
+            break;
+        }
+      });
+
+      if (mutated) {
+        skipNextSyncRef.current = true;
+      }
+    },
+    [allSkills, companies, locations]
+  );
+
+  const handleJobHighlight = useCallback((jobIds: string[]) => {
+    if (!jobIds?.length) {
+      return;
+    }
+    const sanitized = Array.from(
+      new Set(
+        jobIds
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          .map((id) => id.trim())
+      )
+    );
+    if (!sanitized.length) {
+      return;
+    }
+    setHighlightedJobIds(sanitized);
+  }, []);
+
+  const handleChatSeedConsumed = useCallback(() => {
+    if (!slug) {
+      return;
+    }
+    const params = new URLSearchParams(search || '');
+    if (!params.has('chat_seed')) {
+      return;
+    }
+    params.delete('chat_seed');
+    const nextString = params.toString();
+    const normalizedNext = nextString ? `?${nextString}` : '';
+    skipNextSyncRef.current = true;
+    lastSearchAppliedRef.current = normalizedNext;
+    navigate({ pathname: `/portal/${slug}`, search: normalizedNext }, { replace: true });
+  }, [navigate, search, slug]);
 
   useEffect(() => {
     if (!location || !locations.length) {
@@ -341,20 +674,6 @@ const PortalPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, location, selectedSkills, query, company, type]);
 
-  const toggleSkill = (skill: string) => {
-    const normalizedSkill = normalizeToken(skill);
-    if (!normalizedSkill) {
-      return;
-    }
-    setSelectedSkills((prev) => {
-      const exists = prev.some((item) => normalizeToken(item) === normalizedSkill);
-      if (exists) {
-        return prev.filter((item) => normalizeToken(item) !== normalizedSkill);
-      }
-      return [...prev, skill];
-    });
-  };
-
   if (loading) {
     return <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Loading portal…</div>;
   }
@@ -368,7 +687,7 @@ const PortalPage: React.FC = () => {
   }
 
   return (
-    <div style={{ background: '#0f172a', color: '#e5e7eb', minHeight: '100vh', paddingBottom: 40, direction: 'ltr' }}>
+    <div style={{ background: '#0f172a', color: '#e5e7eb', minHeight: '100vh', paddingBottom: 220, direction: 'ltr' }}>
       <header style={{ background: 'rgba(17,24,39,0.9)', borderBottom: '1px solid #1f2937', padding: '16px 0' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -472,97 +791,86 @@ const PortalPage: React.FC = () => {
 
           {allSkills.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#94a3b8' }}>Required Skills</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {allSkills.map((skill) => {
-                  const active = selectedSkills.some((item) => normalizeToken(item) === normalizeToken(skill));
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 20,
-                        border: active ? '1px solid rgba(16,185,129,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                        background: active ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)',
-                        color: active ? '#10b981' : '#e5e7eb',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {skill}
-                    </button>
-                  );
-                })}
-                {selectedSkills.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSkills([])}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      background: 'rgba(255,255,255,0.03)',
-                      color: '#94a3b8',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Clear skills
-                  </button>
-                )}
-              </div>
+              <MultiSelectDropdown
+                label="Required Skills"
+                options={allSkills}
+                selected={selectedSkills}
+                onChange={handleSkillSelectionChange}
+                placeholder="Filter by skills…"
+                searchable
+                clearable
+                selectAllOption
+                maxHeight="280px"
+              />
             </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 20 }}>
-            {filteredJobs.map((job) => (
-              <div key={job.job_id} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>
-                    {(job.company_name || '?').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: 18, color: '#e5e7eb' }}>{job.title}</h3>
-                    <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>{job.company_name || 'Portfolio company'}</p>
-                  </div>
-                </div>
-                <div style={{ fontSize: 13, color: '#94a3b8', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <span>📍 {job.location || 'Remote'}</span>
-                  {job.remote && (
-                    <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
-                      Remote
-                    </span>
-                  )}
-                </div>
-                {job.description && (
-                  <p style={{ color: '#94a3b8', fontSize: 14, margin: 0 }}>{job.description}</p>
-                )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {(job.requirements || []).map((skill) => (
-                    <span key={skill} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const url = job.application_url || job.company_website;
-                    if (url) {
-                      window.open(url, '_blank');
-                    }
-                  }}
-                  style={{ marginTop: 'auto', background: 'linear-gradient(135deg,#10b981,#06b6d4)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            {filteredJobs.map((job) => {
+              const highlighted = highlightedJobIds.includes(job.job_id);
+              const cardStyle: React.CSSProperties = {
+                background: highlighted ? 'rgba(17,24,39,0.96)' : '#111827',
+                border: highlighted ? '1px solid rgba(16,185,129,0.7)' : '1px solid #1f2937',
+                borderRadius: 16,
+                padding: 20,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                boxShadow: highlighted ? '0 0 0 3px rgba(16,185,129,0.18)' : 'none',
+                transition: 'border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease',
+              };
+
+              return (
+                <div
+                  key={job.job_id}
+                  id={`portal-job-card-${job.job_id}`}
+                  className={`portal-job-card${highlighted ? ' portal-job-card--highlighted' : ''}`}
+                  style={cardStyle}
+                  tabIndex={-1}
+                  aria-live={highlighted ? 'polite' : undefined}
                 >
-                  Apply Now →
-                </button>
-              </div>
-            ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>
+                      {(job.company_name || '?').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 18, color: '#e5e7eb' }}>{job.title}</h3>
+                      <p style={{ margin: 0, fontSize: 14, color: '#94a3b8' }}>{job.company_name || 'Portfolio company'}</p>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#94a3b8', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <span>📍 {job.location || 'Remote'}</span>
+                    {job.remote && (
+                      <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                        Remote
+                      </span>
+                    )}
+                  </div>
+                  {job.description && (
+                    <p style={{ color: '#94a3b8', fontSize: 14, margin: 0 }}>{job.description}</p>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(job.requirements || []).map((skill) => (
+                      <span key={skill} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = job.application_url || job.company_website;
+                      if (url) {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    style={{ marginTop: 'auto', background: 'linear-gradient(135deg,#10b981,#06b6d4)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Apply Now →
+                  </button>
+                </div>
+              );
+            })}
             {filteredJobs.length === 0 && (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: '#94a3b8', border: '1px dashed #1f2937', borderRadius: 12 }}>
                 No positions match your filters right now.
@@ -571,6 +879,18 @@ const PortalPage: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {slug ? (
+        <PortalChatbot
+          portalSlug={slug}
+          chatSeedToken={chatSeedToken}
+          currentFilters={filters}
+          onFiltersApply={handleChatbotFilterActions}
+          onJobHighlight={handleJobHighlight}
+          onChatSeedConsumed={handleChatSeedConsumed}
+          className="portal-chatbot--floating"
+        />
+      ) : null}
 
       <footer style={{ borderTop: '1px solid #1f2937', padding: '40px 0', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
         Powered by PTX • Portfolio Talent Exchange

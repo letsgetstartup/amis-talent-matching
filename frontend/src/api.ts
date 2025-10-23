@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+import type {
+  PortalChatHistoryResponse,
+  PortalChatMessagePayload,
+  PortalChatMessageResponse,
+  PortalChatSeedResponse,
+  PortalChatSuggestionsResponse,
+} from './types/chat';
+
 // API base selection:
 // - In dev with Vite proxy: use relative base '' so requests go through proxy to 8080.
 // - If VITE_API_BASE is defined, always use it (overrides proxy/relative).
@@ -120,4 +128,24 @@ export async function apiUpload<T = any>(path: string, file: File): Promise<T> {
 export async function apiDelete<T = any>(path: string): Promise<T> {
   const response = await axios.delete(`${API_BASE}${path}`, { headers: authHeaders() });
   return response.data as T;
+}
+
+export async function postPortalChatMessage(body: PortalChatMessagePayload): Promise<PortalChatMessageResponse> {
+  return apiPost<PortalChatMessageResponse>('/portal/chat/message', body);
+}
+
+export async function getPortalChatHistory(conversationId: string): Promise<PortalChatHistoryResponse> {
+  return apiGet<PortalChatHistoryResponse>(`/portal/chat/conversation/${conversationId}`);
+}
+
+export async function deletePortalChatConversation(conversationId: string): Promise<void> {
+  await apiDelete(`/portal/chat/conversation/${conversationId}`);
+}
+
+export async function getPortalChatSuggestions(portalSlug: string): Promise<PortalChatSuggestionsResponse> {
+  return apiPost<PortalChatSuggestionsResponse>('/portal/chat/suggest', { portal_slug: portalSlug });
+}
+
+export async function getPortalChatSeed(token: string): Promise<PortalChatSeedResponse> {
+  return apiGet<PortalChatSeedResponse>(`/portal/chat/seed/${token}`);
 }
