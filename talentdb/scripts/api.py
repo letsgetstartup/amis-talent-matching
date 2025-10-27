@@ -156,7 +156,11 @@ from .db import is_mock
 from .routers_auth import router as auth_router
 from .routers_jobs import router as jobs_router
 from .routers_confirm import router as confirm_router
-from .routers_candidates import router as candidates_router
+from .routers_candidates import (
+    router as candidates_router,
+    portal_router as portal_candidates_router,
+    profile_router as candidate_profile_router,
+)
 from .routers_mapping import router as mapping_router
 from .routers_tenant_jobs import router as tenant_jobs_router
 from .routers_mobile import router as mobile_router
@@ -317,6 +321,8 @@ app.include_router(auth_router)
 app.include_router(jobs_router)
 app.include_router(confirm_router)
 app.include_router(candidates_router)
+app.include_router(portal_candidates_router)
+app.include_router(candidate_profile_router)
 app.include_router(tenant_jobs_router)
 app.include_router(mobile_router)
 app.include_router(mapping_router)

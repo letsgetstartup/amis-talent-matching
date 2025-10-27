@@ -1,13 +1,278 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from typing import List, Optional
-import os, tempfile
-from .ingest_agent import ingest_files, db
-from .auth import require_tenant
-import time
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, status
+from fastapi.responses import StreamingResponse
+from typing import Any, Dict, List, Optional
+import os, tempfile, uuid, time
+from datetime import datetime, timedelta
 from bson import ObjectId
-from .ingest_agent import canonical_city
+from pydantic import BaseModel, EmailStr
+
+from .ingest_agent import ingest_files, db, get_or_compute_matches, canonical_city
+from .auth import require_tenant, require_role
+from .services.portal_chatbot import build_portal_context
+from .services.storage import save_resume, delete_resume, open_resume_stream, resume_exists
 
 router = APIRouter(prefix="/tenant", tags=["candidates"])
+portal_router = APIRouter(tags=["portal-candidates"])
+profile_router = APIRouter(prefix="/candidates", tags=["candidate-profile"])
+
+
+def _ensure_candidate_indexes() -> None:
+    coll = db["candidates"]
+    try:
+        coll.create_index([("temp_candidate_id", 1)], unique=True, sparse=True, name="temp_candidate_id_unique")
+    except Exception:
+        pass
+    try:
+        coll.create_index([("expires_at", 1)], name="expires_at_idx")
+    except Exception:
+        pass
+    try:
+        coll.create_index([("user_id", 1)], name="candidate_user_lookup")
+    except Exception:
+        pass
+
+
+_ensure_candidate_indexes()
+
+
+_PORTAL_ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
+_PORTAL_ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
+try:
+    _PORTAL_MAX_MB = int(os.getenv("PORTAL_RESUME_MAX_MB", os.getenv("MAX_UPLOAD_MB", "10")))
+except Exception:
+    _PORTAL_MAX_MB = 10
+
+
+def _generate_temp_candidate_id() -> str:
+    return f"tmp_{uuid.uuid4().hex[:16]}"
+
+
+def _safe_filename(name: Optional[str]) -> str:
+    if not name:
+        return f"resume_{uuid.uuid4().hex[:8]}.pdf"
+    base = os.path.basename(name)
+    if not base:
+        return f"resume_{uuid.uuid4().hex[:8]}.pdf"
+    return base[:180]
+
+
+def _extension_from_filename(filename: str) -> str:
+    if "." not in filename:
+        return ""
+    return filename.rsplit(".", 1)[-1].lower()
+
+
+def _validate_portal_upload(file: UploadFile, size_bytes: int) -> None:
+    if size_bytes <= 0:
+        raise HTTPException(status_code=400, detail="empty_file")
+    max_bytes = _PORTAL_MAX_MB * 1024 * 1024
+    if size_bytes > max_bytes:
+        raise HTTPException(status_code=400, detail="file_too_large")
+    if file.content_type and file.content_type.lower() in _PORTAL_ALLOWED_CONTENT_TYPES:
+        return
+    ext = _extension_from_filename(file.filename or "")
+    if ext in _PORTAL_ALLOWED_EXTENSIONS:
+        return
+    raise HTTPException(status_code=400, detail="unsupported_file_type")
+
+
+def _candidate_profile_snapshot(doc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not doc:
+        return {}
+    out: Dict[str, Any] = {
+        "candidate_id": str(doc.get("_id")) if doc.get("_id") is not None else None,
+        "share_id": doc.get("share_id"),
+        "full_name": doc.get("full_name"),
+        "title": doc.get("title"),
+        "headline": doc.get("headline"),
+        "city": doc.get("city") or doc.get("city_canonical"),
+        "original_city": doc.get("city"),
+        "experience_years": doc.get("experience_years"),
+        "summary": doc.get("summary"),
+    }
+    skill_set = doc.get("skill_set") or []
+    if isinstance(skill_set, list):
+        out["top_skills"] = [s for s in skill_set if isinstance(s, str)][:10]
+    details = doc.get("skills_detailed") or []
+    if isinstance(details, list) and details:
+        out["skills_detailed"] = details[:8]
+    roles = doc.get("recent_roles") or []
+    if isinstance(roles, list) and roles:
+        out["recent_roles"] = roles[:3]
+    return {k: v for k, v in out.items() if v not in (None, [], {})}
+
+
+def _serialize_match(match: Dict[str, Any]) -> Dict[str, Any]:
+    location = match.get("city_canonical") or match.get("city") or match.get("location")
+    overlap = match.get("skill_overlap") or []
+    if isinstance(overlap, list):
+        overlap = [s for s in overlap if isinstance(s, str)][:8]
+    else:
+        overlap = []
+    return {
+        "job_id": match.get("job_id") or match.get("id"),
+        "title": match.get("title"),
+        "company_name": match.get("company_name") or match.get("company"),
+        "score": match.get("score") or match.get("match_score"),
+        "match_reason": match.get("reason"),
+        "location": location,
+        "remote": match.get("remote"),
+        "application_url": match.get("application_url"),
+        "skill_overlap": overlap,
+        "distance_km": match.get("distance_km"),
+    }
+
+
+def _load_candidate_for_user(tenant_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    return db["candidates"].find_one({"tenant_id": tenant_id, "user_id": str(user_id)})
+
+
+def _normalize_phone(phone: Optional[str]) -> Optional[str]:
+    if not phone:
+        return None
+    import re
+    normalized = re.sub(r"[^0-9+]+", "", phone)
+    return normalized or None
+
+
+class ClaimCandidateRequest(BaseModel):
+    temp_candidate_id: str
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class CandidateProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    headline: Optional[str] = None
+    summary: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    skill_set: Optional[List[str]] = None
+
+
+@portal_router.post("/portal/{portal_slug}/candidates/upload")
+async def upload_candidate_portal(
+    portal_slug: str,
+    file: UploadFile = File(...),
+    session_id: Optional[str] = Form(default=None),
+    conversation_id: Optional[str] = Form(default=None),
+):
+    context = build_portal_context(portal_slug)
+    if not context:
+        raise HTTPException(status_code=404, detail="portal_not_found")
+    tenant_id = context.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+
+    content = await file.read()
+    _validate_portal_upload(file, len(content))
+    safe_name = _safe_filename(file.filename)
+    ext = _extension_from_filename(safe_name)
+    suffix = f".{ext}" if ext else ""
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix or ".pdf") as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        try:
+            docs = ingest_files([tmp_path], kind="candidate", force_llm=True) or []
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"ingest_failed:{str(exc)[:140]}")
+
+        candidate_doc = docs[-1] if docs else {}
+        candidate_oid = candidate_doc.get("_id")
+        share_id = candidate_doc.get("share_id")
+        if not candidate_oid and share_id:
+            candidate_doc = db["candidates"].find_one({"share_id": share_id}) or {}
+            candidate_oid = candidate_doc.get("_id")
+
+        if not candidate_oid:
+            raise HTTPException(status_code=400, detail="candidate_creation_failed")
+
+        candidate_id = str(candidate_oid)
+        is_claimed = bool(candidate_doc.get("user_id"))
+        existing_temp_id = candidate_doc.get("temp_candidate_id") if not is_claimed else None
+        temp_candidate_id = existing_temp_id or _generate_temp_candidate_id()
+        previous_resume = candidate_doc.get("resume_file_id")
+        resume_file_id = save_resume(
+            content,
+            filename=safe_name,
+            content_type=file.content_type or "application/octet-stream",
+            tenant_id=tenant_id,
+            candidate_id=candidate_id,
+            metadata={
+                "portal_slug": portal_slug,
+                "session_id": session_id,
+                "conversation_id": conversation_id,
+                "origin": "portal_chat_upload",
+            },
+        )
+        if previous_resume and str(previous_resume) != str(resume_file_id):
+            try:
+                delete_resume(previous_resume)
+            except Exception:
+                pass
+
+        now_dt = datetime.utcnow()
+        now_ts = int(time.time())
+        update_fields = {
+            "tenant_id": tenant_id,
+            "resume_file_id": resume_file_id,
+            "resume_filename": safe_name,
+            "resume_content_type": file.content_type or "application/octet-stream",
+            "resume_size_bytes": len(content),
+            "resume_uploaded_at": now_dt,
+            "portal_slug": portal_slug,
+            "portal_session_id": session_id,
+            "portal_conversation_id": conversation_id,
+            "origin": candidate_doc.get("origin") or "portal_chat_upload",
+            "is_claimed": is_claimed,
+            "expires_at": now_dt + timedelta(days=7),
+            "updated_at": now_ts,
+        }
+        temp_candidate_response = temp_candidate_id
+        if is_claimed:
+            temp_candidate_response = None
+        else:
+            update_fields["temp_candidate_id"] = temp_candidate_id
+        db["candidates"].update_one(
+            {"_id": candidate_oid},
+            {
+                "$set": update_fields,
+                "$setOnInsert": {"created_at": now_dt},
+            },
+        )
+
+        candidate_doc = db["candidates"].find_one({"_id": candidate_oid}) or {}
+        try:
+            matches = get_or_compute_matches(candidate_id, top_k=6, tenant_id=tenant_id, strategy="off") or []
+        except Exception:
+            matches = []
+
+        return {
+            "temp_candidate_id": temp_candidate_response,
+            "candidate_id": candidate_id,
+            "share_id": candidate_doc.get("share_id"),
+            "resume_file_id": str(resume_file_id),
+            "resume_filename": safe_name,
+            "resume_content_type": file.content_type or "application/octet-stream",
+            "portal_slug": portal_slug,
+            "profile": _candidate_profile_snapshot(candidate_doc),
+            "matches": [_serialize_match(m) for m in matches][:5],
+            "total_matches": len(matches),
+        }
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 @router.post("/candidates/upload")
@@ -254,6 +519,157 @@ async def upload_candidates(files: List[UploadFile] = File(...), tenant_id: str 
                     os.unlink(p)
             except Exception:
                 pass
+
+
+@profile_router.post("/claim")
+def claim_temp_candidate(payload: ClaimCandidateRequest, user=Depends(require_role("candidate"))):
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+    temp_id = (payload.temp_candidate_id or "").strip()
+    if not temp_id:
+        raise HTTPException(status_code=400, detail="missing_temp_candidate_id")
+    doc = db["candidates"].find_one({
+        "tenant_id": tenant_id,
+        "temp_candidate_id": temp_id,
+    })
+    if not doc:
+        raise HTTPException(status_code=404, detail="temp_candidate_not_found")
+    current_user_id = str(user.get("id"))
+    owner = doc.get("user_id")
+    if owner and owner != current_user_id:
+        raise HTTPException(status_code=409, detail="already_claimed")
+    email = payload.email.lower().strip() if payload.email else (doc.get("email") or user.get("email") or "")
+    name_value = (payload.full_name or doc.get("full_name") or user.get("name") or "").strip()
+    phone_value = _normalize_phone(payload.phone) if payload.phone else _normalize_phone(doc.get("phone"))
+    update_doc = {
+        "$set": {
+            "user_id": current_user_id,
+            "is_claimed": True,
+            "tenant_id": tenant_id,
+            "updated_at": int(time.time()),
+        },
+        "$unset": {"temp_candidate_id": "", "expires_at": ""},
+    }
+    if email:
+        update_doc["$set"]["email"] = email
+    if name_value:
+        update_doc["$set"]["full_name"] = name_value
+    if phone_value:
+        update_doc["$set"]["phone"] = phone_value
+    db["candidates"].update_one({"_id": doc["_id"]}, update_doc)
+    candidate_doc = db["candidates"].find_one({"_id": doc["_id"]}) or {}
+    return {
+        "candidate_id": str(candidate_doc.get("_id")),
+        "share_id": candidate_doc.get("share_id"),
+        "profile": _candidate_profile_snapshot(candidate_doc),
+    }
+
+
+@profile_router.get("/me")
+def get_candidate_self(user=Depends(require_role("candidate"))):
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+    doc = _load_candidate_for_user(tenant_id, user.get("id"))
+    if not doc:
+        raise HTTPException(status_code=404, detail="candidate_not_found")
+    profile = _candidate_profile_snapshot(doc)
+    profile["is_claimed"] = bool(doc.get("is_claimed"))
+    profile["temp_candidate_id"] = doc.get("temp_candidate_id")
+    profile["resume_filename"] = doc.get("resume_filename")
+    profile["resume_uploaded_at"] = doc.get("resume_uploaded_at")
+    profile["resume_file_id"] = str(doc.get("resume_file_id")) if doc.get("resume_file_id") else None
+    return {"candidate": profile}
+
+
+@profile_router.put("/me")
+def update_candidate_self(payload: CandidateProfileUpdate, user=Depends(require_role("candidate"))):
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+    doc = _load_candidate_for_user(tenant_id, user.get("id"))
+    if not doc:
+        raise HTTPException(status_code=404, detail="candidate_not_found")
+    updates: Dict[str, Any] = {}
+    if payload.full_name is not None:
+        name_value = payload.full_name.strip()
+        if name_value:
+            updates["full_name"] = name_value
+    if payload.headline is not None:
+        updates["headline"] = payload.headline.strip() if payload.headline else None
+    if payload.summary is not None:
+        updates["summary"] = payload.summary.strip() if payload.summary else None
+    if payload.phone is not None:
+        updates["phone"] = _normalize_phone(payload.phone)
+    if payload.city is not None:
+        updates["city"] = payload.city.strip() or None
+        updates["city_canonical"] = canonical_city(payload.city) if payload.city else None
+    if payload.skill_set is not None:
+        cleaned = [s.strip() for s in payload.skill_set if isinstance(s, str) and s.strip()]
+        updates["skill_set"] = cleaned
+    if not updates:
+        return {"candidate": _candidate_profile_snapshot(doc)}
+    updates["updated_at"] = int(time.time())
+    db["candidates"].update_one({"_id": doc["_id"]}, {"$set": updates})
+    refreshed = _load_candidate_for_user(tenant_id, user.get("id")) or {}
+    profile = _candidate_profile_snapshot(refreshed)
+    profile["is_claimed"] = bool(refreshed.get("is_claimed"))
+    profile["resume_filename"] = refreshed.get("resume_filename")
+    profile["resume_uploaded_at"] = refreshed.get("resume_uploaded_at")
+    return {"candidate": profile}
+
+
+@profile_router.get("/me/cv")
+def download_candidate_cv(user=Depends(require_role("candidate"))):
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+    doc = _load_candidate_for_user(tenant_id, user.get("id"))
+    if not doc or not doc.get("resume_file_id"):
+        raise HTTPException(status_code=404, detail="resume_not_found")
+    try:
+        stream = open_resume_stream(doc.get("resume_file_id"))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="resume_not_found")
+    media_type = doc.get("resume_content_type") or "application/octet-stream"
+    filename = doc.get("resume_filename") or "resume.pdf"
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"{filename}\"",
+    }
+    return StreamingResponse(stream, media_type=media_type, headers=headers)
+
+
+@profile_router.delete("/me/cv")
+def delete_candidate_cv(user=Depends(require_role("candidate"))):
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_missing")
+    doc = _load_candidate_for_user(tenant_id, user.get("id"))
+    if not doc or not doc.get("resume_file_id"):
+        raise HTTPException(status_code=404, detail="resume_not_found")
+    resume_id = doc.get("resume_file_id")
+    try:
+        delete_resume(resume_id)
+    except Exception:
+        pass
+    db["candidates"].update_one(
+        {"_id": doc["_id"]},
+        {
+            "$unset": {
+                "resume_file_id": "",
+                "resume_filename": "",
+                "resume_content_type": "",
+                "resume_size_bytes": "",
+                "resume_uploaded_at": "",
+            },
+            "$set": {"updated_at": int(time.time())},
+        },
+    )
+    refreshed = _load_candidate_for_user(tenant_id, user.get("id")) or {}
+    profile = _candidate_profile_snapshot(refreshed)
+    profile["is_claimed"] = bool(refreshed.get("is_claimed"))
+    return {"removed": True, "candidate": profile}
 
 
 @router.get("/candidates")

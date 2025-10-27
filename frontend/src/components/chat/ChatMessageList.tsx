@@ -28,7 +28,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isTy
 
   useEffect(() => {
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      const node = bottomRef.current;
+      if (typeof node.scrollIntoView === 'function') {
+        node.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else if (node.parentElement) {
+        node.parentElement.scrollTop = node.parentElement.scrollHeight;
+      }
     }
   }, [renderedMessages, isTyping]);
 

@@ -6,9 +6,11 @@ interface ChatComposerProps {
   onSubmit: () => void;
   disabled?: boolean;
   placeholder?: string;
+  onUploadClick?: () => void;
+  uploadDisabled?: boolean;
 }
 
-export const ChatComposer: React.FC<ChatComposerProps> = ({ value, onChange, onSubmit, disabled, placeholder }) => {
+export const ChatComposer: React.FC<ChatComposerProps> = ({ value, onChange, onSubmit, disabled, placeholder, onUploadClick, uploadDisabled }) => {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -45,14 +47,26 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({ value, onChange, onS
           maxLength={500}
           aria-disabled={disabled}
         />
-        <button
-          type="button"
-          className="portal-chatbot__send"
-          onClick={onSubmit}
-          disabled={disabled || !value.trim()}
-        >
-          Send
-        </button>
+        <div className="portal-chatbot__composer-actions">
+          {onUploadClick ? (
+            <button
+              type="button"
+              className="portal-chatbot__upload"
+              onClick={onUploadClick}
+              disabled={disabled || uploadDisabled}
+            >
+              Upload CV
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="portal-chatbot__send"
+            onClick={onSubmit}
+            disabled={disabled || !value.trim()}
+          >
+            Send
+          </button>
+        </div>
       </div>
       <p className="portal-chatbot__composer-hint">Press Enter to send, Shift + Enter for a new line.</p>
     </div>

@@ -26,6 +26,78 @@ export interface Match { job_id?: string; candidate_id?: string; score: number; 
 export interface CandidateDetail { candidate_id:string; title?:string; city?:string|null; skills:string[]; updated_at?:number; share_id?:string }
 export interface ShareResponse { candidate: CandidateDetail; matches: Match[] }
 
+export interface CandidateProfileSummary {
+  candidate_id?: string | null;
+  share_id?: string | null;
+  full_name?: string | null;
+  title?: string | null;
+  headline?: string | null;
+  city?: string | null;
+  original_city?: string | null;
+  experience_years?: number | null;
+  summary?: string | null;
+  top_skills?: string[];
+  skills_detailed?: unknown[];
+  recent_roles?: unknown[];
+  is_claimed?: boolean;
+  temp_candidate_id?: string | null;
+  resume_filename?: string | null;
+  resume_uploaded_at?: string | number | Date | null;
+  resume_file_id?: string | null;
+}
+
+export interface PortalResumeMatch {
+  job_id?: string;
+  title?: string;
+  company_name?: string;
+  score?: number;
+  match_reason?: string | null;
+  location?: string | null;
+  remote?: boolean;
+  application_url?: string | null;
+  skill_overlap?: string[];
+  distance_km?: number | null;
+}
+
+export interface PortalResumeUploadResponse {
+  temp_candidate_id: string | null;
+  candidate_id: string;
+  share_id?: string | null;
+  resume_file_id?: string | null;
+  resume_filename?: string | null;
+  resume_content_type?: string | null;
+  portal_slug: string;
+  profile: CandidateProfileSummary;
+  matches: PortalResumeMatch[];
+  total_matches: number;
+}
+
+export interface CandidateRegisterPayload {
+  tenant_id: string;
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  temp_candidate_id?: string | null;
+}
+
+export interface CandidateRegisterResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    tenant_id: string;
+    candidate_id: string;
+  };
+  share_id?: string | null;
+}
+
+export interface CandidateSelfResponse {
+  candidate: CandidateProfileSummary;
+}
+
 export async function fetchCandidates(skip=0, limit=50) {
   const r = await axios.get(`${API_BASE}/candidates?skip=${skip}&limit=${limit}`);
   return r.data as CandidateList & { skip:number; limit:number };
@@ -116,6 +188,11 @@ export async function apiPost<T = any>(path: string, body: unknown): Promise<T> 
   return response.data as T;
 }
 
+export async function apiPut<T = any>(path: string, body: unknown): Promise<T> {
+  const response = await axios.put(`${API_BASE}${path}`, body, { headers: authHeaders({ 'Content-Type': 'application/json' }) });
+  return response.data as T;
+}
+
 export async function apiUpload<T = any>(path: string, file: File): Promise<T> {
   const formData = new FormData();
   formData.append('file', file);
@@ -148,4 +225,56 @@ export async function getPortalChatSuggestions(portalSlug: string): Promise<Port
 
 export async function getPortalChatSeed(token: string): Promise<PortalChatSeedResponse> {
   return apiGet<PortalChatSeedResponse>(`/portal/chat/seed/${token}`);
+}
+
+export async function uploadPortalCandidateResume(
+  portalSlug: string,
+  file: File,
+  options?: { sessionId?: string; conversationId?: string | null }
+): Promise<PortalResumeUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (options?.sessionId) {
+    formData.append('session_id', options.sessionId);
+  }
+  if (options?.conversationId) {
+    formData.append('conversation_id', options.conversationId);
+  }
+  const response = await axios.post(`${API_BASE}/portal/${portalSlug}/candidates/upload`, formData, {
+    headers: authHeaders(),
+  });
+  return response.data as PortalResumeUploadResponse;
+}
+
+export async function registerCandidate(payload: CandidateRegisterPayload): Promise<CandidateRegisterResponse> {
+  const response = await axios.post(`${API_BASE}/auth/register-candidate`, payload);
+  const data = response.data as CandidateRegisterResponse;
+  if (data?.token && typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem('token', data.token);
+    } catch (err) {
+      console.warn('registerCandidate: failed to persist token', err);
+    }
+  }
+  return data;
+}
+
+export async function getCandidateSelf(): Promise<CandidateSelfResponse> {
+  return apiGet<CandidateSelfResponse>('/candidates/me');
+}
+
+export async function updateCandidateSelf(body: Partial<CandidateProfileSummary>): Promise<CandidateSelfResponse> {
+  return apiPut<CandidateSelfResponse>('/candidates/me', body);
+}
+
+export async function deleteCandidateResume(): Promise<CandidateSelfResponse> {
+  return apiDelete<CandidateSelfResponse>('/candidates/me/cv');
+}
+
+export async function downloadCandidateResume(): Promise<Blob> {
+  const response = await axios.get(`${API_BASE}/candidates/me/cv`, {
+    headers: authHeaders(),
+    responseType: 'blob',
+  });
+  return response.data as Blob;
 }
